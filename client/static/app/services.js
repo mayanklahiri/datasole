@@ -1,3 +1,6 @@
+/**
+ * Maintains a persistent connection to the server and accepts server state updates.
+ */
 class WebSocketService {
   constructor(wsUrl, scope) {
     console.log(`Connecting to websocket: ${wsUrl}`);
