@@ -1,0 +1,33 @@
+doctype
+html
+    head
+        title Datasole        
+        link(href="/css/bootstrap.min.css", rel="stylesheet")
+        script!= '$state=' + serverJson
+        script(src='/js/angular.min.js')
+        script(src='/js/lodash.min.js')
+        script(src='/app/main.js')
+        script(src='/app/services.js')
+        script(src='/app/controllers.js')
+    body
+        div(class="container-fluid", ng-app="defaultApp")
+            div(class="row", ng-controller="HomeController") 
+                div(class="col-4")      
+                    h4 Server-injected config  
+                    pre
+                        code
+                            div= serverJson
+                        
+                div(class="col-4")      
+                    h4 Dynamic local state
+                    div
+                        em {{now}}
+                        pre
+                            code {{state}}
+
+                div(class="col-4")      
+                    h4 Server stream
+                    div(ng-repeat="elem in console track by $index")
+                        div {{elem}}
+
+            
