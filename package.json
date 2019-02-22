@@ -21,6 +21,7 @@
     "argparse": "^1.0.10",
     "express": "^4.16.4",
     "json-stable-stringify": "^1.0.1",
+    "lodash": "^4.17.11",
     "opener": "^1.5.1",
     "pug": "^2.0.3",
     "winston": "^3.2.1",
@@ -41,7 +42,7 @@
     "sass-loader": "^7.1.0",
     "style-loader": "^0.23.1",
     "webpack": "^4.29.5",
-    "webpack-cli": "^3.2.3",
-    "webpack-dev-server": "^3.2.0"
+    "webpack-dev-middleware": "^3.6.0",
+    "webpack-hot-middleware": "^2.24.3"
   }
 }
