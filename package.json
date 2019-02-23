@@ -23,7 +23,6 @@
     "json-stable-stringify": "^1.0.1",
     "lodash": "^4.17.11",
     "opener": "^1.5.1",
-    "pug": "^2.0.3",
     "winston": "^3.2.1",
     "ws": "^6.1.4"
   },
@@ -32,17 +31,30 @@
     "@babel/preset-env": "^7.3.1",
     "acorn": "^6.1.0",
     "angular": "^1.7.7",
+    "angular-route": "^1.7.7",
+    "autoprefixer": "^9.4.8",
     "babel-loader": "^8.0.5",
     "bootstrap": "^4.3.1",
+    "clean-webpack-plugin": "^1.0.1",
     "css-loader": "^2.1.0",
+    "html-webpack-plugin": "^3.2.0",
     "jquery": "^3.3.1",
+    "less": "^3.9.0",
+    "less-loader": "^4.1.0",
+    "node-sass": "^4.11.0",
     "popper.js": "^1.14.7",
     "postcss-loader": "^3.0.0",
-    "sass": "^1.17.1",
+    "pug": "^2.0.3",
+    "pug-loader": "^2.4.0",
+    "sass": "^1.17.2",
     "sass-loader": "^7.1.0",
     "style-loader": "^0.23.1",
     "webpack": "^4.29.5",
     "webpack-dev-middleware": "^3.6.0",
     "webpack-hot-middleware": "^2.24.3"
+  },
+  "optionalDependencies": {
+    "bufferutil": "^4.0.1",
+    "utf-8-validate": "^5.0.2"
   }
 }

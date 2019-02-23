@@ -1,0 +1,12 @@
+div
+  nav-bar
+  h3 Debugging
+  div(class="row")      
+    div(class="col") 
+      h4 Model
+      pre
+        code {{ $model | json }}       
+    div(class="col") 
+      h4 Connection
+      pre
+        code {{ $modelStatus | json }}
