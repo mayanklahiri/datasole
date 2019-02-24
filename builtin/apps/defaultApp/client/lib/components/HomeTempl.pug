@@ -1,5 +1,14 @@
 div
   nav-bar
-  h2 Home
-  img(src=require('Assets/img/sample.jpg'))
+  div(class='container-fluid')
+    div(class='row')    
+      div(class='col')
+        h2 Home
+    div(class='row')    
+      div(class='col', ng-repeat="imgName in $model.imageList track by $index")
+        img(ng-if="imgName=='wheat'", src=require('Assets/img/wheat.jpg'))
+        img(ng-if="imgName=='tractor'", src=require('Assets/img/tractor.jpg'))
+        img(ng-if="imgName=='farmland'", src=require('Assets/img/farmland.jpg'))
+        img(ng-if="imgName=='windmill'", src=require('Assets/img/windmill.jpg'))
+        img(ng-if="imgName=='field'", src=require('Assets/img/field.jpg'))
   

@@ -15,6 +15,7 @@ function main() {
     // Routes
     "DebugRoute",
     "HomeRoute",
+    "StdinRoute",
     "ErrorRoute",
 
     // Components
