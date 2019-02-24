@@ -13,7 +13,7 @@ function main() {
   const angularApp = angular.module("defaultApp", ["ngRoute"]);
   [
     // Routes
-    IS_PROD ? null : "DebugRoute",
+    "DebugRoute",
     "HomeRoute",
     "ErrorRoute",
 
@@ -33,7 +33,7 @@ function main() {
 }
 
 // Enable Webpack HMR in development mode.
-if (module.hot) {
+if (module.hot && !IS_PROD) {
   module.hot.accept();
 }
 
