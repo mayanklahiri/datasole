@@ -1,6 +1,18 @@
-.nav {
+.NavBar {
+  .bkg-connecting {
+    background-color: #fff4b8;
+  }
+
+  .bkg-connected {
+    background-color: #ffffff;
+  }
+
   .active {
-    font-weight: bold;
-    background-color: #dadada;
+    .nav-link {
+      font-weight: bold;
+      color: black;
+      text-decoration: none;
+      background-color: #f0f0f0;
+    }
   }
 }
