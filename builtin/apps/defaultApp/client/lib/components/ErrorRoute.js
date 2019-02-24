@@ -1,4 +1,4 @@
-const templateHtml = require("pug-loader!./ErrorTempl.pug")({ CONFIG });
+const templateHtml = require("./ErrorTempl.pug")({ CONFIG });
 
 function registerRoute(angularApp) {
   angularApp.config($routeProvider => {

@@ -1,4 +1,4 @@
-const templateHtml = require("pug-loader!./HomeTempl.pug")({ CONFIG });
+const templateHtml = require("./HomeTempl.pug")({ CONFIG });
 const routeCtrl = require("./HomeCtrl");
 
 function registerRoute(angularApp) {

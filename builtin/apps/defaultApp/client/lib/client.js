@@ -1,24 +1,40 @@
+/**
+ * Client-side (i.e., browser) application transpiled with Webpack.
+ */
 const angular = require("angular");
 require("angular-route");
 import "bootstrap";
 import "./components/RootStyle.scss";
 
-// Create AngularJS app.
-const angularApp = angular.module("defaultApp", ["ngRoute"]);
-["DebugRoute", "HomeRoute", "ErrorRoute", "NavBarComponent"].forEach(
-  routeName => {
-    const registerFn = require(`./components/${routeName}.js`);
-    registerFn(angularApp);
-  }
-);
-angularApp.controller("RootCtrl", require("./components/RootCtrl"));
+const IS_PROD = CONFIG.mode === "production"; // CONFIG is injected by Webpack at build time
 
-// Set router to HTML5 mode.
-angularApp.config($locationProvider => {
-  $locationProvider.html5Mode(false);
-});
+function main() {
+  // Create AngularJS app.
+  const angularApp = angular.module("defaultApp", ["ngRoute"]);
+  [
+    // Routes
+    IS_PROD ? null : "DebugRoute",
+    "HomeRoute",
+    "ErrorRoute",
 
-// Enable HMR in development mode.
+    // Components
+    "RootComponent",
+    "NavBarComponent"
+  ]
+    .filter(x => x)
+    .forEach(registerable =>
+      require(`./components/${registerable}`)(angularApp)
+    );
+
+  // Set router to HTML5 mode.
+  angularApp.config($locationProvider => {
+    $locationProvider.html5Mode(false);
+  });
+}
+
+// Enable Webpack HMR in development mode.
 if (module.hot) {
   module.hot.accept();
 }
+
+main();

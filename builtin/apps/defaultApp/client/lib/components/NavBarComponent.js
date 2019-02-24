@@ -1,4 +1,4 @@
-const templateHtml = require("pug-loader!./NavBarTempl")({ CONFIG });
+const templateHtml = require("./NavBarTempl")({ CONFIG });
 const compCtrl = require("./NavBarCtrl");
 
 function registerComponent(angularApp) {
