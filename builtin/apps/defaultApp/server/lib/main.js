@@ -44,7 +44,7 @@ function main(argv) {
         }
       ]
     });
-  }, 2500);
+  }, 500);
 
   // Read standard input lines and stream to circular buffer.
   const rl = readline.createInterface({
