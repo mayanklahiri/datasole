@@ -16,7 +16,7 @@ module.exports = [
       "update",
       throttle(() => {
         $rootScope.$apply(() => {});
-      }, 100)
+      }, 50)
     );
   }
 ];

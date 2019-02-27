@@ -1,5 +1,6 @@
 const templateHtml = require("./HomeTempl.pug")({ CONFIG });
 const routeCtrl = require("./HomeCtrl");
+require("./HomeStyle.scss");
 
 function registerRoute(angularApp) {
   angularApp.config($routeProvider => {

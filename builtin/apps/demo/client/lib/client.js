@@ -3,8 +3,8 @@
  */
 const angular = require("angular");
 require("angular-route");
-import "bootstrap";
-import "./components/RootStyle.scss";
+require("./styles/global.scss");
+require("./components/index.scss");
 
 const IS_PROD = CONFIG.mode === "production"; // CONFIG is injected by Webpack at build time
 

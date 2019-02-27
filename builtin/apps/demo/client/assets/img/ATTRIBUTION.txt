@@ -1,0 +1,27 @@
+Filename: plants.jpg
+URL: https://www.pexels.com/photo/field-agriculture-farm-cereals-6535/
+License: CC0
+
+Filename: field.jpg
+URL: https://pixabay.com/photos/field-solitude-rural-hut-barn-839827/
+License: Pixabay License (free for commercial use; no attribution required)
+
+Filename: skier.jpg
+URL: https://pixabay.com/photos/freerider-skiing-ski-sports-alpine-498473/
+License: Pixabay License (free for commercial use; no attribution required)
+
+Filename: aurora.jpg
+URL: https://pixabay.com/photos/aurora-borealis-northern-lights-sky-3877316/
+License: Pixabay License (free for commercial use; no attribution required)
+
+Filename: ocean.jpg
+URL: https://pixabay.com/photos/tomales-bay-waves-ocean-sea-coast-530057/
+License: Pixabay License (free for commercial use; no attribution required)
+
+Filename: horses.jpg
+URL: https://pixabay.com/photos/horses-herd-animals-river-running-3697217/
+License: Pixabay License (free for commercial use; no attribution required)
+
+Filename: pug.jpg
+URL: https://www.pexels.com/photo/fawn-pug-1851471/
+License: Pexels License  (free for commercial use; no attribution required)
