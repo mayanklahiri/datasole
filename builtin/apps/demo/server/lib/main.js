@@ -1,6 +1,5 @@
 const os = require("os");
 const readline = require("readline");
-const log = console;
 
 const IMAGE_NAMES = ["aurora", "field", "horses", "skier", "ocean", "plants"];
 
@@ -11,7 +10,7 @@ function choice(list) {
 function main(argv) {
   const sendFn = process.send.bind(process) || console.log;
 
-  // Send ready command.
+  // Send ready signal.
   sendFn({
     type: "ready"
   });
@@ -49,7 +48,7 @@ function main(argv) {
       type: "apply",
       ops: [
         {
-          type: "$set",
+          type: "$merge",
           keyPath: "$server",
           value: {
             metrics: {
@@ -59,13 +58,14 @@ function main(argv) {
               //numConnections: size(this.connections)
             },
             meta: {
-              pid: process.pid
+              pid: process.pid,
+              nodeVer: process.version
             }
           }
         }
       ]
     });
-  }, 500);
+  }, 1000);
 
   // Read standard input lines and stream to circular buffer.
   const rl = readline.createInterface({

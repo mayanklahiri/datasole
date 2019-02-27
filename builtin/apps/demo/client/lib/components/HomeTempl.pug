@@ -35,3 +35,6 @@ div
           tr(ng-if='$model.$server.meta.pid')
             td Process ID
             td(class='metric') {{ $model.$server.meta.pid }}
+          tr(ng-if='$model.$server.meta.nodeVer')
+            td Node.js version
+            td(class='metric') {{ $model.$server.meta.nodeVer }}
