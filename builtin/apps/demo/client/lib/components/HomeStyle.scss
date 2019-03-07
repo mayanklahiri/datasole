@@ -1,0 +1,30 @@
+.image-pane {
+  width: 100%;
+  margin: 0;
+
+  .image-block {
+    display: inline-block;
+    width: 50%;
+    padding: 0;
+
+    img {
+      display: inline-block;
+      width: 100%;
+    }
+  }
+}
+
+.info-table {
+  .metric {
+    font-family: monospace;
+    text-align: right;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .date {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 400;
+  }
+}
