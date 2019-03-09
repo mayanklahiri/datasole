@@ -2,7 +2,7 @@
   "name": "datasole",
   "version": "0.1.1",
   "description": "",
-  "main": "./lib/cli/cli.js",
+  "main": "./lib/index.js",
   "bin": {
     "datasole": "./lib/cli/cli.js"
   },
