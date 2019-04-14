@@ -42,6 +42,30 @@ Build a production version of the frontend: `datasole build`
 
 Serve a production version of the frontend: `datasole run`
 
+## Settings
+
+The following environment variables affect Datasole's behavior.
+
+| Environment variable     | Default | Description                               |
+| ------------------------ | ------- | ----------------------------------------- |
+| DATASOLE_LOG_OUTPUT_PATH |         | Path to write logs to, or stdout if blank |
+| DATASOLE_LOG_FORMAT      | `text`  | `text` or `json`                          |
+| DATASOLE_LOG_LEVEL_SYS   | `info`  | Datasole runtime logging level            |
+| DATASOLE_LOG_LEVEL_APP   | `info`  | User application logging level            |
+| DISABLE_COLORS           | `false` | Strip ANSI color codes from log messages  |
+
+The following logging levels are supported:
+
+- `trace`
+- `debug`
+- `info`
+- `warn`
+- `error`
+
+## Example projects
+
+See the [datasole-examples](https://github.com/mayanklahiri/datasole-examples) repository.
+
 ## Package maintainer notes
 
 - Webpack is not in `devDependencies` because recursive devDependencies are not currently installed by npm, and Webpack is required for developing the client and server components of any project. In the future, Webpack and other large dev dependencies can be moved to `devDependencies` by requiring a global npm install of `datasole` for development.
