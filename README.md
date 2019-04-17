@@ -40,7 +40,7 @@ Build a production version of the frontend: `datasole build`
 
 ### run
 
-Serve a production version of the frontend: `datasole run`
+Serve a production version of the frontend: `datasole run` (requires `datasole build` first)
 
 ## Settings
 
