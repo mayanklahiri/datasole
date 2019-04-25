@@ -46,13 +46,14 @@ Serve a production version of the frontend: `datasole run` (requires `datasole b
 
 The following environment variables affect Datasole's behavior.
 
-| Environment variable     | Default | Description                               |
-| ------------------------ | ------- | ----------------------------------------- |
-| DATASOLE_LOG_OUTPUT_PATH |         | Path to write logs to, or stdout if blank |
-| DATASOLE_LOG_FORMAT      | `text`  | `text` or `json`                          |
-| DATASOLE_LOG_LEVEL_SYS   | `info`  | Datasole runtime logging level            |
-| DATASOLE_LOG_LEVEL_APP   | `info`  | User application logging level            |
-| DISABLE_COLORS           | `false` | Strip ANSI color codes from log messages  |
+| Environment variable     | Default | Description                                  |
+| ------------------------ | ------- | -------------------------------------------- |
+| DATASOLE_LOG_OUTPUT_PATH |         | Path to write logs to, or stdout if blank    |
+| DATASOLE_LOG_FORMAT      | `text`  | `text` or `json`                             |
+| DATASOLE_LOG_LEVEL_SYS   | `info`  | Datasole runtime logging level               |
+| DATASOLE_LOG_LEVEL_APP   | `info`  | User application logging level               |
+| DATASOLE_LOG_PASSTHROUGH |         | Set if calling Datasole using node.js fork() |
+| DISABLE_COLORS           | `false` | Strip ANSI color codes from log messages     |
 
 The following logging levels are supported:
 
