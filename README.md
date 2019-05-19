@@ -95,4 +95,12 @@ See the [datasole-examples](https://github.com/mayanklahiri/datasole-examples) r
 
 - Webpack is not in `devDependencies` because recursive devDependencies are not currently installed by npm, and Webpack is required for developing the client and server components of any project. In the future, Webpack and other large dev dependencies can be moved to `devDependencies` by requiring a global npm install of `datasole` for development.
 
-- Do not delete and attempt to regenerate `package-lock.json` until the following [node-sass issue](https://github.com/sass/node-sass/issues/2625) has been resolved. The `package-lock.json` file checked in has force-upgraded versions of `node-tar`.
+### Source Statistics
+
+| Statistic | Value |
+| --- | --- |
+| Total lines of code | 2947 |
+| Source lines | 2250 (76%) |
+| Comment lines | 364 |
+| Installed node_modules size | 199M |
+---
