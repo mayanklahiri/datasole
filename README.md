@@ -70,3 +70,13 @@ See the [datasole-examples](https://github.com/mayanklahiri/datasole-examples) r
 ## Package maintainer notes
 
 - Webpack is not in `devDependencies` because recursive devDependencies are not currently installed by npm, and Webpack is required for developing the client and server components of any project. In the future, Webpack and other large dev dependencies can be moved to `devDependencies` by requiring a global npm install of `datasole` for development.
+
+### Source Statistics
+
+| Statistic | Value |
+| --- | --- |
+| Total lines of code | 2944 |
+| Source lines | 2247 (76%) |
+| Comment lines | 363 |
+| Installed node_modules size | 159M |
+---
