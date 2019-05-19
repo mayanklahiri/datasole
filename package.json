@@ -8,7 +8,8 @@
   },
   "scripts": {
     "_sloc": "sloc lib",
-    "sloc": "./scripts/sloc-to-readme.js"
+    "sloc": "./scripts/sloc-to-readme.js",
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -65,6 +66,7 @@
     "ws": "^7.0.0"
   },
   "devDependencies": {
+    "jest": "^24.8.0",
     "sloc": "^0.2.1"
   },
   "engines": {
