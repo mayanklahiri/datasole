@@ -1,6 +1,7 @@
 # datasole
 
 [![CircleCI](https://circleci.com/gh/mayanklahiri/datasole.svg?style=svg)](https://circleci.com/gh/mayanklahiri/datasole)
+[![Build Status](https://travis-ci.org/mayanklahiri/datasole.svg?branch=master)](https://travis-ci.org/mayanklahiri/datasole)
 
 Datasole, or _data_ con*sole*, is a fast prototyping tool for realtime, full-stack Javascript web applications.
 Datasole handles the plumbing of keeping a **server** Javascript application in sync with many **client**
