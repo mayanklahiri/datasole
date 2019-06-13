@@ -1,13 +1,25 @@
 # datasole
 
-Datasole, or **data** con**sole**, is a real-time data model server based on Webpack, Express.js, and WebSockets.
-It maintains a synchronized, shared data model (arbitrarily nested object) between a server application process and one
-or more connected clients via a real-time broadcast protocol. Individual clients can invoke actions on the server, which can mutate
-the shared data model. Clients are automatically updated via a JSON-based data protocol over a Websocket.
+![Lines covered](/badges/badge-lines.svg?raw=true "Lines covered")
+![Statements covered](/badges/badge-statements.svg?raw=true "Statements covered")
+![Functions covered](/badges/badge-functions.svg?raw=true "Functions covered")
+![Branches covered](/badges/badge-branches.svg?raw=true "Branches covered")
+
+Datasole, or _data_ con*sole*, is a fast prototyping tool for realtime, full-stack Javascript web applications.
+Datasole handles the plumbing of keeping a **server** Javascript application in sync with many **client**
+Javascript applications, which includes:
+
+- Bundle client application using Webpack.
+- Serve client bundle in development (hot module replacement) and production (static build) mode.
+- Start and supervise the server application.
+- Allow the server application to mutate a shared model, and propagate these mutations to all connected clients.
+- Allow clients to trigger RPC-style **actions** in the server application, which can mutate the shared state.
+
+Datasole is based on (and abstracts): Webpack, Express, and WebSockets (via the `ws` library).
 
 Datasole works well with frontend frameworks that support reacting to mutations on a shared data model, such as Vue.
 
-Supported:
+The following features are supported when developing a Datasole application:
 
 - Server application restart on source file changes
 - Asset bundling via Webpack, with hot module reloading
@@ -46,31 +58,6 @@ Serve a production version of the frontend: `datasole run` (requires `datasole b
 
 The following environment variables affect Datasole's behavior.
 
-| Environment variable     | Default | Description                                  |
-| ------------------------ | ------- | -------------------------------------------- |
-| DATASOLE_LOG_OUTPUT_PATH |         | Path to write logs to, or stdout if blank    |
-| DATASOLE_LOG_FORMAT      | `text`  | `text` or `json`                             |
-| DATASOLE_LOG_LEVEL_SYS   | `info`  | Datasole runtime logging level               |
-| DATASOLE_LOG_LEVEL_APP   | `info`  | User application logging level               |
-| DATASOLE_LOG_PASSTHROUGH |         | Set if calling Datasole using node.js fork() |
-| DISABLE_COLORS           | `false` | Strip ANSI color codes from log messages     |
-
-The following logging levels are supported:
-
-- `trace`
-- `debug`
-- `info`
-- `warn`
-- `error`
-
-## Example projects
-
-See the [datasole-examples](https://github.com/mayanklahiri/datasole-examples) repository.
-
-## Settings
-
-The following environment variables affect Datasole's behavior.
-
 | Environment variable     | Default | Description                               |
 | ------------------------ | ------- | ----------------------------------------- |
 | DATASOLE_LOG_OUTPUT_PATH |         | Path to write logs to, or stdout if blank |
@@ -99,8 +86,8 @@ See the [datasole-examples](https://github.com/mayanklahiri/datasole-examples) r
 
 | Statistic | Value |
 | --- | --- |
-| Total lines of code | 2947 |
-| Source lines | 2250 (76%) |
-| Comment lines | 364 |
-| Installed node_modules size | 199M |
+| Total lines of code | 3294 |
+| Source lines | 2441 (74%) |
+| Comment lines | 457 |
+| Installed node_modules size | 205M |
 ---

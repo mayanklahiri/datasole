@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: util/path-util.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: util/path-util.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Path naming conventions based on a common root path.
+ */
+const path = require("path");
+
+/**
+ * Root of the package, two levels up from this file.
+ */
+const PKG_ROOT = path.resolve(__dirname, "..", "..");
+
+/**
+ * Use require.resolve() on this installed node_modules package to find our own node_modules.
+ * `require.resolve("lodash")` maps to `&lt;abs path>/node_modules/lodash/lodash.js`.
+ */
+// prettier-ignore
+const NODE_MODULES_PATH = path.resolve(path.dirname(require.resolve("lodash")), "..");
+
+//
+// Own source tree path resolvers.
+//
+function pkgRoot(...a) {
+  return path.resolve(PKG_ROOT, ...a);
+}
+
+function libRoot(...a) {
+  return pkgRoot("lib", ...a);
+}
+
+function nodeModulesPath(...a) {
+  return path.resolve(NODE_MODULES_PATH, ...a);
+}
+
+function pkgJsonPath() {
+  return pkgRoot("package.json");
+}
+
+function pkgJson() {
+  return require(pkgJsonPath());
+}
+
+function projectTemplate(...a) {
+  return path.resolve(__dirname, "..", "template", ...a);
+}
+
+//
+// User app path conventions around a common root path.
+//
+
+function appRoot(appRoot, ...a) {
+  return path.resolve(appRoot, ...a);
+}
+
+/**
+ * node_modules for a top-level user porject.
+ */
+function appNodeModules(root) {
+  return appRoot(root, "node_modules");
+}
+
+/**
+ * Root of the common-modules project source tree.
+ */
+
+function appCommonRoot(root, ...a) {
+  return appRoot(root, "lib", "common", ...a);
+}
+
+/**
+ * Root of the server-side project source tree.
+ */
+
+function appServerRoot(root, ...a) {
+  return appRoot(root, "lib", "server", ...a);
+}
+
+/**
+ * Root of the client-side project source tree.
+ */
+function appClientRoot(root, ...a) {
+  return appRoot(root, "lib", "client", ...a);
+}
+
+function appClientDistPath(root) {
+  return appRoot(root, "dist");
+}
+
+/**
+ * Path to client-side entry point file for bundler.
+ */
+function appClientEntryPointPath(appRoot) {
+  return appClientRoot(appRoot, "app.js");
+}
+
+function appClientSrcPath(appRoot, ...a) {
+  return appClientRoot(appRoot);
+}
+
+function appClientIndexTemplate(appRoot) {
+  return appClientRoot(appRoot, "template", "index.pug");
+}
+
+function appClientTemplatePath(appRoot) {
+  return appClientRoot(appRoot, "template");
+}
+
+function appClientAssetsPath(appRoot, ...suffix) {
+  return appClientRoot(appRoot, "assets", ...suffix);
+}
+
+function appClientStylesPath(appRoot, ...suffix) {
+  return appClientRoot(appRoot, "styles", ...suffix);
+}
+
+function appServerEntryPoint(appRoot) {
+  return appServerRoot(appRoot, "server.js");
+}
+
+module.exports = {
+  pkgRoot,
+  pkgJsonPath,
+  pkgJson,
+  nodeModulesPath,
+  libRoot,
+  appRoot,
+  appNodeModules,
+  appClientRoot,
+  appClientSrcPath,
+  appClientEntryPointPath,
+  appClientIndexTemplate,
+  appClientDistPath,
+  appClientTemplatePath,
+  appClientAssetsPath,
+  appServerRoot,
+  appServerRoot,
+  appServerEntryPoint,
+  projectTemplate,
+  appCommonRoot,
+  appClientStylesPath
+};
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AppServer.html">AppServer</a></li><li><a href="Config.html">Config</a></li><li><a href="ConsoleDriver.html">ConsoleDriver</a></li><li><a href="EnvMapper.html">EnvMapper</a></li><li><a href="LiveModelRuntimeInterface.html">LiveModelRuntimeInterface</a></li><li><a href="LoggingSubsystem.html">LoggingSubsystem</a></li><li><a href="LoggingTransport.html">LoggingTransport</a></li><li><a href="PassthroughDriver.html">PassthroughDriver</a></li></ul><h3>Global</h3><ul><li><a href="global.html#appClientEntryPointPath">appClientEntryPointPath</a></li><li><a href="global.html#appClientRoot">appClientRoot</a></li><li><a href="global.html#appCommonRoot">appCommonRoot</a></li><li><a href="global.html#appNodeModules">appNodeModules</a></li><li><a href="global.html#appServerRoot">appServerRoot</a></li><li><a href="global.html#autoPromise">autoPromise</a></li><li><a href="global.html#caller">caller</a></li><li><a href="global.html#COLORS_LEVEL">COLORS_LEVEL</a></li><li><a href="global.html#COLORS_NAME">COLORS_NAME</a></li><li><a href="global.html#commander">commander</a></li><li><a href="global.html#generateClientStub">generateClientStub</a></li><li><a href="global.html#generateCommonStub">generateCommonStub</a></li><li><a href="global.html#generatePackageJson">generatePackageJson</a></li><li><a href="global.html#generateServerStub">generateServerStub</a></li><li><a href="global.html#makeApplyOperation">makeApplyOperation</a></li><li><a href="global.html#makeMessagePacket">makeMessagePacket</a></li><li><a href="global.html#NODE_MODULES_PATH">NODE_MODULES_PATH</a></li><li><a href="global.html#parseMessagePacket">parseMessagePacket</a></li><li><a href="global.html#path">path</a></li><li><a href="global.html#PKG_ROOT">PKG_ROOT</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.2</a> on Thu Jun 13 2019 01:46:29 GMT-0700 (Pacific Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

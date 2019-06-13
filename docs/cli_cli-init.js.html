@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: cli/cli-init.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: cli/cli-init.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>const fs = require("fs").promises;
+const path = require("path");
+
+const colors = require("colors");
+const { ensureDir, mkdirp, copy } = require("fs-extra");
+
+const pathutil = require("../util/path-util");
+const _init = require("./_init");
+
+const STARTER_PACKAGE_JSON = {
+  version: "0.1.0",
+  dependencies: {},
+  devDependencies: {},
+  engines: {
+    node: ">=12.0.0"
+  },
+  engineStrict: true
+};
+
+let log;
+
+async function main(config) {
+  log = require("../logging").getLogger();
+  const projectRoot = config.getCheckedKey("app");
+  const force = config.getKey("force");
+
+  await ensureDir(projectRoot);
+  const dirListing = await fs.readdir(projectRoot);
+  if (dirListing.length &amp;&amp; !force) {
+    throw new Error(
+      `Directory "${projectRoot}" is not empty; use --force to force init (overwrites files).`
+    );
+  }
+
+  log.info(
+    colors.green(`Generating project stub in: ${colors.bold(projectRoot)}`)
+  );
+
+  const generateBoth = !(config.getKey("server") || config.getKey("client"));
+  const generateServer = generateBoth || config.getKey("server");
+  const generateclient = generateBoth || config.getKey("client");
+
+  if (generateServer) {
+    log.info(`Generating server stub in ${colors.yellow(projectRoot)}...`);
+    await generateServerStub(projectRoot);
+  }
+
+  if (generateclient) {
+    log.info(`Generating client stub in ${colors.yellow(projectRoot)}...`);
+    await generateClientStub(projectRoot);
+  }
+
+  if (generateBoth) {
+    log.info(`Generating common stub in ${colors.yellow(projectRoot)}...`);
+    await generateCommonStub(projectRoot);
+  }
+
+  await generatePackageJson(projectRoot, {
+    name: config.getKey("name")
+  });
+
+  log.info(colors.green("Project stub generated."));
+  return process.exit(0);
+}
+
+/**
+ * Write user project's package.json file.
+ * @param {string} projectRoot Path to project root
+ * @param {object} opts Options.
+ */
+function generatePackageJson(projectRoot, opts) {
+  const outJson = Object.assign({}, STARTER_PACKAGE_JSON, opts);
+  const targetPath = pathutil.appRoot(projectRoot, "package.json");
+  log.info(`  ↳ Writing ${colors.yellow("package.json")}`);
+  return fs.writeFile(targetPath, JSON.stringify(outJson, null, 2), "utf-8");
+}
+
+/**
+ * Generate user project's client-side stub.
+ * @param {string} projectRoot Path to project root
+ */
+function generateClientStub(projectRoot) {
+  return Promise.all(
+    [
+      // Destination: client-side entry point
+      [
+        pathutil.projectTemplate("client_main.js"),
+        pathutil.appClientEntryPointPath(projectRoot),
+        projectRoot
+      ],
+      // Destination: client-side root template for index.html
+      [
+        pathutil.projectTemplate("index.pug"),
+        pathutil.appClientIndexTemplate(projectRoot),
+        projectRoot
+      ],
+      // Destination: sample client-side asset to be bundled
+      [
+        pathutil.projectTemplate("sample.jpg"),
+        pathutil.appClientAssetsPath(projectRoot, "sample.jpg"),
+        projectRoot
+      ],
+      // Destination: client stylesheet entry
+      [
+        pathutil.projectTemplate("global_style.scss"),
+        pathutil.appClientStylesPath(projectRoot, "global.scss"),
+        projectRoot
+      ]
+    ].map(tuple => copyTemplate(...tuple))
+  );
+}
+
+/**
+ * Generate user project's server-side application stub.
+ * @param {string} projectRoot Path to project root
+ */
+function generateServerStub(projectRoot) {
+  return Promise.all(
+    [
+      // Destination: server-side entry point main.js
+      [
+        pathutil.projectTemplate("server_main.js"),
+        pathutil.appServerEntryPoint(projectRoot),
+        projectRoot
+      ]
+    ].map(tuple => copyTemplate(...tuple))
+  );
+}
+
+/**
+ * Generate a common modules stub.
+ */
+function generateCommonStub(projectRoot) {
+  return Promise.all(
+    [
+      // Destination: server-side entry point main.js
+      [
+        pathutil.projectTemplate("common_util.js"),
+        pathutil.appCommonRoot(projectRoot, "util", "index.js"),
+        projectRoot
+      ]
+    ].map(tuple => copyTemplate(...tuple))
+  );
+}
+
+async function copyTemplate(srcPath, destPath, projectRoot) {
+  const relPath = path.relative(projectRoot, destPath);
+  const srcRelPath = path.relative(pathutil.projectTemplate(), srcPath);
+  await ensureDir(path.dirname(destPath));
+  await safeCopy(srcPath, destPath);
+  log.info(`  ↳ Copy: ${colors.yellow(srcRelPath)} → ${colors.green(relPath)}`);
+}
+
+function safeCopy(srcPath, destPath) {
+  return copy(srcPath, destPath, {
+    preserveTimestamps: true,
+    overwrite: false
+  });
+}
+
+if (require.main === module) {
+  _init(main, require("./args-init"));
+} else {
+  module.exports = main;
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AppServer.html">AppServer</a></li><li><a href="Config.html">Config</a></li><li><a href="ConsoleDriver.html">ConsoleDriver</a></li><li><a href="EnvMapper.html">EnvMapper</a></li><li><a href="LiveModelRuntimeInterface.html">LiveModelRuntimeInterface</a></li><li><a href="LoggingSubsystem.html">LoggingSubsystem</a></li><li><a href="LoggingTransport.html">LoggingTransport</a></li><li><a href="PassthroughDriver.html">PassthroughDriver</a></li></ul><h3>Global</h3><ul><li><a href="global.html#appClientEntryPointPath">appClientEntryPointPath</a></li><li><a href="global.html#appClientRoot">appClientRoot</a></li><li><a href="global.html#appCommonRoot">appCommonRoot</a></li><li><a href="global.html#appNodeModules">appNodeModules</a></li><li><a href="global.html#appServerRoot">appServerRoot</a></li><li><a href="global.html#autoPromise">autoPromise</a></li><li><a href="global.html#caller">caller</a></li><li><a href="global.html#COLORS_LEVEL">COLORS_LEVEL</a></li><li><a href="global.html#COLORS_NAME">COLORS_NAME</a></li><li><a href="global.html#commander">commander</a></li><li><a href="global.html#generateClientStub">generateClientStub</a></li><li><a href="global.html#generateCommonStub">generateCommonStub</a></li><li><a href="global.html#generatePackageJson">generatePackageJson</a></li><li><a href="global.html#generateServerStub">generateServerStub</a></li><li><a href="global.html#makeApplyOperation">makeApplyOperation</a></li><li><a href="global.html#makeMessagePacket">makeMessagePacket</a></li><li><a href="global.html#NODE_MODULES_PATH">NODE_MODULES_PATH</a></li><li><a href="global.html#parseMessagePacket">parseMessagePacket</a></li><li><a href="global.html#path">path</a></li><li><a href="global.html#PKG_ROOT">PKG_ROOT</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.2</a> on Thu Jun 13 2019 01:46:29 GMT-0700 (Pacific Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
