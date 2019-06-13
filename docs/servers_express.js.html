@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: servers/express.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: servers/express.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>const path = require("path");
+
+const colors = require("colors");
+const express = require("express");
+
+const BaseServer = require("./base");
+const { appClientDistPath } = require("../util/path-util");
+const { writeToTempSync } = require("../util/fs-util");
+
+const WEBPACK_DEV_WATCH_POLL_TIME_MS = 2000;
+
+class ExpressServer extends BaseServer {
+  /**
+   * Service entry point.
+   */
+  async run() {
+    const { _config: config } = this;
+
+    // Create base Express app.
+    const app = (this._app = express());
+
+    // Depending on the mode, load either Webpack (with dev-server) or express.static
+    const urlRootPath = config.getCheckedKey("urlRootPath");
+    if (config.isProduction()) {
+      this.createStaticServer(urlRootPath, config.getCheckedKey("app"));
+    } else {
+      await this.createWebpackServer(
+        urlRootPath,
+        WEBPACK_DEV_WATCH_POLL_TIME_MS
+      );
+    }
+
+    // Redirect 404s to root by having the 404 handler be last in the request chain.
+    app.use((_, res) => res.redirect(urlRootPath));
+  }
+
+  getApp() {
+    return this._app;
+  }
+
+  /**
+   * Creates an auto-refreshing development server based on webpack-dev-middleware.
+   */
+  createWebpackServer(urlRootPath, watchPollTimeMs) {
+    // require() webpack here so as to only load it (and its plugins) when necessary.
+    const webpack = require("webpack");
+    const webpackDevMiddleware = require("webpack-dev-middleware");
+    const webpackHotMiddleware = require("webpack-hot-middleware");
+    const { generateWpConfig } = require("../webpack/generateWpConfig");
+    const { log } = this._context;
+
+    // Create Webpack instance in non-production (development) mode.
+    const wpConfig = (this._wpConfig = generateWpConfig(this._config));
+    const wpConfigOutPath = writeToTempSync(
+      "webpack.config.json",
+      JSON.stringify(wpConfig, null, 2)
+    );
+    log.debug(`Webpack configuration written to ${wpConfigOutPath}`);
+    const compiler = (this._compiler = webpack(wpConfig));
+
+    // Put webpack-dev-middleware and webpack-hot-middleware into the Express request chain.
+    const { _app: app } = this;
+    const devMiddleware = webpackDevMiddleware(compiler, {
+      publicPath: urlRootPath,
+      logLevel: "warn",
+      watchOptions: {
+        poll: watchPollTimeMs
+      }
+    });
+    app.use(devMiddleware);
+    app.use(webpackHotMiddleware(compiler));
+
+    return new Promise(resolve => devMiddleware.waitUntilValid(resolve));
+  }
+
+  /**
+   * Creates a simple static file server.
+   */
+  createStaticServer(urlRootPath, appPath) {
+    const { log } = this._context;
+    const { _app: app } = this;
+
+    // Serve build distribution if in production mode.
+    const distPath = appClientDistPath(appPath);
+    log.info(
+      `Serving static distribution at "${urlRootPath}" from ${distPath}`
+    );
+    app.use(urlRootPath, express.static(distPath));
+
+    // Add a worst-case fallback in case there is no production distribution.
+    app.use(urlRootPath, express.static(path.join(__dirname, "no-prod-build")));
+  }
+}
+
+module.exports = ExpressServer;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AppServer.html">AppServer</a></li><li><a href="Config.html">Config</a></li><li><a href="ConsoleDriver.html">ConsoleDriver</a></li><li><a href="EnvMapper.html">EnvMapper</a></li><li><a href="LiveModelRuntimeInterface.html">LiveModelRuntimeInterface</a></li><li><a href="LoggingSubsystem.html">LoggingSubsystem</a></li><li><a href="LoggingTransport.html">LoggingTransport</a></li><li><a href="PassthroughDriver.html">PassthroughDriver</a></li></ul><h3>Global</h3><ul><li><a href="global.html#appClientEntryPointPath">appClientEntryPointPath</a></li><li><a href="global.html#appClientRoot">appClientRoot</a></li><li><a href="global.html#appCommonRoot">appCommonRoot</a></li><li><a href="global.html#appNodeModules">appNodeModules</a></li><li><a href="global.html#appServerRoot">appServerRoot</a></li><li><a href="global.html#autoPromise">autoPromise</a></li><li><a href="global.html#caller">caller</a></li><li><a href="global.html#COLORS_LEVEL">COLORS_LEVEL</a></li><li><a href="global.html#COLORS_NAME">COLORS_NAME</a></li><li><a href="global.html#commander">commander</a></li><li><a href="global.html#generateClientStub">generateClientStub</a></li><li><a href="global.html#generateCommonStub">generateCommonStub</a></li><li><a href="global.html#generatePackageJson">generatePackageJson</a></li><li><a href="global.html#generateServerStub">generateServerStub</a></li><li><a href="global.html#makeApplyOperation">makeApplyOperation</a></li><li><a href="global.html#makeMessagePacket">makeMessagePacket</a></li><li><a href="global.html#NODE_MODULES_PATH">NODE_MODULES_PATH</a></li><li><a href="global.html#parseMessagePacket">parseMessagePacket</a></li><li><a href="global.html#path">path</a></li><li><a href="global.html#PKG_ROOT">PKG_ROOT</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.2</a> on Thu Jun 13 2019 01:46:29 GMT-0700 (Pacific Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

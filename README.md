@@ -1,5 +1,10 @@
 # datasole
 
+![Lines covered](/badges/badge-lines.svg?raw=true "Lines covered")
+![Statements covered](/badges/badge-statements.svg?raw=true "Statements covered")
+![Functions covered](/badges/badge-functions.svg?raw=true "Functions covered")
+![Branches covered](/badges/badge-branches.svg?raw=true "Branches covered")
+
 Datasole, or _data_ con*sole*, is a fast prototyping tool for realtime, full-stack Javascript web applications.
 Datasole handles the plumbing of keeping a **server** Javascript application in sync with many **client**
 Javascript applications, which includes:
@@ -84,5 +89,5 @@ See the [datasole-examples](https://github.com/mayanklahiri/datasole-examples) r
 | Total lines of code | 3294 |
 | Source lines | 2441 (74%) |
 | Comment lines | 457 |
-| Installed node_modules size | 200M |
+| Installed node_modules size | 205M |
 ---
