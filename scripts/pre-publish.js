@@ -39,6 +39,16 @@ function main() {
     stdio: "inherit",
     cwd: pkgRoot
   });
+
+  console.log(`
+
+${col.yellow("Ready to run:")}
+
+  ${col.bold(`git commit -a -m 'Version update to ${nextVer}'`)}
+  ${col.bold(`git push`)}
+  ${col.bold(`npm publish`)}
+
+`);
 }
 
 main();
