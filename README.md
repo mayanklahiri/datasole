@@ -1,9 +1,7 @@
 # datasole
 
-![Lines covered](/badges/badge-lines.svg?raw=true "Lines covered")
-![Statements covered](/badges/badge-statements.svg?raw=true "Statements covered")
-![Functions covered](/badges/badge-functions.svg?raw=true "Functions covered")
-![Branches covered](/badges/badge-branches.svg?raw=true "Branches covered")
+[![CircleCI](https://circleci.com/gh/mayanklahiri/datasole.svg?style=svg)](https://circleci.com/gh/mayanklahiri/datasole)
+[![Build Status](https://travis-ci.org/mayanklahiri/datasole.svg?branch=master)](https://travis-ci.org/mayanklahiri/datasole)
 
 Datasole, or _data_ con*sole*, is a fast prototyping tool for realtime, full-stack Javascript web applications.
 Datasole handles the plumbing of keeping a **server** Javascript application in sync with many **client**
@@ -84,10 +82,11 @@ See the [datasole-examples](https://github.com/mayanklahiri/datasole-examples) r
 
 ### Source Statistics
 
-| Statistic | Value |
-| --- | --- |
-| Total lines of code | 3294 |
-| Source lines | 2441 (74%) |
-| Comment lines | 457 |
-| Installed node_modules size | 205M |
+| Statistic                   | Value      |
+| --------------------------- | ---------- |
+| Total lines of code         | 3294       |
+| Source lines                | 2441 (74%) |
+| Comment lines               | 457        |
+| Installed node_modules size | 205M       |
+
 ---
