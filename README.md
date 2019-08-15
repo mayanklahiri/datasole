@@ -82,11 +82,10 @@ See the [datasole-examples](https://github.com/mayanklahiri/datasole-examples) r
 
 ### Source Statistics
 
-| Statistic                   | Value      |
-| --------------------------- | ---------- |
-| Total lines of code         | 3294       |
-| Source lines                | 2441 (74%) |
-| Comment lines               | 457        |
-| Installed node_modules size | 205M       |
-
+| Statistic | Value |
+| --- | --- |
+| Total lines of code | 3427 |
+| Source lines | 2530 (74%) |
+| Comment lines | 486 |
+| Installed node_modules size | 199M |
 ---
