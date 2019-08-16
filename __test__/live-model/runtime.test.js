@@ -2,7 +2,6 @@ const mutations = require("../../lib/live-model/mutations");
 const LiveModelRuntime = require("../../lib/live-model/runtime");
 const {
   makeReadyOperation,
-  makeRpcResponse,
   makeRpcRequest
 } = require("../../lib/live-model/protocol");
 
@@ -34,7 +33,7 @@ test("sendRaw() sends unmodified object to parent process", () => {
   expect(() => runtime.sendRaw("a", "b")).toThrow(/1 argument/);
 });
 
-test("sendMutations() sends an apply operations", () => {
+test("sendMutations() sends an apply operation", () => {
   const runtime = new LiveModelRuntime();
   const opList = [
     mutations.setKeyPath("foo", 123),
