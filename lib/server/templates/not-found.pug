@@ -1,0 +1,11 @@
+html
+  head
+    title= 'HTTP 404: Not Found'
+    include ./style.pug
+  body
+    h1 HTTP 404: Not Found
+    h3 The requested resource could not be found.
+    h4 URL
+    code= ' ' + url
+    h4 Headers
+    pre= headers

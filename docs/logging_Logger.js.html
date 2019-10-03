@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: logging/Logger.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: logging/Logger.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Simple annotating logger.
+ */
+const path = require("path");
+const { format } = require("util");
+
+const { map } = require("lodash");
+const callerFile = require("caller");
+
+const callerSite = require("../util/caller");
+const logLevels = require("./levels");
+
+class Logger {
+  constructor(loggerName, options, transport) {
+    this.loggerName = loggerName;
+    this.transport = transport;
+    this.options = options;
+    const logLevel = (this.logLevel = options.logLevel);
+
+    // Validate and save property 'logLevel'.
+    this.setLogLevel(logLevel);
+
+    // Create logger alias functions like info(), debug(), etc.
+    Object.keys(logLevels).forEach(levelName => {
+      this[levelName] = (...a) =>
+        this.baseLog({
+          module: path.basename(callerFile()),
+          caller: callerSite(),
+          level: levelName,
+          msgArgs: a
+        });
+    });
+  }
+
+  setLogLevel(logLevelStr) {
+    if (!logLevels[logLevelStr] &amp;&amp; !this.options.passthrough) {
+      throw new Error(
+        `Please specify a valid value for log level, received: ${logLevelStr}.`
+      );
+    }
+    this.logLevel = logLevels[logLevelStr].level;
+  }
+
+  baseLog(logLine) {
+    const logLevelInt = logLevels[logLine.level].level;
+    if (!logLevelInt) {
+      throw new Error(
+        `Unknown logging level for logline: "${logLevelInt.level}"`
+      );
+    }
+    if (logLevelInt > this.logLevel) {
+      // Line is too low-level for current logging level.
+      return;
+    }
+
+    // Handle the message differently for each type.
+    const { msgArgs } = logLine;
+    let message;
+    const firstArg = msgArgs[0];
+    const stackTraces = [];
+    if (typeof firstArg === "string") {
+      if (msgArgs.length === 1) {
+        message = firstArg;
+      } else {
+        message = format(...msgArgs);
+      }
+    } else {
+      message = map(msgArgs, arg => {
+        if (typeof arg === "string") {
+          return arg;
+        }
+        if (arg instanceof Error) {
+          stackTraces.push(`${firstArg.message}\n${firstArg.stack.toString()}`);
+          return `${firstArg.message}`;
+        }
+        return JSON.stringify(arg, null, 2);
+      }).join(" ");
+    }
+
+    // Annotate and push to transport.
+    const annotated = {
+      ts: Date.now(),
+      msg: message,
+      level: logLine.level.toLowerCase(),
+      pid: process.pid,
+      loggerName: this.loggerName,
+      caller: logLine.caller
+    };
+    if (stackTraces.length) {
+      annotated.stackTraces = stackTraces.join("\n");
+    }
+    this.transport.pushLine(annotated);
+  }
+
+  getTransport() {
+    return this.transport;
+  }
+}
+
+module.exports = Logger;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AppServer.html">AppServer</a></li><li><a href="Config.html">Config</a></li><li><a href="ConsoleDriver.html">ConsoleDriver</a></li><li><a href="DatasoleServer.html">DatasoleServer</a></li><li><a href="EnvMapper.html">EnvMapper</a></li><li><a href="LiveModelRuntime.html">LiveModelRuntime</a></li><li><a href="LoggingService.html">LoggingService</a></li><li><a href="Model.html">Model</a></li><li><a href="MultiSinkTransport.html">MultiSinkTransport</a></li><li><a href="PassthroughDriver.html">PassthroughDriver</a></li></ul><h3>Global</h3><ul><li><a href="global.html#appClientEntryPointPath">appClientEntryPointPath</a></li><li><a href="global.html#appClientRoot">appClientRoot</a></li><li><a href="global.html#appCommonRoot">appCommonRoot</a></li><li><a href="global.html#appNodeModules">appNodeModules</a></li><li><a href="global.html#appServerRoot">appServerRoot</a></li><li><a href="global.html#caller">caller</a></li><li><a href="global.html#COLORS_LEVEL">COLORS_LEVEL</a></li><li><a href="global.html#COLORS_NAME">COLORS_NAME</a></li><li><a href="global.html#commander">commander</a></li><li><a href="global.html#generateClientStub">generateClientStub</a></li><li><a href="global.html#generateCommonStub">generateCommonStub</a></li><li><a href="global.html#generatePackageJson">generatePackageJson</a></li><li><a href="global.html#generateServerStub">generateServerStub</a></li><li><a href="global.html#makeApplyOperation">makeApplyOperation</a></li><li><a href="global.html#makeMessagePacket">makeMessagePacket</a></li><li><a href="global.html#NODE_MODULES_PATH">NODE_MODULES_PATH</a></li><li><a href="global.html#parseMessagePacket">parseMessagePacket</a></li><li><a href="global.html#path">path</a></li><li><a href="global.html#PKG_ROOT">PKG_ROOT</a></li><li><a href="global.html#runDepGraph">runDepGraph</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Thu Oct 03 2019 00:49:51 GMT-0700 (Pacific Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
