@@ -94,3 +94,16 @@ test("Fallback to static page handler at a nested path prefix.", async () => {
   await bent("string", 404)(server.getLocalServerRoot());
   await bent("string", 404)(server.getLocalUrl());
 });
+
+test("Custom built-in error templates", async () => {
+  logging.mute();
+
+  const server = (SERVER = await createAndStartServer({
+    urlRootPath: "inner",
+    builtinTemplatePath: _harness.getTestResourcePath("custom-error-templates")
+  }));
+
+  // Ensure correct custom error page response from expected URL.
+  const result = await bent("string", 404)(server.getLocalServerRoot());
+  expect(result.match(/__custom_builtin_404/));
+});

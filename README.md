@@ -55,7 +55,7 @@ See `lib/config/defaults.js` for the full list of environment variables.
 
 | Environment variable    | Default      | Description                                              |
 | ----------------------- | ------------ | -------------------------------------------------------- |
-| DATASOLE_DISABLE_COLORS | `false`      | Strip ANSI color codes from log messages.                |
+| DISABLE_COLORS          | `false`      | Strip ANSI color codes from log messages.                |
 | DATASOLE_LISTEN_ADDRESS | `0.0.0.0`    | Local address to listen on (`0.0.0.0` = all interfaces)  |
 | DATASOLE_LOG_FORMAT     | `text`       | `text` or `json`                                         |
 | DATASOLE_LOG_LEVEL_APP  | `info`       | Datasole user application logging level.                 |
@@ -66,7 +66,7 @@ See `lib/config/defaults.js` for the full list of environment variables.
 | DATASOLE_URL_ROOT_PATH  | `/`          | URL prefix for all paths, useful for path-based proxies. |
 | DATASOLE_WEBSOCKET_URL  | `__ws__`     | Relative path to listen for Websocket connections.       |
 
-**Optional variables**, enables specific features if set:
+**Optional variables**, enables specific features if set (default: **not set**):
 
 | Environment variable           | Description                                                                |
 | ------------------------------ | -------------------------------------------------------------------------- |
