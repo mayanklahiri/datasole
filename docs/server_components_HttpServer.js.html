@@ -64,7 +64,7 @@ class HttpServer extends BaseServer {
     });
   }
 
-  getListenUrl() {
+  getLocalUrl() {
     const urlRootPath = this._config.getCheckedKey("urlRootPath");
     return `http://localhost:${this._port}${urlRootPath}`;
   }

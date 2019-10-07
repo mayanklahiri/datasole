@@ -117,7 +117,7 @@ class DatasoleServer extends EventEmitter {
   }
 
   getEndpoint() {
-    return this.components.HttpServer.getListenUrl();
+    return this.components.HttpServer.getLocalUrl();
   }
 }
 

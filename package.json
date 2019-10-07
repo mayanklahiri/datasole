@@ -31,7 +31,7 @@
     "@babel/plugin-transform-runtime": "^7.6.2",
     "@babel/preset-env": "^7.6.2",
     "async": "^3.1.0",
-    "autoprefixer": "^9.6.2",
+    "autoprefixer": "^9.6.4",
     "babel-loader": "^8.0.6",
     "bufferutil": "^4.0.1",
     "caller": "^1.0.1",

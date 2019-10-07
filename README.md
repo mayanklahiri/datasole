@@ -3,38 +3,31 @@
 [![CircleCI](https://circleci.com/gh/mayanklahiri/datasole.svg?style=svg)](https://circleci.com/gh/mayanklahiri/datasole)
 [![Build Status](https://travis-ci.org/mayanklahiri/datasole.svg?branch=master)](https://travis-ci.org/mayanklahiri/datasole)
 
-Datasole, or _data_ con*sole*, is a fast prototyping tool for realtime, full-stack Javascript web applications.
-Datasole handles the plumbing of keeping a **server** Javascript application in sync with many **client**
-Javascript applications, which includes:
+Datasole, or _data_ con*sole*, is a fast prototyping tool for realtime, full-stack Javascript web applications using Node and any reactive frontend Javascript framework. It works by maintaining a single shared data model (object) between a server process and multiple connected Websocket clients, as well as providing a thin RPC framework from client to server.
 
-- Bundle client application using Webpack.
-- Serve client bundle in development (hot module replacement) and production (static build) mode.
-- Start and supervise the server application.
-- Allow the server application to mutate a shared model, and propagate these mutations to all connected clients.
-- Allow clients to trigger RPC-style **actions** in the server application, which can mutate the shared state.
+Datasole is based on (and abstracts; opinionates): Webpack, Express, and Websockets connections. It works well with frontend frameworks that support reacting to mutations on a shared data model, such as Vue, Angular, and React.
 
-Datasole is based on (and abstracts): Webpack, Express, and WebSockets (via the `ws` library).
+In development mode, Datasole allows full-stack applications to be interactively developed with the following features:
 
-Datasole works well with frontend frameworks that support reacting to mutations on a shared data model, such as Vue.
-
-The following features are supported when developing a Datasole application:
-
-- Server application restart on source file changes
-- Asset bundling via Webpack, with hot module reloading
+- Hot Module Reloading (HMR) of the client SPA, via Webpack.
+- Application server (backend) restart on source file changes.
+- Asset bundling using an opinionated Webpack configuration.
 - Templating languages: Pug, HTML
 - Stylesheet languages: CSS, Sass (SCSS), LessCSS
-- Image formats: SVG, GIF, PNG, JPG, ICO
-- `.vue` single-file Vue.js components.
+- Image formats (with optimizer): SVG, GIF, PNG, JPG, ICO
+- `.vue` single-file Vue.js components
+
+The `datasole build` command runs the Webpack build in production mode to produce a static web distribution in the `dist` directory by default.
 
 ## Install
 
 `npm install -g datasole`
 
-Datasole can also be used as a library without `-g`.
+Datasole can also be used as a locally installed library by omitting the `-g` flag.
 
 ## Workflow
 
-Help for each option: `-h` or `--help`
+Each command attempts sensible defaults. Help for each option: `-h` or `--help`
 
 ### init
 
@@ -54,23 +47,56 @@ Serve a production version of the frontend: `datasole run` (requires `datasole b
 
 ## Settings
 
-The following environment variables affect Datasole's behavior.
+The following environment variables affect Datasole's behavior. No environment variables are required by default.
 
-| Environment variable     | Default | Description                               |
-| ------------------------ | ------- | ----------------------------------------- |
-| DATASOLE_LOG_OUTPUT_PATH |         | Path to write logs to, or stdout if blank |
-| DATASOLE_LOG_FORMAT      | `text`  | `text` or `json`                          |
-| DATASOLE_LOG_LEVEL_SYS   | `info`  | Datasole runtime logging level            |
-| DATASOLE_LOG_LEVEL_APP   | `info`  | User application logging level            |
-| DISABLE_COLORS           | `false` | Strip ANSI color codes from log messages  |
+See `lib/config/defaults.js` for the full list of environment variables.
 
-The following logging levels are supported:
+**Required variables**, with defaults:
 
-- `trace`
+| Environment variable    | Default      | Description                                              |
+| ----------------------- | ------------ | -------------------------------------------------------- |
+| DATASOLE_DISABLE_COLORS | `false`      | Strip ANSI color codes from log messages.                |
+| DATASOLE_LISTEN_ADDRESS | `0.0.0.0`    | Local address to listen on (`0.0.0.0` = all interfaces)  |
+| DATASOLE_LOG_FORMAT     | `text`       | `text` or `json`                                         |
+| DATASOLE_LOG_LEVEL_APP  | `info`       | Datasole user application logging level.                 |
+| DATASOLE_LOG_LEVEL_SYS  | `info`       | Datasole system runtime logging level.                   |
+| DATASOLE_MODE           | `production` | Datasole run mode: `development` or `production`         |
+| DATASOLE_PORT           | `8000`       | Port to listen on.                                       |
+| DATASOLE_STATIC_URL     | `/`          | Path to serve a fallback static distribution at.         |
+| DATASOLE_URL_ROOT_PATH  | `/`          | URL prefix for all paths, useful for path-based proxies. |
+| DATASOLE_WEBSOCKET_URL  | `__ws__`     | Relative path to listen for Websocket connections.       |
+
+**Optional variables**, enables specific features if set:
+
+| Environment variable           | Description                                                                |
+| ------------------------------ | -------------------------------------------------------------------------- |
+| DATASOLE_API_URL               | If set, enable HTTP request forwarding to the application at this URL path |
+| DATASOLE_LOG_OUTPUT_PATH       | Disk path to write logs to, or write to console if blank.                  |
+| DATASOLE_STATIC_PATH           | Fallback static distribution disk path to attempt before error page.       |
+| DATASOLE_BUILTIN_TEMPLATE_PATH | Override path containing Pug templates for built-in error pages.           |
+
+### URL Prefixes
+
+All server URLs will be prefixed by `DATASOLE_URL_ROOT_PATH`. This is useful, e.g., behind a reverse proxy like nginx where different path prefixes map to different upstream backend servers, or behind cloud load balancers.
+
+All other paths (e.g., `DATASOLE_API_URL`, `DATASOLE_STATIC_URL`)
+
+### Logging Level
+
+The following logging levels are supported for `DATASOLE_LOG_LEVEL_APP` and `DATASOLE_LOG_LEVEL_SYS`:
+
+- `trace` (most verbose)
 - `debug`
 - `info`
 - `warn`
 - `error`
+- `fatal` (silent)
+
+### Static Fallback Distribution
+
+If the SPA does not contain a particular URL, Datasole optionally falls back to a static web distribution on disk.
+
+If the `DATASOLE_STATIC_PATH` variable is set, any files at that path will be served as static content.
 
 ## Example projects
 
@@ -82,10 +108,11 @@ See the [datasole-examples](https://github.com/mayanklahiri/datasole-examples) r
 
 ### Source Statistics
 
-| Statistic | Value |
-| --- | --- |
-| Total lines of code | 3571 |
-| Source lines | 2634 (74%) |
-| Comment lines | 518 |
-| Installed node_modules size | 198M |
+| Statistic                   | Value      |
+| --------------------------- | ---------- |
+| Total lines of code         | 3571       |
+| Source lines                | 2634 (74%) |
+| Comment lines               | 518        |
+| Installed node_modules size | 198M       |
+
 ---
