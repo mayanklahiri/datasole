@@ -1,13 +1,13 @@
-const Model = require("../../lib/live-model/model");
+const LiveModel = require("../../lib/live-model/LiveModel");
 const mutations = require("../../lib/live-model/mutations");
 
 test("default constructor", () => {
-  const model = new Model();
+  const model = new LiveModel();
   expect(model.getMetrics()).toStrictEqual({ modelSizeChars: 2 });
 });
 
 test("getModelSafe() behavior", () => {
-  const model = new Model();
+  const model = new LiveModel();
   const modelRef = model.getModelSafe();
   modelRef.foo = 123;
   expect(model.getModelUnsafe()).toStrictEqual({});
@@ -15,7 +15,7 @@ test("getModelSafe() behavior", () => {
 });
 
 test("getModelUnsafe() behavior", () => {
-  const model = new Model();
+  const model = new LiveModel();
   const modelRef = model.getModelUnsafe();
   modelRef.foo = 123;
   expect(model.getModelUnsafe()).toStrictEqual({ foo: 123 });
@@ -23,7 +23,7 @@ test("getModelUnsafe() behavior", () => {
 });
 
 test("mutate() emits 'mutations' event", async () => {
-  const model = new Model();
+  const model = new LiveModel();
   const emitMock = (model.emit = jest.fn());
   const ops = [mutations.setKeyPath("foo.bar", 123)];
   model.mutate(ops);

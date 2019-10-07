@@ -1,5 +1,5 @@
 const path = require("path");
-const LiveModel = require("../../../lib/live-model/model");
+const LiveModel = require("../../../lib/live-model/LiveModel");
 
 exports.createHarness = function(jest, appPath) {
   const context = {
