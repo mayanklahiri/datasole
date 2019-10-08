@@ -1,7 +1,4 @@
-const {
-  parseMessagePacket,
-  makeMessagePacket
-} = require("../../lib/live-model/protocol");
+const { parseMessagePacket, makeMessagePacket } = require("../../lib/protocol");
 
 test("parse and make are reversible", () => {
   const msgObj = {

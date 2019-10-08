@@ -53,27 +53,28 @@ See `lib/config/defaults.js` for the full list of environment variables.
 
 **Required variables**, with defaults:
 
-| Environment variable    | Default      | Description                                              |
-| ----------------------- | ------------ | -------------------------------------------------------- |
-| DISABLE_COLORS          | `false`      | Strip ANSI color codes from log messages.                |
-| DATASOLE_LISTEN_ADDRESS | `0.0.0.0`    | Local address to listen on (`0.0.0.0` = all interfaces)  |
-| DATASOLE_LOG_FORMAT     | `text`       | `text` or `json`                                         |
-| DATASOLE_LOG_LEVEL_APP  | `info`       | Datasole user application logging level.                 |
-| DATASOLE_LOG_LEVEL_SYS  | `info`       | Datasole system runtime logging level.                   |
-| DATASOLE_MODE           | `production` | Datasole run mode: `development` or `production`         |
-| DATASOLE_PORT           | `8000`       | Port to listen on.                                       |
-| DATASOLE_STATIC_URL     | `/`          | Path to serve a fallback static distribution at.         |
-| DATASOLE_URL_ROOT_PATH  | `/`          | URL prefix for all paths, useful for path-based proxies. |
-| DATASOLE_WEBSOCKET_URL  | `__ws__`     | Relative path to listen for Websocket connections.       |
+| Environment variable     | Default      | Description                                                  |
+| ------------------------ | ------------ | ------------------------------------------------------------ |
+| DISABLE_COLORS           | `false`      | Strip ANSI color codes from log messages.                    |
+| DATASOLE_API_URL         | `/api/v1`    | URL path to forward to application as REST requests.         |
+| DATASOLE_API_TIMEOUT_SEC | `30`         | Maximum number of seconds before timing out an HTTP request. |
+| DATASOLE_LISTEN_ADDRESS  | `0.0.0.0`    | Local address to listen on (`0.0.0.0` = all interfaces)      |
+| DATASOLE_LOG_FORMAT      | `text`       | `text` or `json`                                             |
+| DATASOLE_LOG_LEVEL_APP   | `info`       | Datasole user application logging level.                     |
+| DATASOLE_LOG_LEVEL_SYS   | `info`       | Datasole system runtime logging level.                       |
+| DATASOLE_MODE            | `production` | Datasole run mode: `development` or `production`             |
+| DATASOLE_PORT            | `8000`       | Port to listen on.                                           |
+| DATASOLE_STATIC_URL      | `/`          | Path to serve a fallback static distribution at.             |
+| DATASOLE_URL_ROOT_PATH   | `/`          | URL prefix for all paths, useful for path-based proxies.     |
+| DATASOLE_WEBSOCKET_URL   | `__ws__`     | Relative path to listen for Websocket connections.           |
 
 **Optional variables**, enables specific features if set (default: **not set**):
 
-| Environment variable           | Description                                                                |
-| ------------------------------ | -------------------------------------------------------------------------- |
-| DATASOLE_API_URL               | If set, enable HTTP request forwarding to the application at this URL path |
-| DATASOLE_LOG_OUTPUT_PATH       | Disk path to write logs to, or write to console if blank.                  |
-| DATASOLE_STATIC_PATH           | Fallback static distribution disk path to attempt before error page.       |
-| DATASOLE_BUILTIN_TEMPLATE_PATH | Override path containing Pug templates for built-in error pages.           |
+| Environment variable           | Description                                                          |
+| ------------------------------ | -------------------------------------------------------------------- |
+| DATASOLE_LOG_OUTPUT_PATH       | Disk path to write logs to, or write to console if blank.            |
+| DATASOLE_STATIC_PATH           | Fallback static distribution disk path to attempt before error page. |
+| DATASOLE_BUILTIN_TEMPLATE_PATH | Override path containing Pug templates for built-in error pages.     |
 
 ### URL Prefixes
 
@@ -108,10 +109,11 @@ See the [datasole-examples](https://github.com/mayanklahiri/datasole-examples) r
 
 ### Source Statistics
 
-| Statistic | Value |
-| --- | --- |
-| Total lines of code | 3805 |
-| Source lines | 2808 (74%) |
-| Comment lines | 549 |
-| Installed node_modules size | 204M |
+| Statistic                   | Value      |
+| --------------------------- | ---------- |
+| Total lines of code         | 3805       |
+| Source lines                | 2808 (74%) |
+| Comment lines               | 549        |
+| Installed node_modules size | 204M       |
+
 ---
