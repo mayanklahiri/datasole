@@ -84,7 +84,7 @@ class LoggingSubsystem extends EventEmitter {
       throw new Error(`Unable to find logger "${loggerName}".`);
     }
     if (!this._loggingUsed) {
-      this.getTransport().startIntervalFlusher();
+      this.getTransport().startFlusher();
       this._loggingUsed = true;
     }
     return logger;

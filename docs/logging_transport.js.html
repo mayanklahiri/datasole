@@ -69,7 +69,7 @@ class LoggingTransport extends EventEmitter {
     this._throttledFlush = throttle(this.flush.bind(this), logFlushThrottleMs);
   }
 
-  startIntervalFlusher() {
+  startFlusher() {
     if (!this._intervalFlush) {
       const { logFlushThrottleMs } = this.config;
       this._intervalFlush = setInterval(
