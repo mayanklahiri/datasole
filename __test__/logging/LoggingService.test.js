@@ -79,7 +79,7 @@ test("Writes JSON logs to output file", async () => {
     delete logLine.pid;
   });
 
-  expect(logLines).toEqual([
+  expect(logLines).toMatchObject([
     {
       level: "info",
       msg: "Test-info",

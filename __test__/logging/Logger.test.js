@@ -52,7 +52,7 @@ test("Log a string", () => {
   delete logLine.ts;
   delete logLine.caller;
   delete logLine.pid;
-  expect(logLine).toStrictEqual({
+  expect(logLine).toMatchObject({
     loggerName: "test",
     msg: "a-string",
     level: "info"
@@ -69,7 +69,7 @@ test("Log a sprintf-style string", () => {
   delete logLine.ts;
   delete logLine.caller;
   delete logLine.pid;
-  expect(logLine).toStrictEqual({
+  expect(logLine).toMatchObject({
     loggerName: "test",
     msg: "first:[cat] second:[42]",
     level: "info"
@@ -87,7 +87,7 @@ test("Log an Error object", () => {
   delete logLine.caller;
   delete logLine.pid;
   delete logLine.stackTraces;
-  expect(logLine).toStrictEqual({
+  expect(logLine).toMatchObject({
     loggerName: "test",
     msg: "errstr_123",
     level: "error"
@@ -105,7 +105,7 @@ test("Log raw objects as JSON", () => {
   delete logLine.caller;
   delete logLine.pid;
   delete logLine.stackTraces;
-  expect(logLine).toStrictEqual({
+  expect(logLine).toMatchObject({
     loggerName: "test",
     msg: '{\n  "rawObject": 42\n}',
     level: "warn"
