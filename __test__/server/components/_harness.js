@@ -32,8 +32,10 @@ async function createServer(overrides) {
  * @param {?object} config Config overrides.
  * @returns {Server} Listening HTTP server.
  */
-async function createServerWithWebsocket(overrides) {
-  const config = new Config(Object.assign({}, overrides, { port: 0 }));
+async function createServerWithWebsocketSupport(overrides) {
+  const config = new Config(
+    Object.assign({ websocketAuth: false }, overrides, { port: 0 })
+  );
 
   // Manual dependency creation.
 
@@ -74,20 +76,33 @@ async function createAndStartServer(config) {
 
 async function createWsConnection(endpoint) {
   return new Promise((resolve, reject) => {
-    log.warn(`Creating connection to ${endpoint}...`);
+    log.info(`Creating connection to ${endpoint}...`);
     const socket = new WebSocket(endpoint);
     let resolved;
     socket.once("open", () => {
-      if (!resolved) {
-        resolved = true;
-        resolve(socket);
-      }
+      log.info(`Socket is open!`);
+      if (resolved) return;
+      resolved = true;
+      resolve(socket);
+    });
+    socket.once("close", () => {
+      log.info("Socket is closing.");
+      return resolve(new Error("Socket closing"));
+    });
+    socket.once("unexpected-response", (_, res) => {
+      const error = new Error(
+        `Unexpected HTTP response: ${res.statusCode}: ${res.statusMessage}`
+      );
+      log.info(error);
+      if (resolved) return;
+      resolved = true;
+      return reject(error);
     });
     socket.once("error", err => {
-      if (!resolved) {
-        resolved = true;
-        reject(err);
-      }
+      log.info("Socket error", err);
+      if (resolved) return;
+      resolved = true;
+      reject(err);
     });
   });
 }
@@ -95,14 +110,17 @@ async function createWsConnection(endpoint) {
 async function execAndWaitForEvent(emitter, evtName, fn) {
   let fnOk, fnErr;
   return new Promise((resolve, reject) => {
+    let resolved;
     fnOk = (...args) => {
-      emitter.removeListener("error", fnErr);
+      if (resolved) return;
+      resolved = true;
       resolve(...args);
     };
     emitter.once(evtName, fnOk);
 
     fnErr = (...args) => {
-      emitter.removeListener(evtName, fnOk);
+      if (resolved) return;
+      resolved = true;
       reject(...args);
     };
     emitter.once("error", fnErr);
@@ -111,19 +129,10 @@ async function execAndWaitForEvent(emitter, evtName, fn) {
   });
 }
 
-const authAlwaysAllow = wsServer => async wsAuthRequest => {
-  try {
-    await wsServer.authorize(wsAuthRequest);
-  } catch (e) {
-    await wsServer.refuseAuthRequest(wsAuthRequest, e);
-  }
-};
-
 module.exports = {
-  authAlwaysAllow,
   createServer,
   createAndStartServer,
-  createServerWithWebsocket,
+  createServerWithWebsocketSupport,
   createWsConnection,
   execAndWaitForEvent,
   requireLib,

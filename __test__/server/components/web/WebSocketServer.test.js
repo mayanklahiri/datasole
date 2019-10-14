@@ -1,45 +1,49 @@
 const _harness = require("../_harness");
-const { requireLib, authAlwaysAllow } = _harness;
+const { requireLib } = _harness;
 const {
-  createServerWithWebsocket,
+  createServerWithWebsocketSupport,
   createWsConnection,
   execAndWaitForEvent
 } = _harness;
 const { makeMessagePacket } = requireLib("protocol/envelope");
 const logging = requireLib("logging");
-const log = logging.getLogger("test");
+const log = logging.getLogger("test").setLogLevel("debug");
+
+logging.getLogger("sys").setLogLevel("debug");
 
 let SERVERS, CLIENT;
 
 beforeEach(() => {
   SERVERS = null;
   CLIENT = null;
+  logging.unmute();
 });
 
 afterEach(async () => {
   if (SERVERS) {
-    SERVERS.wsServer.close();
-    SERVERS.httpServer.close();
+    await SERVERS.wsServer.close();
+    await SERVERS.httpServer.close();
     SERVERS = null;
   }
   if (CLIENT) {
-    CLIENT.close();
+    await CLIENT.close();
     CLIENT = null;
   }
   jest.resetAllMocks();
-  logging.unmute();
 });
 
-test("WebSocket client connect and disconnect events (no auth)", async () => {
+test("WebSocket client connect and disconnect events with NO auth", async () => {
   logging.mute();
 
+  // Server config
   const config = {
     urlRootPath: "/foo/bar",
     websocketPath: "/__websocket__"
   };
-  const { httpServer, wsServer } = (SERVERS = await createServerWithWebsocket(
-    config
-  ));
+  const {
+    httpServer,
+    wsServer
+  } = (SERVERS = await createServerWithWebsocketSupport(config));
   const wsPath = httpServer.getWebsocketLocalEndpoint();
 
   // Connect.
@@ -73,7 +77,7 @@ test("WebSocket client connect and disconnect events (no auth)", async () => {
   expect((await wsServer.getMetrics()).numConnections).toStrictEqual(0);
 });
 
-test("WebSocket client connect with auth", async () => {
+test("WebSocket client connect with VALID auth", async () => {
   logging.mute();
 
   const config = {
@@ -81,13 +85,16 @@ test("WebSocket client connect with auth", async () => {
     websocketPath: "/__websocket__",
     websocketAuth: true
   };
-  const { httpServer, wsServer } = (SERVERS = await createServerWithWebsocket(
-    config
-  ));
+  const {
+    httpServer,
+    wsServer
+  } = (SERVERS = await createServerWithWebsocketSupport(config));
   const wsPath = httpServer.getWebsocketLocalEndpoint();
 
-  // Authorize requests.
-  wsServer.once("ws_auth_request", authAlwaysAllow(wsServer));
+  // Authorize all requests.
+  wsServer.on("ws_auth_request", wsAuthRequest => {
+    setTimeout(() => wsServer.authorizeWebsocket(wsAuthRequest.clientId), 100);
+  });
 
   // Connect.
   const connInfo = await execAndWaitForEvent(
@@ -95,7 +102,7 @@ test("WebSocket client connect with auth", async () => {
     "client_new",
     async () => {
       CLIENT = await createWsConnection(wsPath);
-      log.info(`Connected to ${wsPath}`);
+      log.debug(`Connected to ${wsPath}`);
     }
   );
   expect(connInfo.clientId).toBeDefined();
@@ -112,16 +119,58 @@ test("WebSocket client connect with auth", async () => {
   expect((await wsServer.getMetrics()).numConnections).toStrictEqual(0);
 });
 
+test("WebSocket client connect with INVALID auth", async () => {
+  logging.mute();
+
+  // Server config
+  const config = {
+    urlRootPath: "/foo/bar",
+    websocketPath: "/__websocket__",
+    websocketAuth: true
+  };
+
+  const {
+    httpServer,
+    wsServer
+  } = (SERVERS = await createServerWithWebsocketSupport(config));
+
+  // Reject the next request with an HTTP 418 and some JSON data.
+  wsServer.once("ws_auth_request", wsAuthRequest =>
+    setTimeout(
+      () =>
+        wsServer.rejectWebsocket(wsAuthRequest.clientId, {
+          statusCode: 418,
+          foo: 123
+        }),
+      50
+    )
+  );
+
+  // Attempt connection, wait for rejection.
+  const wsPath = httpServer.getWebsocketLocalEndpoint();
+  let connInfo;
+  try {
+    CLIENT = connInfo = await createWsConnection(wsPath);
+    return fail("Websocket connection should have been refused, was accepted.");
+  } catch (e) {
+    //expect(e.message).toBe("Unexpected HTTP response: 418: I'm a Teapot");
+    expect(e.message).toMatch(/Parse Error: Invalid response status/i);
+  }
+  expect(connInfo).not.toBeDefined();
+  expect((await wsServer.getMetrics()).numConnections).toStrictEqual(0);
+});
+
 test("WebSocket client connect with timeout", async () => {
   logging.mute();
 
   const config = {
     websocketAuth: true,
-    websocketAuthTimeoutMs: 500
+    websocketAuthTimeoutMs: 100
   };
-  const { httpServer, wsServer } = (SERVERS = await createServerWithWebsocket(
-    config
-  ));
+  const {
+    httpServer,
+    wsServer
+  } = (SERVERS = await createServerWithWebsocketSupport(config));
   const wsPath = httpServer.getWebsocketLocalEndpoint();
   expect((await wsServer.getMetrics()).numConnections).toStrictEqual(0);
 
@@ -133,7 +182,7 @@ test("WebSocket client connect with timeout", async () => {
     fail("should not be able to connected without authorization handler");
   } catch (e) {
     const deltaMs = Date.now() - startTimeMs;
-    expect(deltaMs >= 450);
+    expect(deltaMs >= 100);
     expect(e.message).toMatch(/503/); // HTTP 503 Service Unavailable
   }
 
@@ -144,9 +193,10 @@ test("Broadcasting to multiple clients", async () => {
   logging.mute();
 
   const config = {};
-  const { httpServer, wsServer } = (SERVERS = await createServerWithWebsocket(
-    config
-  ));
+  const {
+    httpServer,
+    wsServer
+  } = (SERVERS = await createServerWithWebsocketSupport(config));
   const wsPath = httpServer.getWebsocketLocalEndpoint();
   expect((await wsServer.getMetrics()).numConnections).toStrictEqual(0);
 
@@ -183,13 +233,14 @@ test("Client messages: malformed", async () => {
   logging.mute();
 
   const config = {};
-  const { httpServer, wsServer } = (SERVERS = await createServerWithWebsocket(
-    config
-  ));
+  const {
+    httpServer,
+    wsServer
+  } = (SERVERS = await createServerWithWebsocketSupport(config));
   const wsPath = httpServer.getWebsocketLocalEndpoint();
 
   // Create a client
-  const client = await createWsConnection(wsPath);
+  const client = (CLIENT = await createWsConnection(wsPath));
 
   // Listen for event from wsServer
   const errObj = await execAndWaitForEvent(
@@ -208,13 +259,14 @@ test("Client messages: well formed", async () => {
   logging.mute();
 
   const config = {};
-  const { httpServer, wsServer } = (SERVERS = await createServerWithWebsocket(
-    config
-  ));
+  const {
+    httpServer,
+    wsServer
+  } = (SERVERS = await createServerWithWebsocketSupport(config));
   const wsPath = httpServer.getWebsocketLocalEndpoint();
 
   // Create a client
-  const client = await createWsConnection(wsPath);
+  const client = (CLIENT = await createWsConnection(wsPath));
   const msgPacket = makeMessagePacket({
     type: "foo"
   });

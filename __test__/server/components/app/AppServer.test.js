@@ -1,5 +1,6 @@
 const path = require("path");
 const EventEmitter = require("events");
+const { defer } = require("lodash");
 const _harness = require("../_harness");
 const { requireLib } = _harness;
 
@@ -11,19 +12,21 @@ const Config = requireLib("config/Config");
 const { makeRpcRequest } = requireLib("protocol/rpc");
 const { makeWsAuthRequest } = requireLib("protocol/auth");
 
+logging.getLogger("sys").setLogLevel("debug");
+logging.getLogger("app").setLogLevel("debug");
+
 let mockHttpServer, mockWebSocketServer;
 
-let APP;
-let svcDeps;
+let APP, DEPS;
 
 beforeEach(() => {
   mockHttpServer = new EventEmitter();
   mockWebSocketServer = new EventEmitter();
   mockWebSocketServer.broadcast = jest.fn();
   mockWebSocketServer.sendOne = jest.fn();
-  mockWebSocketServer.authorize = jest.fn();
-  mockWebSocketServer.rejectAuthRequest = jest.fn();
-  svcDeps = {
+  mockWebSocketServer.authorizeWebsocket = jest.fn();
+  mockWebSocketServer.rejectWebsocket = jest.fn();
+  DEPS = {
     HttpServer: mockHttpServer,
     WebSocketServer: mockWebSocketServer,
     LiveModelServer: new LiveModelServer()
@@ -39,11 +42,11 @@ afterEach(async () => {
   logging.unmute();
 });
 
-function createAppServer(config) {
+function createAppServer(config, appName) {
   return (APP = new AppServer(
     new Config(
       Object.assign({}, config, {
-        app: path.resolve(__dirname, "__resources__/test_app")
+        app: path.resolve(__dirname, "__resources__", appName || "test_app")
       })
     )
   ));
@@ -55,11 +58,14 @@ test("Valid 'app' path forks a backend", async () => {
   const app = createAppServer();
   app.forkBackend = jest.fn();
   app.killBackend = jest.fn();
-  await app.run(svcDeps);
+  await app.run(DEPS);
   expect(app.forkBackend).toHaveBeenCalledTimes(1);
+  expect(app.killBackend).toHaveBeenCalledTimes(0);
 });
 
 test("Invalid 'app' path does not fork a backend", async () => {
+  logging.mute();
+
   expect(
     () =>
       new AppServer(
@@ -92,7 +98,7 @@ test("Source directory update restarts backend", async () => {
   jest.spyOn(app, "forkBackend");
   jest.spyOn(app, "killBackend");
 
-  await app.run(svcDeps);
+  await app.run(DEPS);
   expect(app.forkBackend).toHaveBeenCalledTimes(1);
   expect(app.killBackend).toHaveBeenCalledTimes(0);
 
@@ -108,12 +114,12 @@ test("Runs a non-existent RPC function", async () => {
   logging.mute();
 
   const app = createAppServer();
-  await app.run(svcDeps);
+  await app.run(DEPS);
 
   return new Promise(resolve => {
     app.once("rpc_response", () => {
-      expect(svcDeps.WebSocketServer.sendOne).toHaveBeenCalledTimes(1);
-      expect(svcDeps.WebSocketServer.sendOne).toHaveBeenCalledWith("abc-123", {
+      expect(DEPS.WebSocketServer.sendOne).toHaveBeenCalledTimes(1);
+      expect(DEPS.WebSocketServer.sendOne).toHaveBeenCalledWith("abc-123", {
         clientId: "abc-123",
         error: 'Cannot find RPC function "junk".',
         rpcId: "abc123",
@@ -121,7 +127,7 @@ test("Runs a non-existent RPC function", async () => {
       });
       resolve();
     });
-    svcDeps.WebSocketServer.emit(
+    DEPS.WebSocketServer.emit(
       "incoming_message",
       makeRpcRequest("junk", "abc123", { foo: 42 }),
       {
@@ -135,12 +141,12 @@ test("Runs an identity RPC function", async () => {
   logging.mute();
 
   const app = createAppServer();
-  await app.run(svcDeps);
+  await app.run(DEPS);
 
   return new Promise(resolve => {
     app.once("rpc_response", () => {
-      expect(svcDeps.WebSocketServer.sendOne).toHaveBeenCalledTimes(1);
-      expect(svcDeps.WebSocketServer.sendOne).toHaveBeenCalledWith("abc-123", {
+      expect(DEPS.WebSocketServer.sendOne).toHaveBeenCalledTimes(1);
+      expect(DEPS.WebSocketServer.sendOne).toHaveBeenCalledWith("abc-123", {
         clientId: "abc-123",
         rpcId: "abc123",
         type: "rpc_response",
@@ -167,11 +173,11 @@ test("Runs an identity RPC function", async () => {
   });
 });
 
-test("ws_auth_request/response messages are sent to/from the child", async () => {
+test("WebSocket auth requests are propagated to an accepting child", async () => {
   logging.mute();
 
-  const app = createAppServer();
-  await app.run(svcDeps);
+  const app = createAppServer({ websocketAuth: true }, "ws_acceptor");
+  await app.run(DEPS);
 
   return new Promise(resolve => {
     const wsAuthReq = makeWsAuthRequest({
@@ -180,42 +186,43 @@ test("ws_auth_request/response messages are sent to/from the child", async () =>
       headers: {}
     });
 
-    // Expect auth request response.
+    // Trigger auth request flow.
+    defer(() => DEPS.WebSocketServer.emit("ws_auth_request", wsAuthReq));
+
+    // Expect WebSocket to have been authorized when "ws_auth_response" is emitted.
     app.once("ws_auth_response", wsAuthResponse => {
+      expect(DEPS.WebSocketServer.authorizeWebsocket).toHaveBeenCalledTimes(1);
+      expect(DEPS.WebSocketServer.rejectWebsocket).toHaveBeenCalledTimes(0);
       resolve(wsAuthResponse);
     });
-
-    // Trigger auth request flow.
-    svcDeps.WebSocketServer.emit("ws_auth_request", wsAuthReq);
   });
 });
 
-test("Dynamically set the WS auth handler to reject new connections", async () => {
+test("WebSocket auth requests are dropped from a rejecting child", async () => {
   logging.mute();
 
-  const app = createAppServer();
-  await app.run(svcDeps);
-
-  app.sendMessageToChild(
-    makeRpcRequest("registerRejectingAuthHandler", null, { foo: 42 }),
-    {
-      clientId: "abc-123"
-    }
-  );
+  const app = createAppServer({ websocketAuth: true }, "ws_rejector");
+  await app.run(DEPS);
 
   return new Promise(resolve => {
-    app.once("ws_auth_response", wsAuthResponse => {
-      expect(wsAuthResponse.code).toBe(409);
-      expect(wsAuthResponse.error).toMatch(/teapot/i);
-      resolve();
+    const wsAuthReq = makeWsAuthRequest({
+      url: "/__ws__",
+      method: "GORK",
+      headers: {}
     });
-    svcDeps.WebSocketServer.emit(
-      "ws_auth_request",
-      makeWsAuthRequest({
-        url: "/foo",
-        method: "GORK",
-        headers: {}
-      })
-    );
+
+    // Trigger auth request flow.
+    defer(() => DEPS.WebSocketServer.emit("ws_auth_request", wsAuthReq));
+
+    // Expect WebSocket to NOT have been authorized when "ws_auth_response" is emitted.
+    app.once("ws_auth_response", wsAuthResponse => {
+      expect(DEPS.WebSocketServer.authorizeWebsocket).toHaveBeenCalledTimes(0);
+      expect(DEPS.WebSocketServer.rejectWebsocket).toHaveBeenCalledTimes(1);
+      expect(wsAuthResponse).toMatchObject({
+        status: 500
+      });
+      expect(wsAuthResponse).toBeDefined();
+      resolve(wsAuthResponse);
+    });
   });
 });
