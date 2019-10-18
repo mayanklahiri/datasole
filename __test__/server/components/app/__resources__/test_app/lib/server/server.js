@@ -17,10 +17,17 @@ runtime.registerRpcHandler(
     runtime.registerWsAuthHandler(async wsAuthRequest => {
       return runtime.makeWsAuthResponse(wsAuthRequest, 409, {
         error: "Teapot time",
-        code: 409
+        statusCode: 409
       });
     });
   }
 );
+
+runtime.registerWsAuthHandler(wsAuthRequest => {
+  const { clientId, remoteIp } = wsAuthRequest;
+  log.debug(
+    `Received session authorization request for client ${clientId} from ${remoteIp}.`
+  );
+});
 
 runtime.signalReady();

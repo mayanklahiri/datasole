@@ -68,7 +68,6 @@ test("Writes JSON logs to output file", async () => {
   await logging.close();
 
   // Read log file.
-
   const logFileContents = await fs.readFile(outPath, "utf-8");
   const logLines = filter(logFileContents.split("\n")).map(JSON.parse);
 

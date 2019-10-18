@@ -1,8 +1,11 @@
-const { requireLib } = require("../_harness");
+const _harness = require("../_harness");
+const { requireLib } = _harness;
+const logging = requireLib("logging");
+logging.getLogger("sys").setLogLevel("debug");
 
 const {
   makeApiRequest,
-  makeApiResponseJson,
+  makeApiResponse,
   makeReadyOperation,
   makeRpcRequest
 } = requireLib("protocol");
@@ -193,8 +196,7 @@ test("API function returns HTTP 500 if the handler throws an exception", async (
 
 test("API function returns HTTP 200 and content if the handler returns a result", async () => {
   const runtime = new DatasoleServerRuntime();
-  const mockHandler = async () =>
-    makeApiResponseJson(938, 204, { restaurant: "thonglor" });
+  const mockHandler = async () => ({ restaurant: "thonglor" });
   runtime.setApiHandler(mockHandler);
 
   const apiRequest = makeApiRequest(938, "get", "/api");
@@ -210,7 +212,7 @@ test("API function returns HTTP 200 and content if the handler returns a result"
         type: "api_response",
         body: '{"restaurant":"thonglor"}',
         reqId: 938,
-        statusCode: 204,
+        statusCode: 200,
         headers: {
           "Content-Length": 25,
           "Content-Type": "application/json"
