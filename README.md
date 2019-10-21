@@ -2,6 +2,7 @@
 
 [![CircleCI](https://circleci.com/gh/mayanklahiri/datasole.svg?style=svg)](https://circleci.com/gh/mayanklahiri/datasole)
 [![Build Status](https://travis-ci.org/mayanklahiri/datasole.svg?branch=master)](https://travis-ci.org/mayanklahiri/datasole)
+[![DeepScan grade](https://deepscan.io/api/teams/5839/projects/7675/branches/81212/badge/grade.svg)](https://deepscan.io/dashboard#view=project&tid=5839&pid=7675&bid=81212)
 
 Datasole, or _data_ con*sole*, is a fast prototyping tool for realtime, full-stack Javascript web applications using Node and any reactive frontend Javascript framework. It works by maintaining a single shared data model (object) between a server process and multiple connected Websocket clients, as well as providing a thin RPC framework from client to server.
 
@@ -109,11 +110,10 @@ See the [datasole-examples](https://github.com/mayanklahiri/datasole-examples) r
 
 ### Source Statistics
 
-| Statistic                   | Value      |
-| --------------------------- | ---------- |
-| Total lines of code         | 4236       |
-| Source lines                | 3155 (74%) |
-| Comment lines               | 600        |
-| Installed node_modules size | 202M       |
-
+| Statistic | Value |
+| --- | --- |
+| Total lines of code | 4233 |
+| Source lines | 3152 (74%) |
+| Comment lines | 600 |
+| Installed node_modules size | 202M |
 ---
