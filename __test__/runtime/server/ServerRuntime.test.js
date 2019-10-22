@@ -165,7 +165,7 @@ test("API function returns HTTP 500 without a registered API handler", () => {
 test("API function returns HTTP 500 if the handler throws an exception", async () => {
   const runtime = new DatasoleServerRuntime();
   const mockHandler = async () => {
-    throw new Error("Exception unexpected");
+    throw new Error("Exception unexpected.");
   };
   runtime.setApiHandler(mockHandler);
 
@@ -194,12 +194,25 @@ test("API function returns HTTP 500 if the handler throws an exception", async (
   );
 });
 
-test("API function returns HTTP 200 and content if the handler returns a result", async () => {
+test("API function returns HTTP 2xx and content if the handler returns a result", async () => {
   const runtime = new DatasoleServerRuntime();
-  const mockHandler = async () => ({ restaurant: "thonglor" });
+  const apiRequest = runtime.protocol.makeApiRequest(
+    "abcd",
+    "get",
+    "/api/v1/foo"
+  );
+  const apiResponse = runtime.protocol.makeApiResponseJson(
+    "abcd",
+    204,
+    {
+      restaurant: "thonglor"
+    },
+    { ETag: "foo98765" }
+  );
+
+  const mockHandler = async () => apiResponse;
   runtime.setApiHandler(mockHandler);
 
-  const apiRequest = makeApiRequest(938, "get", "/api");
   runtime.onRecvFromParent({
     message: apiRequest,
     meta: {}
@@ -211,10 +224,48 @@ test("API function returns HTTP 200 and content if the handler returns a result"
       expect(mockSend).toHaveBeenCalledWith({
         type: "api_response",
         body: '{"restaurant":"thonglor"}',
-        reqId: 938,
-        statusCode: 200,
+        reqId: "abcd",
+        statusCode: 204,
         headers: {
           "Content-Length": 25,
+          "Content-Type": "application/json",
+          ETag: "foo98765"
+        }
+      });
+      resolve();
+    }, 10)
+  );
+});
+
+test("Invalid API response type returns a 500.", async () => {
+  const runtime = new DatasoleServerRuntime();
+  const apiRequest = runtime.protocol.makeApiRequest(
+    "abcd",
+    "get",
+    "/api/v1/foo"
+  );
+
+  // Incorrectly set to an arbitrary object.
+  const badApiResponse = { foo: 123 };
+  const mockHandler = async () => badApiResponse;
+  runtime.setApiHandler(mockHandler);
+
+  runtime.onRecvFromParent({
+    message: apiRequest,
+    meta: {}
+  });
+
+  await new Promise(resolve =>
+    setTimeout(() => {
+      expect(mockSend).toHaveBeenCalledTimes(1);
+      expect(mockSend).toHaveBeenCalledWith({
+        type: "api_response",
+        body:
+          '{"error":"Server-side API handler threw an error: Error: Invalid ApiResponse object received from application."}',
+        reqId: "abcd",
+        statusCode: 500,
+        headers: {
+          "Content-Length": 112,
           "Content-Type": "application/json"
         }
       });

@@ -1,6 +1,6 @@
 const { parseMessagePacket, makeMessagePacket } = require("../../lib/protocol");
 
-test("parse and make are reversible", () => {
+test("parse and make message are reversible", () => {
   const msgObj = {
     foo: {
       bar: 123
