@@ -100,9 +100,7 @@ function main() {
   pages.sort((a, b) => a.order - b.order);
 
   // Generate nav
-  const nav = pages
-    .map((p) => `<a href="${BASE_PATH}/${p.slug}/">${p.title}</a>`)
-    .join('\n');
+  const nav = pages.map((p) => `<a href="${BASE_PATH}/${p.slug}/">${p.title}</a>`).join('\n');
 
   // Clean and create dist
   mkdirSync(DIST, { recursive: true });
@@ -139,8 +137,9 @@ function main() {
   try {
     const metrics = JSON.parse(readFileSync(join(REPORTS, 'build-metrics.json'), 'utf8'));
     const rows = (metrics.bundles || [])
-      .map((b: { file: string; sizeRaw: number; sizeGzip: number }) =>
-        `<tr><td><code>${b.file}</code></td><td>${b.sizeRaw}</td><td>${b.sizeGzip}</td></tr>`
+      .map(
+        (b: { file: string; sizeRaw: number; sizeGzip: number }) =>
+          `<tr><td><code>${b.file}</code></td><td>${b.sizeRaw}</td><td>${b.sizeGzip}</td></tr>`,
       )
       .join('');
     metricsHtml = `<table><thead><tr><th>Artifact</th><th>Raw (bytes)</th><th>Gzip (bytes)</th></tr></thead><tbody>${rows}</tbody></table>`;
@@ -155,19 +154,82 @@ function main() {
   writeFileSync(join(dashDir, 'index.html'), dashFull);
 
   // Generate index
+  const indexBody = `
+    <div class="hero">
+      <h1>datasole</h1>
+      <p class="tagline">Realtime TypeScript framework with binary WebSocket transport,<br>
+      JSON Patch state sync, typed RPC, and CRDTs.</p>
+      <p class="hero-sub">35.6 KB gzip on the wire. Web Worker transport. Four server concurrency models.<br>
+      Strict TypeScript end-to-end. One <code>npm install</code>.</p>
+      <nav class="hero-actions">
+        <a href="${BASE_PATH}/tutorials/" class="btn-primary">Start the tutorial</a>
+        <a href="${BASE_PATH}/examples/" class="btn-secondary">See examples</a>
+        <a href="https://github.com/mayanklahiri/datasole" class="btn-secondary">GitHub</a>
+      </nav>
+    </div>
+
+    <div class="landing-grid">
+      <section class="landing-card">
+        <h2>Performance</h2>
+        <ul>
+          <li>WebSocket runs in a <strong>Web Worker</strong> — network I/O never touches the UI thread</li>
+          <li><strong>Binary frames</strong> with pako compression (60–80% smaller than raw JSON)</li>
+          <li><strong>SharedArrayBuffer</strong> zero-copy transfer between worker and main thread</li>
+          <li>Server concurrency: async, thread-per-connection, <strong>thread pool</strong>, process isolation</li>
+          <li>Client IIFE: <strong>20.9 KB</strong> gzip. Worker: <strong>14.7 KB</strong> gzip. Both include all deps.</li>
+        </ul>
+      </section>
+
+      <section class="landing-card">
+        <h2>Correctness</h2>
+        <ul>
+          <li><strong>122 unit tests</strong> (Vitest) + <strong>13 e2e tests</strong> (Playwright, headless Chromium, production bundle)</li>
+          <li>Coverage thresholds enforced on every push (lines, branches, functions, statements)</li>
+          <li><strong>Strict TypeScript</strong> with <code>.d.ts</code> declarations on every export</li>
+          <li>Shared types between client and server — no code generation, no drift</li>
+          <li>State sync via <strong>RFC 6902 JSON Patch</strong>; bidirectional sync via <strong>CRDTs</strong> (LWW registers, PN counters, LWW maps)</li>
+        </ul>
+      </section>
+
+      <section class="landing-card">
+        <h2>Developer experience</h2>
+        <ul>
+          <li><strong>Single npm package</strong> for client, server, shared types, and Web Worker</li>
+          <li>Works with React, Vue 3, Svelte, React Native, vanilla JS, Express, NestJS, Fastify</li>
+          <li><a href="${BASE_PATH}/tutorials/">Progressive tutorial</a> — 10 steps from hello world to production deployment</li>
+          <li><a href="${BASE_PATH}/examples/">Copy-paste examples</a> for every data flow pattern</li>
+          <li><a href="https://github.com/mayanklahiri/datasole/blob/develop/AGENTS.md">AGENTS.md</a> with quality gate, coding conventions, and ADR workflow for AI coding assistants</li>
+        </ul>
+      </section>
+    </div>
+
+    <section class="landing-patterns">
+      <h2>Data flow patterns</h2>
+      <table>
+        <thead><tr><th>Pattern</th><th>Direction</th><th>Mechanism</th></tr></thead>
+        <tbody>
+          <tr><td>RPC</td><td>client → server → client</td><td>Typed request/response with correlation IDs</td></tr>
+          <tr><td>Server events</td><td>server → clients</td><td>Broadcast (stock ticker, notifications)</td></tr>
+          <tr><td>Client events</td><td>client → server</td><td>Fire-and-forget (chat, analytics)</td></tr>
+          <tr><td>Live state</td><td>server → clients</td><td>JSON Patch auto-sync (dashboards, leaderboards)</td></tr>
+          <tr><td>CRDT sync</td><td>client ↔ server</td><td>Conflict-free merge (collaborative editing)</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="landing-links">
+      <h2>Documentation</h2>
+      <nav class="page-links">
+        ${pages.map((p) => `<a href="${BASE_PATH}/${p.slug}/">${p.title}</a>`).join(' · ')}
+        · <a href="${BASE_PATH}/dashboard/">Build Dashboard</a>
+      </nav>
+    </section>
+  `;
+
   const indexHtml = layout
     .replace('{{title}}', 'datasole')
     .replace('{{nav}}', nav)
-    .replace('{{body}}', `
-      <div class="hero">
-        <h1>datasole</h1>
-        <p class="tagline">High-performance, binary-framed, realtime full-stack TypeScript framework.</p>
-        <nav class="page-links">
-          ${pages.map((p) => `<a href="${BASE_PATH}/${p.slug}/">${p.title}</a>`).join(' · ')}
-          <a href="${BASE_PATH}/dashboard/">Dashboard</a>
-        </nav>
-      </div>
-    `);
+    .replace('{{body}}', indexBody);
   writeFileSync(join(DIST, 'index.html'), indexHtml);
 
   writeFileSync(join(DIST, '.nojekyll'), '');
