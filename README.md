@@ -49,18 +49,18 @@ That's a running WebSocket connection with binary frames, Web Worker transport, 
 
 The **[Tutorials](docs/tutorials.md)** build from this hello world into a full production app, one feature at a time. Each step adds ~10 lines and introduces one pattern:
 
-| # | Tutorial | What You Build | Time |
-|---|---|---|---|
-| 1 | [Hello World](docs/tutorials.md#1-hello-world--your-first-connection) | Connect client to server | 2 min |
-| 2 | [RPC](docs/tutorials.md#2-rpc--call-the-server-get-a-response) | Typed request/response | 3 min |
-| 3 | [Server Events](docs/tutorials.md#3-server-events--a-live-stock-ticker) | Live stock ticker broadcast | 3 min |
-| 4 | [Live State](docs/tutorials.md#4-live-state--a-server-synced-dashboard) | Server-synced dashboard (React/Vue) | 5 min |
-| 5 | [Chat + Auth](docs/tutorials.md#5-client-events--auth--a-chat-room) | Authenticated chat room | 5 min |
-| 6 | [CRDT](docs/tutorials.md#6-bidirectional-crdt--a-shared-counter) | Conflict-free shared counter | 5 min |
-| 7 | [Sync Channels](docs/tutorials.md#7-sync-channels--controlled-flush-granularity) | Tunable flush strategies | 5 min |
-| 8 | [Sessions](docs/tutorials.md#8-session-persistence--surviving-reconnections) | Reconnection-safe user state | 5 min |
-| 9 | [Production](docs/tutorials.md#9-production--thread-pool-rate-limiting-redis-metrics) | Thread pool, Redis, rate limiting, pm2 | 10 min |
-| 10 | [Task Board](docs/tutorials.md#10-putting-it-all-together--a-collaborative-task-board) | All patterns in one app | 15 min |
+| #   | Tutorial                                                                               | What You Build                         | Time   |
+| --- | -------------------------------------------------------------------------------------- | -------------------------------------- | ------ |
+| 1   | [Hello World](docs/tutorials.md#1-hello-world--your-first-connection)                  | Connect client to server               | 2 min  |
+| 2   | [RPC](docs/tutorials.md#2-rpc--call-the-server-get-a-response)                         | Typed request/response                 | 3 min  |
+| 3   | [Server Events](docs/tutorials.md#3-server-events--a-live-stock-ticker)                | Live stock ticker broadcast            | 3 min  |
+| 4   | [Live State](docs/tutorials.md#4-live-state--a-server-synced-dashboard)                | Server-synced dashboard (React/Vue)    | 5 min  |
+| 5   | [Chat + Auth](docs/tutorials.md#5-client-events--auth--a-chat-room)                    | Authenticated chat room                | 5 min  |
+| 6   | [CRDT](docs/tutorials.md#6-bidirectional-crdt--a-shared-counter)                       | Conflict-free shared counter           | 5 min  |
+| 7   | [Sync Channels](docs/tutorials.md#7-sync-channels--controlled-flush-granularity)       | Tunable flush strategies               | 5 min  |
+| 8   | [Sessions](docs/tutorials.md#8-session-persistence--surviving-reconnections)           | Reconnection-safe user state           | 5 min  |
+| 9   | [Production](docs/tutorials.md#9-production--thread-pool-rate-limiting-redis-metrics)  | Thread pool, Redis, rate limiting, pm2 | 10 min |
+| 10  | [Task Board](docs/tutorials.md#10-putting-it-all-together--a-collaborative-task-board) | All patterns in one app                | 15 min |
 
 > **Live demos** — Every tutorial has a running instance at [demo.datasole.dev](https://demo.datasole.dev). Open in your browser and follow along.
 
@@ -72,7 +72,7 @@ Most real-world datasole apps use this: **client sends actions via RPC, server u
 // Server: mutate state — datasole sends only the diff
 ds.rpc('addTodo', async ({ text }) => {
   todos.push({ id: Date.now(), text, done: false });
-  await ds.setState('todos', todos);  // JSON Patch broadcast
+  await ds.setState('todos', todos); // JSON Patch broadcast
   return { ok: true };
 });
 ```
@@ -85,11 +85,19 @@ function TodoList() {
 
   useEffect(() => {
     ds.current.connect();
-    ds.current.subscribeState('todos', setTodos);  // That's it.
-    return () => { ds.current.disconnect(); };
+    ds.current.subscribeState('todos', setTodos); // That's it.
+    return () => {
+      ds.current.disconnect();
+    };
   }, []);
 
-  return <ul>{todos.map(t => <li key={t.id}>{t.text}</li>)}</ul>;
+  return (
+    <ul>
+      {todos.map((t) => (
+        <li key={t.id}>{t.text}</li>
+      ))}
+    </ul>
+  );
 }
 ```
 
@@ -105,7 +113,7 @@ The server owns the data. The client renders a live mirror. No Redux, no Vuex, n
 
 - **CRDT support for bidirectional sync.** Built-in LWW registers, PN counters, and LWW maps for conflict-free client ↔ server state. Multiple clients edit simultaneously; values converge automatically.
 
-- **Configurable sync channels.** Tune *when* updates flush: `immediate` for latency-critical data, `batched` for throughput, `debounced` for user input. Per-key, mix-and-match.
+- **Configurable sync channels.** Tune _when_ updates flush: `immediate` for latency-critical data, `batched` for throughput, `debounced` for user input. Per-key, mix-and-match.
 
 - **Pluggable concurrency.** Four models: async (event loop), thread-per-connection, thread pool (default), process-per-connection. Cluster-friendly with pm2 out of the box.
 
@@ -123,7 +131,7 @@ The server owns the data. The client renders a live mirror. No Redux, no Vuex, n
 
 - **Production-grade TypeScript.** Strict mode, `.d.ts` declarations on every export, `typesVersions` for older TS.
 
-- **Minimal client bundle.** Tree-shaken, minified IIFE. Zero Node.js polyfills.
+- **Minimal client bundle.** 20.9 KB gzip (client) + 14.7 KB gzip (worker) = 35.6 KB total. Tree-shaken, minified IIFE. Zero Node.js polyfills.
 
 - **Comprehensive tests.** Unit tests (Vitest), e2e (Playwright + headless Chromium + production bundle), browser console error detection, performance metrics.
 
@@ -159,56 +167,61 @@ The server owns the data. The client renders a live mirror. No Redux, no Vuex, n
 
 datasole supports seven composable patterns — use one, or combine them:
 
-| Pattern | Direction | Mechanism | Use Case |
-|---|---|---|---|
-| RPC | client → server → client | Request/response | Form submit, data lookup |
-| Server events | server → clients | Broadcast | Stock ticker, notifications |
-| Client events | client → server | Fire-and-forget | Chat messages, analytics |
-| Live state (s→c) | server → clients | JSON Patch auto-sync | Dashboards, leaderboards |
-| Live state (c→s) | client → server | JSON Patch | Form sync, draft saving |
-| CRDT sync | client ↔ server | Merge, conflict-free | Collaborative editing, presence |
-| Combinations | any | Compose freely | [Task Board (Tutorial 10)](docs/tutorials.md#10-putting-it-all-together--a-collaborative-task-board) |
+| Pattern          | Direction                | Mechanism            | Use Case                                                                                             |
+| ---------------- | ------------------------ | -------------------- | ---------------------------------------------------------------------------------------------------- |
+| RPC              | client → server → client | Request/response     | Form submit, data lookup                                                                             |
+| Server events    | server → clients         | Broadcast            | Stock ticker, notifications                                                                          |
+| Client events    | client → server          | Fire-and-forget      | Chat messages, analytics                                                                             |
+| Live state (s→c) | server → clients         | JSON Patch auto-sync | Dashboards, leaderboards                                                                             |
+| Live state (c→s) | client → server          | JSON Patch           | Form sync, draft saving                                                                              |
+| CRDT sync        | client ↔ server          | Merge, conflict-free | Collaborative editing, presence                                                                      |
+| Combinations     | any                      | Compose freely       | [Task Board (Tutorial 10)](docs/tutorials.md#10-putting-it-all-together--a-collaborative-task-board) |
 
 ## Live Demos
 
 Every example runs at [demo.datasole.dev](https://demo.datasole.dev):
 
-| Demo | Pattern | URL |
-|---|---|---|
-| Hello World | Connection | [demo.datasole.dev/hello](https://demo.datasole.dev/hello) |
-| Calculator | RPC | [demo.datasole.dev/rpc](https://demo.datasole.dev/rpc) |
-| Stock Ticker | Server events | [demo.datasole.dev/ticker](https://demo.datasole.dev/ticker) |
-| Dashboard | Live state | [demo.datasole.dev/dashboard](https://demo.datasole.dev/dashboard) |
-| Chat Room | Events + auth | [demo.datasole.dev/chat](https://demo.datasole.dev/chat) |
-| Shared Counter | CRDT | [demo.datasole.dev/counter](https://demo.datasole.dev/counter) |
-| Todo App | RPC + live state | [demo.datasole.dev/todos](https://demo.datasole.dev/todos) |
-| Task Board | All patterns | [demo.datasole.dev/taskboard](https://demo.datasole.dev/taskboard) |
+| Demo           | Pattern          | URL                                                                |
+| -------------- | ---------------- | ------------------------------------------------------------------ |
+| Hello World    | Connection       | [demo.datasole.dev/hello](https://demo.datasole.dev/hello)         |
+| Calculator     | RPC              | [demo.datasole.dev/rpc](https://demo.datasole.dev/rpc)             |
+| Stock Ticker   | Server events    | [demo.datasole.dev/ticker](https://demo.datasole.dev/ticker)       |
+| Dashboard      | Live state       | [demo.datasole.dev/dashboard](https://demo.datasole.dev/dashboard) |
+| Chat Room      | Events + auth    | [demo.datasole.dev/chat](https://demo.datasole.dev/chat)           |
+| Shared Counter | CRDT             | [demo.datasole.dev/counter](https://demo.datasole.dev/counter)     |
+| Todo App       | RPC + live state | [demo.datasole.dev/todos](https://demo.datasole.dev/todos)         |
+| Task Board     | All patterns     | [demo.datasole.dev/taskboard](https://demo.datasole.dev/taskboard) |
 
-## Performance
+## Bundle Sizes
 
-| Metric | Value |
-|---|---|
-| Client bundle (IIFE, minified + gzip) | *measured by CI* |
-| Worker bundle (IIFE, minified + gzip) | *measured by CI* |
-| Server bundle (ESM) | *measured by CI* |
-| State sync latency | *measured by e2e tests* |
-| WebSocket connect time | *measured by e2e tests* |
+All bundles include their dependencies (pako, fast-json-patch). Server externalizes `ws` and Node builtins. Verified on every CI run.
 
-Live metrics from the latest CI run: [documentation dashboard](https://mayanklahiri.github.io/datasole/dashboard/).
+| Bundle                | What loads it           |      Raw |        Gzip |
+| --------------------- | ----------------------- | -------: | ----------: |
+| **Client IIFE** (min) | `<script>` tag          |  67.1 KB | **20.9 KB** |
+| **Client ESM**        | `import` from bundler   | 274.4 KB |     67.4 KB |
+| **Worker IIFE** (min) | Web Worker              |  46.5 KB | **14.7 KB** |
+| **Shared** (ESM)      | Server or client import |   9.7 KB |      2.3 KB |
+| **Server** (ESM)      | Node.js `import`        | 430.8 KB |    100.5 KB |
+| **Server** (CJS)      | Node.js `require()`     | 431.6 KB |    100.6 KB |
+
+**What a browser actually downloads**: the IIFE client bundle (**20.9 KB** gzip) plus the worker (**14.7 KB** gzip) = **35.6 KB** total for the full realtime stack with compression, binary framing, JSON Patch, CRDTs, and Web Worker transport.
+
+These sizes are measured by CI on every push. See the [documentation dashboard](https://mayanklahiri.github.io/datasole/dashboard/) for the latest numbers.
 
 ## Full Documentation
 
-| Doc | What's in it |
-|---|---|
-| **[Tutorials](docs/tutorials.md)** | Step-by-step, 10 progressive examples |
-| **[Examples](docs/examples.md)** | Copy-paste recipes by pattern |
-| [Client API](docs/client.md) | Every client method |
-| [Server API](docs/server.md) | Every server method |
-| [Architecture](docs/architecture.md) | Protocol, diagrams, data flow |
-| [State Backends](docs/state-backends.md) | Memory, Redis, Postgres |
-| [Metrics](docs/metrics.md) | Prometheus, OpenTelemetry |
-| [ADRs](docs/decisions.md) | Why every major decision was made |
-| [Contributing](docs/contributing.md) | Setup, commands, PR guidelines |
+| Doc                                      | What's in it                          |
+| ---------------------------------------- | ------------------------------------- |
+| **[Tutorials](docs/tutorials.md)**       | Step-by-step, 10 progressive examples |
+| **[Examples](docs/examples.md)**         | Copy-paste recipes by pattern         |
+| [Client API](docs/client.md)             | Every client method                   |
+| [Server API](docs/server.md)             | Every server method                   |
+| [Architecture](docs/architecture.md)     | Protocol, diagrams, data flow         |
+| [State Backends](docs/state-backends.md) | Memory, Redis, Postgres               |
+| [Metrics](docs/metrics.md)               | Prometheus, OpenTelemetry             |
+| [ADRs](docs/decisions.md)                | Why every major decision was made     |
+| [Contributing](docs/contributing.md)     | Setup, commands, PR guidelines        |
 
 ## Contributing
 
