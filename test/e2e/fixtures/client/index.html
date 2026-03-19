@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Datasole E2E Test</title>
+  <script src="/static/datasole.iife.min.js"></script>
+</head>
+<body>
+  <div id="status">loading</div>
+  <script>
+    document.getElementById('status').textContent = 'ready';
+    window.__datasole_loaded = typeof Datasole !== 'undefined';
+  </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectCodeStyleConfiguration">
+    <option name="USE_PER_PROJECT_SETTINGS" value="true" />
+    <code_scheme name="Project" version="173">
+      <option name="AUTODETECT_INDENTS" value="false" />
+      <EditorConfigOptions>
+        <option name="ENABLED" value="true" />
+      </EditorConfigOptions>
+    </code_scheme>
+  </component>
+</project>

@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Vitest: Current File",
+      "type": "node",
+      "request": "launch",
+      "autoAttachChildProcesses": true,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "program": "${workspaceRoot}/node_modules/vitest/vitest.mjs",
+      "args": ["run", "${relativeFile}"],
+      "smartStep": true,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Attach to Node",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Playwright: Debug",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceRoot}/node_modules/@playwright/test/cli.js",
+      "args": ["test", "--headed", "--debug"],
+      "cwd": "${workspaceRoot}",
+      "console": "integratedTerminal"
+    }
+  ]
+}

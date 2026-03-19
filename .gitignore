@@ -1,0 +1,35 @@
+# Build outputs
+dist/
+docs-site/dist/
+
+# Dependencies
+node_modules/
+
+# Test & metrics reports
+reports/
+coverage/
+test/e2e/reports/
+
+# IDE state (keep shared configs, ignore user-specific)
+.idea/*.iml
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/dictionaries
+.idea/shelf
+.idea/modules.xml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build cache
+*.tsbuildinfo

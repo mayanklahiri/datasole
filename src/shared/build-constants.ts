@@ -1,0 +1,8 @@
+export const BUILD_CONSTANTS = {
+  PACKAGE_NAME: 'datasole',
+  VERSION: '__BUILD_VERSION__' as string,
+  PROTOCOL_VERSION: 1,
+  DEFAULT_WS_PATH: '/__ds',
+  MAX_FRAME_SIZE: 1024 * 1024,
+  COMPRESSION_THRESHOLD: 256,
+} as const;

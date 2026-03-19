@@ -1,0 +1,33 @@
+name: Deploy Docs
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  pages: write
+  id-token: write
+
+jobs:
+  deploy-docs:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Download docs site from CI
+        uses: actions/download-artifact@v4
+        with:
+          name: docs-site
+          path: docs-site/dist/
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs-site/dist/
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

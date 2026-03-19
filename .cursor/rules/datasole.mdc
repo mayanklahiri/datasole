@@ -1,0 +1,48 @@
+---
+description: Datasole project conventions, quality gate, and documentation pointers
+globs: ["src/**/*.ts", "test/**/*.ts", "build/**", "docs/**"]
+---
+
+# Datasole Project Rules
+
+## Quality Gate
+
+The single command `npm run gate` validates the entire project. It runs:
+format:check → lint → build → test (with coverage) → e2e → collect-metrics → docs:build → gate:summary
+
+**Run `npm run gate` after making changes.** It is enforced by:
+- pre-commit hook: lint-staged (format + lint staged .ts files)
+- pre-push hook: full `npm run gate`
+- CI: GitHub Actions on every push/PR
+
+`npm run dist` is an alias for `npm run gate`.
+
+## Documentation
+
+Canonical documentation lives in `docs/`. Consult before making structural changes:
+- `docs/tutorials.md` — Progressive learning examples (update when adding user-facing features)
+- `docs/examples.md` — Copy-paste recipes by pattern
+- `docs/architecture.md` — System design, wire protocol
+- `docs/decisions.md` — Architecture Decision Records
+- `docs/contributing.md` — Build commands, workflow
+
+## Architecture Decisions
+
+All ADRs in `docs/decisions.md`. When changing deps, protocol, build, transport, state sync, adapters, public API, or the quality gate pipeline: check existing ADRs, add new ones if needed, reference in commit messages.
+
+## Code Organization
+
+- `src/shared/` — Zero-dep code shared between client/server (includes CRDTs)
+- `src/client/` — Browser library (no Node.js APIs)
+- `src/server/` — Node.js library (may use Node builtins)
+- Dependency direction: shared ← client, shared ← server. No client↔server imports.
+
+## Build Constants
+
+`src/shared/build-constants.ts` is the single source of truth for version, protocol version, and defaults. Never hardcode these values elsewhere.
+
+## Type Safety
+
+- No `any` in public API surfaces
+- Generic type parameters on RPC, events, and state APIs
+- All exports ship `.d.ts` declarations
