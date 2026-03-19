@@ -53,7 +53,7 @@
     "test:watch": "vitest watch",
     "test:e2e": "npm run build && npx playwright test --config test/e2e/playwright.config.ts",
     "test:e2e:debug": "npm run build && npx playwright test --config test/e2e/playwright.config.ts --headed --debug",
-    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint 'src/**/*.ts' 'test/unit/**/*.ts' && tsc --noEmit",
+    "lint": "eslint 'src/**/*.ts' 'test/unit/**/*.ts' && tsc --noEmit",
     "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts' '*.json' '*.mjs'",
     "format:check": "prettier --check 'src/**/*.ts' 'test/**/*.ts' '*.json' '*.mjs'",
     "clean": "rm -rf dist/ reports/ coverage/ docs-site/dist/",
@@ -69,11 +69,11 @@
   "lint-staged": {
     "src/**/*.ts": [
       "prettier --write",
-      "bash -c 'ESLINT_USE_FLAT_CONFIG=false eslint --fix \"$@\"' --"
+      "eslint --fix"
     ],
     "test/unit/**/*.ts": [
       "prettier --write",
-      "bash -c 'ESLINT_USE_FLAT_CONFIG=false eslint --fix \"$@\"' --"
+      "eslint --fix"
     ],
     "*.{json,mjs,cjs,md}": [
       "prettier --write"
@@ -125,12 +125,10 @@
     "@types/node": "^22.0.0",
     "@types/pako": "^2.0.3",
     "@types/ws": "^8.5.0",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser": "^8.0.0",
     "@vitest/coverage-v8": "^4.1.0",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.0.0",
-    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-import-x": "^4.16.2",
     "express": "^5.2.1",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.0",
@@ -144,6 +142,7 @@
     "tslib": "^2.8.0",
     "tsx": "^4.19.0",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.57.1",
     "vitest": "^4.1.0"
   },
   "peerDependencies": {
@@ -167,6 +166,6 @@
     }
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.12.0"
   }
 }

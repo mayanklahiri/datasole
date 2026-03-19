@@ -12,7 +12,7 @@ const shared = {
     replace({
       preventAssignment: true,
       values: {
-        '__BUILD_VERSION__': JSON.stringify(pkg.version),
+        __BUILD_VERSION__: JSON.stringify(pkg.version),
       },
     }),
     resolve({ browser: true, preferBuiltins: false }),
@@ -20,6 +20,11 @@ const shared = {
     typescript({ tsconfig: './build/tsconfig.client.json', noEmit: false, declaration: false }),
   ],
 };
+
+function suppressThisIsUndefined(warning, warn) {
+  if (warning.code === 'THIS_IS_UNDEFINED' && warning.id?.includes('fast-json-patch')) return;
+  warn(warning);
+}
 
 export default [
   {
@@ -43,6 +48,7 @@ export default [
         sourcemap: true,
       },
     ],
+    onwarn: suppressThisIsUndefined,
     ...shared,
   },
 ];

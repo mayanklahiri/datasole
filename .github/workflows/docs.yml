@@ -7,8 +7,13 @@ on:
     types: [completed]
 
 permissions:
+  actions: read
   pages: write
   id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   deploy-docs:
@@ -24,6 +29,7 @@ jobs:
           name: docs-site
           path: docs-site/dist/
           run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-pages-artifact@v3
         with:

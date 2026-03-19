@@ -12,6 +12,7 @@ permissions:
 jobs:
   update-deps:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,51 +30,54 @@ jobs:
       - name: Check for updates
         id: ncu
         run: |
-          # Capture upgrade report
           ncu --format group 2>&1 | tee /tmp/ncu-report.txt
 
-          # Exit code 0 = no updates, non-zero = updates available
           if ncu --errorLevel 2 2>/dev/null; then
-            echo "updates=false" >> $GITHUB_OUTPUT
-            echo "No dependency updates available." >> $GITHUB_STEP_SUMMARY
+            echo "updates=false" >> "$GITHUB_OUTPUT"
+            echo "No dependency updates available." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "updates=true" >> $GITHUB_OUTPUT
-            echo "## Available updates" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            cat /tmp/ncu-report.txt >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "updates=true" >> "$GITHUB_OUTPUT"
+            echo "## Available updates" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            cat /tmp/ncu-report.txt >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Apply updates
         if: steps.ncu.outputs.updates == 'true'
-        id: apply
         run: |
           ncu -u
           npm install
 
-          # Capture the diff for the PR body
-          DIFF=$(git diff package.json | head -200)
-          # Write to file for multi-line output
-          echo "$DIFF" > /tmp/pkg-diff.txt
+      - name: Cache Playwright browsers
+        if: steps.ncu.outputs.updates == 'true'
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install Playwright browsers
-        if: steps.ncu.outputs.updates == 'true'
+        if: steps.ncu.outputs.updates == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright OS deps (cache hit)
+        if: steps.ncu.outputs.updates == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
 
       - name: Run quality gate
         if: steps.ncu.outputs.updates == 'true'
-        id: gate
         run: npm run gate
 
       - name: Append gate metrics to summary
         if: steps.ncu.outputs.updates == 'true'
         run: |
-          echo "## Quality gate results" >> $GITHUB_STEP_SUMMARY
+          echo "## Quality gate results" >> "$GITHUB_STEP_SUMMARY"
           if [ -f reports/build-metrics.md ]; then
-            cat reports/build-metrics.md >> $GITHUB_STEP_SUMMARY
+            cat reports/build-metrics.md >> "$GITHUB_STEP_SUMMARY"
           fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Quality gate passed with updated dependencies." >> $GITHUB_STEP_SUMMARY
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Quality gate passed with updated dependencies." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create pull request
         if: steps.ncu.outputs.updates == 'true'
@@ -87,7 +91,7 @@ jobs:
             Automated nightly dependency update via [`npm-check-updates`](https://github.com/raineorshine/npm-check-updates).
 
             The full quality gate (`npm run gate`) passed after updating:
-            format ✓ · lint ✓ · build ✓ · unit tests ✓ · e2e tests ✓ · metrics ✓ · docs ✓
+            format · lint · build · unit tests · e2e tests · metrics · docs
 
             See the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for the full gate output and build metrics.
           commit-message: 'chore(deps): nightly dependency update'

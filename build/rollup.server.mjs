@@ -16,6 +16,11 @@ const external = [
   '@nestjs/websockets',
 ];
 
+function suppressThisIsUndefined(warning, warn) {
+  if (warning.code === 'THIS_IS_UNDEFINED' && warning.id?.includes('fast-json-patch')) return;
+  warn(warning);
+}
+
 export default {
   input: 'src/server/index.ts',
   output: [
@@ -31,11 +36,12 @@ export default {
     },
   ],
   external,
+  onwarn: suppressThisIsUndefined,
   plugins: [
     replace({
       preventAssignment: true,
       values: {
-        '__BUILD_VERSION__': JSON.stringify(pkg.version),
+        __BUILD_VERSION__: JSON.stringify(pkg.version),
       },
     }),
     resolve({ preferBuiltins: true }),
