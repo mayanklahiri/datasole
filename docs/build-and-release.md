@@ -24,12 +24,12 @@ clean → format:check → lint → build → test+coverage → e2e → collect-
 
 ### Gate enforcement
 
-| Trigger | What runs |
-|---|---|
-| **Pre-commit** | `lint-staged` (format + lint staged .ts files) |
-| **Pre-push** | `npm run gate` (full pipeline) |
-| **CI (GitHub Actions)** | `npm run gate` on push/PR to `main` |
-| **npm publish** | `npm run gate` via `prepublishOnly` |
+| Trigger                 | What runs                                      |
+| ----------------------- | ---------------------------------------------- |
+| **Pre-commit**          | `lint-staged` (format + lint staged .ts files) |
+| **Pre-push**            | `npm run gate` (full pipeline)                 |
+| **CI (GitHub Actions)** | `npm run gate` on push/PR to `main`            |
+| **npm publish**         | `npm run gate` via `prepublishOnly`            |
 
 ### Gate output
 
@@ -56,23 +56,23 @@ On success, the gate prints a summary:
 
 ## Build Targets
 
-| Artifact | Format | Entry |
-|---|---|---|
-| `dist/client/datasole.iife.min.js` | IIFE (script tag) | `src/client/index.ts` |
-| `dist/client/datasole.esm.js` | ESM | `src/client/index.ts` |
-| `dist/client/datasole.cjs.js` | CJS | `src/client/index.ts` |
-| `dist/client/datasole-worker.iife.min.js` | IIFE (worker) | `src/client/worker/transport-worker.ts` |
-| `dist/server/index.esm.js` | ESM | `src/server/index.ts` |
-| `dist/server/index.cjs.js` | CJS | `src/server/index.ts` |
+| Artifact                                  | Format            | Entry                                   |
+| ----------------------------------------- | ----------------- | --------------------------------------- |
+| `dist/client/datasole.iife.min.js`        | IIFE (script tag) | `src/client/index.ts`                   |
+| `dist/client/datasole.esm.js`             | ESM               | `src/client/index.ts`                   |
+| `dist/client/datasole.cjs.js`             | CJS               | `src/client/index.ts`                   |
+| `dist/client/datasole-worker.iife.min.js` | IIFE (worker)     | `src/client/worker/transport-worker.ts` |
+| `dist/server/index.esm.js`                | ESM               | `src/server/index.ts`                   |
+| `dist/server/index.cjs.js`                | CJS               | `src/server/index.ts`                   |
 
 ## Reports
 
 After `npm run gate`, the `reports/` directory contains:
 
-| File | Contents |
-|---|---|
+| File                 | Contents                                                          |
+| -------------------- | ----------------------------------------------------------------- |
 | `build-metrics.json` | Machine-readable: bundle sizes, coverage, e2e results, docs stats |
-| `build-metrics.md` | Human-readable: same data as Markdown tables |
+| `build-metrics.md`   | Human-readable: same data as Markdown tables                      |
 
 CI uploads these as artifacts and prints `build-metrics.md` to the GitHub Actions step summary.
 
@@ -87,13 +87,12 @@ npm publish
 
 ## CI Pipeline
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to `main`:
+GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to `main` and `develop`:
 
-1. Matrix: Node.js 18, 20, 22
+1. Matrix: Node.js 22 (LTS), 24 (latest)
 2. `npm ci`
 3. `npx playwright install --with-deps chromium`
 4. `npm run gate` (the full quality pipeline)
 5. Upload `reports/`, `coverage/`, `docs-site/dist/` as artifacts
 6. Print `build-metrics.md` to step summary
-
-A separate workflow (`.github/workflows/docs.yml`) deploys the docs site to GitHub Pages after CI passes on `main`.
+7. Deploy docs site to GitHub Pages (on push to `main`/`develop`, from the Node 24 job)

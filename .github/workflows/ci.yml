@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [20, 22]
+        node-version: [22, 24]
     steps:
       - uses: actions/checkout@v4
 
@@ -80,7 +80,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload coverage
-        if: matrix.node-version == 22
+        if: matrix.node-version == 24
         uses: actions/upload-artifact@v4
         with:
           name: coverage
@@ -88,7 +88,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload docs site
-        if: matrix.node-version == 22
+        if: matrix.node-version == 24
         uses: actions/upload-artifact@v4
         with:
           name: docs-site

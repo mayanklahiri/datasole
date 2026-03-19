@@ -92,7 +92,7 @@ The server owns the data, diffs it on mutation, and broadcasts patches. The clie
 
 **Observability** — Prometheus and OpenTelemetry metric exporters for connection counts, message rates, latencies, and error rates.
 
-**Compatibility** — Works with React, Vue 3, Svelte, React Native, and vanilla JS on the frontend. Express, NestJS, Fastify, and native `http.createServer()` on the backend. Published as a single npm package with ESM, CJS, and IIFE bundles, `.d.ts` declarations on every export, and `typesVersions` for older TypeScript.
+**Compatibility** — Requires **Node.js >= 22** (CI-tested on Node 22 LTS and Node 24). Works with React, Vue 3, Svelte, React Native, and vanilla JS on the frontend. Express, NestJS, Fastify, and native `http.createServer()` on the backend. Published as a single npm package with ESM, CJS, and IIFE bundles, `.d.ts` declarations on every export, and `typesVersions` for older TypeScript.
 
 ## Architecture
 

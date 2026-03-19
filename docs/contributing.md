@@ -8,6 +8,8 @@ description: Development setup, quality gate, build commands, and PR guidelines.
 
 ## Setup
 
+Requires **Node.js 22 or later** (tested on Node 22 LTS and Node 24).
+
 ```bash
 git clone https://github.com/mayanklahiri/datasole.git
 cd datasole
@@ -27,17 +29,17 @@ npm run gate
 
 It runs the following pipeline, in order, and stops on the first failure:
 
-| Step | Command | What it checks |
-|---|---|---|
-| 1. Clean | `clean` | Remove all build artifacts |
-| 2. Format | `format:check` | Prettier formatting |
-| 3. Lint | `lint` | ESLint + TypeScript (`tsc --noEmit`) |
-| 4. Build | `build` | Rollup multi-target bundles (6 outputs) |
-| 5. Unit tests | `test --coverage` | Vitest + v8 coverage |
-| 6. E2E tests | `test:e2e` | Playwright + headless Chromium + production bundle |
-| 7. Metrics | `collect-metrics` | Bundle sizes, coverage, e2e results → `reports/` |
-| 8. Docs | `docs:build` | Generate static documentation site |
-| 9. Summary | `gate:summary` | Print pass/fail with statistics |
+| Step          | Command           | What it checks                                     |
+| ------------- | ----------------- | -------------------------------------------------- |
+| 1. Clean      | `clean`           | Remove all build artifacts                         |
+| 2. Format     | `format:check`    | Prettier formatting                                |
+| 3. Lint       | `lint`            | ESLint + TypeScript (`tsc --noEmit`)               |
+| 4. Build      | `build`           | Rollup multi-target bundles (6 outputs)            |
+| 5. Unit tests | `test --coverage` | Vitest + v8 coverage                               |
+| 6. E2E tests  | `test:e2e`        | Playwright + headless Chromium + production bundle |
+| 7. Metrics    | `collect-metrics` | Bundle sizes, coverage, e2e results → `reports/`   |
+| 8. Docs       | `docs:build`      | Generate static documentation site                 |
+| 9. Summary    | `gate:summary`    | Print pass/fail with statistics                    |
 
 On success, the gate prints a summary with bundle sizes, coverage percentages, doc page counts, and a `GATE PASSED` status.
 
@@ -45,27 +47,27 @@ On success, the gate prints a summary with bundle sizes, coverage percentages, d
 
 ### When the gate runs automatically
 
-| Trigger | What runs | How |
-|---|---|---|
-| **Pre-commit** | Format + lint staged files | `lint-staged` via husky |
-| **Pre-push** | Full quality gate | `npm run gate` via husky |
-| **CI** | Full quality gate | GitHub Actions on push/PR to `main` |
-| **Publish** | Full quality gate | `prepublishOnly` hook |
+| Trigger        | What runs                  | How                                 |
+| -------------- | -------------------------- | ----------------------------------- |
+| **Pre-commit** | Format + lint staged files | `lint-staged` via husky             |
+| **Pre-push**   | Full quality gate          | `npm run gate` via husky            |
+| **CI**         | Full quality gate          | GitHub Actions on push/PR to `main` |
+| **Publish**    | Full quality gate          | `prepublishOnly` hook               |
 
 ### Quick commands for development
 
-| Command | Description |
-|---|---|
-| `npm run build` | Build all targets (no lint/test) |
-| `npm test` | Run unit tests only |
-| `npm run test:watch` | Unit tests in watch mode |
-| `npm run test:e2e` | E2E tests only (builds first) |
-| `npm run lint` | ESLint + type check only |
-| `npm run format` | Auto-format all files |
-| `npm run format:check` | Check formatting without fixing |
-| `npm run docs:build` | Build docs site only |
-| `npm run docs:preview` | Preview docs site locally |
-| `npm run gate` | **Full quality gate** |
+| Command                | Description                      |
+| ---------------------- | -------------------------------- |
+| `npm run build`        | Build all targets (no lint/test) |
+| `npm test`             | Run unit tests only              |
+| `npm run test:watch`   | Unit tests in watch mode         |
+| `npm run test:e2e`     | E2E tests only (builds first)    |
+| `npm run lint`         | ESLint + type check only         |
+| `npm run format`       | Auto-format all files            |
+| `npm run format:check` | Check formatting without fixing  |
+| `npm run docs:build`   | Build docs site only             |
+| `npm run docs:preview` | Preview docs site locally        |
+| `npm run gate`         | **Full quality gate**            |
 
 ## Learning the Codebase
 
@@ -73,7 +75,7 @@ If you're new to datasole:
 
 1. Read the [Tutorials](tutorials.md) — they show every feature with runnable code
 2. Read the [Architecture](architecture.md) — the learning path diagram shows how concepts connect
-3. Read the [ADRs](decisions.md) — they explain *why* the code is structured this way
+3. Read the [ADRs](decisions.md) — they explain _why_ the code is structured this way
 
 ## Architecture Decisions
 
