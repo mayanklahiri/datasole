@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 
+import { saveScreenshot } from '../helpers/screenshots';
 import { ServerHarness } from '../helpers/server-harness';
 
 const harness = new ServerHarness();
@@ -31,6 +32,7 @@ test.describe('State Sync', () => {
     expect(updates.length).toBeGreaterThan(0);
     expect(updates[0].key).toBe('counter');
 
+    await saveScreenshot(page, 'tutorial-4-state');
     await page.evaluate(() => (window as any).__disconnect());
   });
 });

@@ -10,8 +10,6 @@ Quick-reference examples organized by **what you want to build**. Each is self-c
 
 For step-by-step learning, see the [Tutorials](tutorials.md).
 
-> **Live demos** at [demo.datasole.dev](https://demo.datasole.dev) — every example below has a running instance.
-
 ---
 
 ## By Pattern
@@ -53,8 +51,6 @@ ds.connect();
 const { valid } = await ds.rpc<{ valid: boolean }>('validateEmail', { email: 'a@b.com' });
 const { results } = await ds.rpc<{ results: string[] }>('search', { query: 'datasole' });
 ```
-
-> [demo.datasole.dev/rpc](https://demo.datasole.dev/rpc)
 
 ---
 
@@ -98,8 +94,6 @@ ds.connect();
 ds.on('heartbeat', (data) => console.log('Server heartbeat:', data));
 ds.on('price:update', (data) => console.log(`${data.symbol}: $${data.price}`));
 ```
-
-> [demo.datasole.dev/ticker](https://demo.datasole.dev/ticker)
 
 ---
 
@@ -153,14 +147,20 @@ function Leaderboard() {
   useEffect(() => {
     ds.current.connect();
     ds.current.subscribeState('leaderboard', setBoard);
-    return () => { ds.current.disconnect(); };
+    return () => {
+      ds.current.disconnect();
+    };
   }, []);
 
   return (
     <table>
       <tbody>
         {board.players.map((p, i) => (
-          <tr key={p.name}><td>{i + 1}</td><td>{p.name}</td><td>{p.score}</td></tr>
+          <tr key={p.name}>
+            <td>{i + 1}</td>
+            <td>{p.name}</td>
+            <td>{p.score}</td>
+          </tr>
         ))}
       </tbody>
     </table>
@@ -179,7 +179,9 @@ const board = ref({ players: [], lastUpdated: '' });
 
 onMounted(() => {
   client.connect();
-  client.subscribeState('leaderboard', (s) => { board.value = s; });
+  client.subscribeState('leaderboard', (s) => {
+    board.value = s;
+  });
 });
 onUnmounted(() => client.disconnect());
 </script>
@@ -187,13 +189,13 @@ onUnmounted(() => client.disconnect());
 <template>
   <table>
     <tr v-for="(p, i) in board.players" :key="p.name">
-      <td>{{ i + 1 }}</td><td>{{ p.name }}</td><td>{{ p.score }}</td>
+      <td>{{ i + 1 }}</td>
+      <td>{{ p.name }}</td>
+      <td>{{ p.score }}</td>
     </tr>
   </table>
 </template>
 ```
-
-> [demo.datasole.dev/dashboard](https://demo.datasole.dev/dashboard)
 
 ---
 
@@ -244,8 +246,6 @@ function setField(key: string, value: string) {
 }
 ```
 
-> [demo.datasole.dev/counter](https://demo.datasole.dev/counter)
-
 ---
 
 ### Client → Server RPC + Server → Client Live State (The Common Pattern)
@@ -264,7 +264,11 @@ const http = createServer();
 ds.attach(http);
 http.listen(3000);
 
-interface Todo { id: string; text: string; done: boolean }
+interface Todo {
+  id: string;
+  text: string;
+  done: boolean;
+}
 const todos: Todo[] = [];
 
 async function syncTodos() {
@@ -298,7 +302,11 @@ ds.rpc<{ id: string }, { ok: boolean }>('deleteTodo', async ({ id }) => {
 import { DatasoleClient } from 'datasole/client';
 import { useEffect, useRef, useState } from 'react';
 
-interface Todo { id: string; text: string; done: boolean }
+interface Todo {
+  id: string;
+  text: string;
+  done: boolean;
+}
 
 function TodoApp() {
   const ds = useRef(new DatasoleClient({ url: 'ws://localhost:3000' }));
@@ -308,22 +316,31 @@ function TodoApp() {
   useEffect(() => {
     ds.current.connect();
     ds.current.subscribeState<Todo[]>('todos', setTodos);
-    return () => { ds.current.disconnect(); };
+    return () => {
+      ds.current.disconnect();
+    };
   }, []);
 
   return (
     <div>
       <input value={input} onChange={(e) => setInput(e.target.value)} />
-      <button onClick={async () => {
-        await ds.current.rpc('addTodo', { text: input });
-        setInput('');
-      }}>Add</button>
+      <button
+        onClick={async () => {
+          await ds.current.rpc('addTodo', { text: input });
+          setInput('');
+        }}
+      >
+        Add
+      </button>
 
       <ul>
         {todos.map((t) => (
           <li key={t.id}>
-            <input type="checkbox" checked={t.done}
-              onChange={() => ds.current.rpc('toggleTodo', { id: t.id })} />
+            <input
+              type="checkbox"
+              checked={t.done}
+              onChange={() => ds.current.rpc('toggleTodo', { id: t.id })}
+            />
             <span style={{ textDecoration: t.done ? 'line-through' : 'none' }}>{t.text}</span>
             <button onClick={() => ds.current.rpc('deleteTodo', { id: t.id })}>×</button>
           </li>
@@ -335,8 +352,6 @@ function TodoApp() {
 ```
 
 Note: the client has **zero local state management for todos**. It calls RPCs and subscribes to the live model. The server is the single source of truth. Your React template "just works."
-
-> [demo.datasole.dev/todos](https://demo.datasole.dev/todos)
 
 ---
 

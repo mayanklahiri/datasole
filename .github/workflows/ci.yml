@@ -93,7 +93,7 @@ jobs:
         with:
           name: docs-site
           path: docs-site/dist/
-          if-no-files-found: ignore
+          if-no-files-found: warn
 
   deploy-docs:
     needs: gate

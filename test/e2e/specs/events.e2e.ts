@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 import { captureConsoleLogs, hasErrors } from '../helpers/console-capture';
+import { saveScreenshot } from '../helpers/screenshots';
 import { ServerHarness } from '../helpers/server-harness';
 
 const harness = new ServerHarness();
@@ -35,6 +36,7 @@ test.describe('Events', () => {
     expect(events[0].data).toEqual({ msg: 'hello from server' });
     expect(hasErrors(logs)).toBe(false);
 
+    await saveScreenshot(page, 'tutorial-3-events');
     await page.evaluate(() => (window as any).__disconnect());
   });
 

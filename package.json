@@ -56,13 +56,14 @@
     "lint": "eslint 'src/**/*.ts' 'test/unit/**/*.ts' && tsc --noEmit",
     "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts' '*.json' '*.mjs'",
     "format:check": "prettier --check 'src/**/*.ts' 'test/**/*.ts' '*.json' '*.mjs'",
-    "clean": "rm -rf dist/ reports/ coverage/ docs-site/dist/",
+    "clean": "rm -rf dist/ reports/ coverage/ docs-site/dist/ docs/.vitepress/cache/",
     "gate": "npm run clean && npm run format:check && npm run lint && npm run build && npm run test -- --coverage && npm run test:e2e && npm run collect-metrics && npm run docs:build && npm run gate:summary",
     "gate:summary": "tsx build/gate-summary.ts",
     "dist": "npm run gate",
     "collect-metrics": "tsx build/collect-metrics.ts",
-    "docs:build": "tsx docs-site/build/generate-site.ts",
-    "docs:preview": "DOCS_BASE_PATH= tsx docs-site/build/generate-site.ts && npx serve docs-site/dist",
+    "docs:build": "vitepress build docs",
+    "docs:dev": "vitepress dev docs",
+    "docs:preview": "vitepress preview docs",
     "prepublishOnly": "npm run gate",
     "prepare": "husky && npx playwright install chromium || true"
   },
@@ -143,6 +144,7 @@
     "tsx": "^4.19.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.1",
+    "vitepress": "^1.6.4",
     "vitest": "^4.1.0"
   },
   "peerDependencies": {

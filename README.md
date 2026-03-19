@@ -151,16 +151,33 @@ All bundles include their runtime dependencies (pako, fast-json-patch). The serv
 
 A browser downloads the client IIFE (**20.9 KB** gzip) and the worker (**14.7 KB** gzip) for a total of **35.6 KB** — that includes compression, binary framing, JSON Patch diffing, CRDTs, and the Web Worker transport.
 
+## How datasole compares
+
+| Capability                     |   datasole   |   Socket.IO    |      Ably      |     Pusher     | Liveblocks |    PartyKit     |
+| ------------------------------ | :----------: | :------------: | :------------: | :------------: | :--------: | :-------------: |
+| Self-hosted / open source      | ✓ Apache 2.0 |     ✓ MIT      |    Managed     |    Managed     |  Managed   |   Cloudflare    |
+| Web Worker transport           |      ✓       |       —        |       —        |       —        |     —      |        —        |
+| Binary frames + compression    |   ✓ always   |     Opt-in     |       ✓        |       —        |     —      |        —        |
+| JSON Patch state sync          |  ✓ RFC 6902  |       —        |       —        |       —        |     —      |        —        |
+| Built-in CRDTs                 | ✓ LWW/PN/Map |       —        |       —        |       —        | ✓ LiveMap  |     Via Yjs     |
+| Typed RPC (multiplexed)        |      ✓       |       —        |       —        |       —        |     —      |        —        |
+| Server concurrency models      |      4       |   1 (async)    |      N/A       |      N/A       |    N/A     | Durable Objects |
+| Frame-level rate limiting      |      ✓       |       —        |    Managed     |    Managed     |  Managed   |        —        |
+| Sync channels (batch/debounce) |      ✓       |       —        |       —        |       —        |     —      |        —        |
+| Session persistence            |      ✓       |       —        |       —        |       —        |     ✓      |   Via storage   |
+| Client bundle (gzip)           |   35.6 KB    |    11–15 KB    |     ~31 KB     |     ~14 KB     |  ~50 KB+   |     varies      |
+| Strict TypeScript end-to-end   |      ✓       | Types included | Types included | Types included |     ✓      |        ✓        |
+
+datasole is the right choice when you need full infrastructure control, main-thread performance via Web Worker transport, and built-in state synchronization with CRDTs — without vendor lock-in or per-message pricing. For a detailed breakdown, see [the comparison page](https://mayanklahiri.github.io/datasole/comparison).
+
 ## Test coverage
 
-The quality gate runs on every push and enforces:
+The quality gate (`npm run gate`) runs on every push and enforces:
 
-- **122 unit tests** across 26 test files (Vitest, v8 coverage)
-- **13 end-to-end tests** across 5 spec files (Playwright, headless Chromium, production IIFE bundle)
-- Coverage thresholds: 45% lines, 40% branches, 35% functions, 45% statements
-- E2E tests exercise the full stack: a real `DatasoleServer` with `ws`, a real browser loading the IIFE bundle, WebSocket connections, RPC calls, state sync patches, bidirectional events, and auth token validation
-
-The gate also validates formatting (Prettier), linting (ESLint flat config + `tsc --noEmit`), bundle builds, `.d.ts` emission, metrics collection, and docs site generation — `npm run gate` runs everything in sequence.
+- **122 unit tests** across 26 test files (Vitest, v8 coverage) plus e2e tests across 8 spec files (Playwright, headless Chromium, production IIFE bundle)
+- E2e tests cover all tutorial patterns: connection, RPC, server events, state sync, auth, CRDTs, sessions, and the combined task board
+- Coverage thresholds enforced: 45% lines, 40% branches, 35% functions, 45% statements
+- Formatting (Prettier), linting (ESLint flat config + `tsc --noEmit`), bundle builds, `.d.ts` emission, metrics collection, docs site generation (VitePress), and screenshot capture from e2e runs
 
 ## Tutorial
 
@@ -181,17 +198,19 @@ The [tutorial](docs/tutorials.md) is structured as a progressive series that bui
 
 ## Documentation
 
-| Document                                 | Contents                                |
-| ---------------------------------------- | --------------------------------------- |
-| **[Tutorials](docs/tutorials.md)**       | Progressive 10-step guide               |
-| **[Examples](docs/examples.md)**         | Copy-paste recipes organized by pattern |
-| [Client API](docs/client.md)             | All client methods and options          |
-| [Server API](docs/server.md)             | All server methods and options          |
-| [Architecture](docs/architecture.md)     | Wire protocol, diagrams, data flow      |
-| [State Backends](docs/state-backends.md) | Memory, Redis, Postgres configuration   |
-| [Metrics](docs/metrics.md)               | Prometheus and OpenTelemetry setup      |
-| [Decisions](docs/decisions.md)           | Architecture Decision Records           |
-| [Contributing](docs/contributing.md)     | Dev setup, commands, PR guidelines      |
+| Document                                 | Contents                                        |
+| ---------------------------------------- | ----------------------------------------------- |
+| **[Tutorials](docs/tutorials.md)**       | Progressive 10-step guide with e2e screenshots  |
+| **[Examples](docs/examples.md)**         | Copy-paste recipes organized by pattern         |
+| **[Integrations](docs/integrations.md)** | React, Vue, Next.js, Express, NestJS, AdonisJS  |
+| **[Comparison](docs/comparison.md)**     | Feature matrix vs Socket.IO, Ably, Pusher, etc. |
+| [Client API](docs/client.md)             | All client methods and options                  |
+| [Server API](docs/server.md)             | All server methods and options                  |
+| [Architecture](docs/architecture.md)     | Wire protocol, diagrams, data flow              |
+| [State Backends](docs/state-backends.md) | Memory, Redis, Postgres configuration           |
+| [Metrics](docs/metrics.md)               | Prometheus and OpenTelemetry setup              |
+| [Decisions](docs/decisions.md)           | Architecture Decision Records                   |
+| [Contributing](docs/contributing.md)     | Dev setup, commands, PR guidelines              |
 
 For AI coding agents, see [AGENTS.md](AGENTS.md) — it covers the quality gate, coding conventions, and ADR workflow.
 

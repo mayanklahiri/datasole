@@ -64,6 +64,68 @@
       });
     };
 
+    // --- CRDT helpers ---
+    window.__crdtStore = null;
+    window.__crdtValues = {};
+
+    window.__initCrdt = function(nodeId) {
+      window.__crdtStore = new Datasole.CrdtStore(nodeId || 'test-client');
+      window.__crdtStore.register('counter', 'pn-counter');
+      window.__client.on('crdt:state', function(payload) {
+        window.__crdtStore.mergeRemoteState('counter', payload.data);
+        var c = window.__crdtStore.get('counter');
+        window.__crdtValues.counter = c ? c.value() : 0;
+      });
+    };
+
+    window.__crdtIncrement = function() {
+      var c = window.__crdtStore.get('counter');
+      var op = c.increment();
+      window.__client.emit('crdt:op', op);
+      window.__crdtValues.counter = c.value();
+      return c.value();
+    };
+
+    window.__crdtDecrement = function() {
+      var c = window.__crdtStore.get('counter');
+      var op = c.decrement();
+      window.__client.emit('crdt:op', op);
+      window.__crdtValues.counter = c.value();
+      return c.value();
+    };
+
+    window.__crdtGetValue = function() {
+      var c = window.__crdtStore ? window.__crdtStore.get('counter') : null;
+      return c ? c.value() : 0;
+    };
+
+    // --- Session helpers ---
+    window.__saveProgress = async function(level, score) {
+      return await window.__client.rpc('saveProgress', { level: level, score: score });
+    };
+
+    window.__getProgress = async function() {
+      return await window.__client.rpc('getProgress');
+    };
+
+    // --- Task board helpers ---
+    window.__boardState = null;
+
+    window.__subscribeBoard = function() {
+      window.__client.subscribeState('board', function(state) {
+        window.__boardState = state;
+        document.getElementById('state-data').textContent = JSON.stringify(state);
+      });
+    };
+
+    window.__addTask = async function(title) {
+      return await window.__client.rpc('addTask', { title: title });
+    };
+
+    window.__moveTask = async function(taskId, column) {
+      return await window.__client.rpc('moveTask', { taskId: taskId, column: column });
+    };
+
     window.__disconnect = async function() {
       if (window.__client) {
         await window.__client.disconnect();

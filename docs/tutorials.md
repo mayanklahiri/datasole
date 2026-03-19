@@ -8,8 +8,7 @@ description: Learn datasole step by step — from a 10-line hello world to a pro
 
 Each tutorial builds on the one before it. Start at the top, and by the end you'll have used every major feature. Every example is a **complete, runnable** server + client pair.
 
-> **Live demos** — Each tutorial has a live version running at `demo.datasole.dev`.
-> Open your browser console and follow along.
+Each tutorial includes screenshots from the automated e2e test suite, captured against a real server running the production bundle in headless Chromium.
 
 ---
 
@@ -44,7 +43,7 @@ http.listen(3000, () => console.log('listening on :3000'));
 
 That's it. No config, no adapters, no plugins. The server listens for WebSocket upgrades on `/__ds`, the client connects, and the binary handshake completes in the Web Worker.
 
-> **Live:** [demo.datasole.dev/hello](https://demo.datasole.dev/hello) — open DevTools → Console
+![Tutorial 1: Connection established](/screenshots/tutorial-1-connection.png)
 
 ---
 
@@ -102,7 +101,9 @@ function Calculator() {
 
   useEffect(() => {
     ds.current.connect();
-    return () => { ds.current.disconnect(); };
+    return () => {
+      ds.current.disconnect();
+    };
   }, []);
 
   const add = async (a: number, b: number) => {
@@ -119,7 +120,7 @@ function Calculator() {
 }
 ```
 
-> **Live:** [demo.datasole.dev/rpc](https://demo.datasole.dev/rpc) — type numbers, click "Add", see the response
+![Tutorial 2: RPC call result](/screenshots/tutorial-2-rpc.png)
 
 ---
 
@@ -193,7 +194,7 @@ onUnmounted(() => client.disconnect());
 
 This is the simplest possible pattern for one-way server pushes: dashboards, notifications, live feeds. The client never asks — the server just broadcasts whenever it has something.
 
-> **Live:** [demo.datasole.dev/ticker](https://demo.datasole.dev/ticker) — watch the price update in real-time
+![Tutorial 3: Server broadcast event](/screenshots/tutorial-3-events.png)
 
 ---
 
@@ -251,7 +252,9 @@ function LiveDashboard() {
   useEffect(() => {
     ds.current.connect();
     ds.current.subscribeState<Dashboard>('dashboard', setData);
-    return () => { ds.current.disconnect(); };
+    return () => {
+      ds.current.disconnect();
+    };
   }, []);
 
   if (!data) return <p>Connecting...</p>;
@@ -302,7 +305,7 @@ onUnmounted(() => client.disconnect());
 
 Notice: no event handlers, no state reducers, no polling. The `subscribeState` callback fires every time the server calls `setState` — and only the diff is sent over the wire.
 
-> **Live:** [demo.datasole.dev/dashboard](https://demo.datasole.dev/dashboard) — watch all four numbers change in real-time
+![Tutorial 4: Live state sync](/screenshots/tutorial-4-state.png)
 
 ---
 
@@ -340,7 +343,7 @@ ds.on<{ text: string }>('chat:message', (data) => {
   // ctx.connection gives you the sender's identity
   // Broadcast to all connected clients
   ds.broadcast('chat:message', {
-    from: 'server',  // In full impl, this comes from ctx
+    from: 'server', // In full impl, this comes from ctx
     text: data.text,
     timestamp: Date.now(),
   });
@@ -394,10 +397,12 @@ interface ChatMessage {
 }
 
 function ChatRoom({ username }: { username: string }) {
-  const ds = useRef(new DatasoleClient({
-    url: 'ws://localhost:3000',
-    auth: { headers: { 'x-username': username } },
-  }));
+  const ds = useRef(
+    new DatasoleClient({
+      url: 'ws://localhost:3000',
+      auth: { headers: { 'x-username': username } },
+    }),
+  );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
 
@@ -406,7 +411,9 @@ function ChatRoom({ username }: { username: string }) {
     ds.current.on<ChatMessage>('chat:message', (msg) => {
       setMessages((prev) => [...prev, msg]);
     });
-    return () => { ds.current.disconnect(); };
+    return () => {
+      ds.current.disconnect();
+    };
   }, []);
 
   const send = () => {
@@ -416,15 +423,19 @@ function ChatRoom({ username }: { username: string }) {
 
   return (
     <div>
-      <div>{messages.map((m, i) => <p key={i}>[{m.from}] {m.text}</p>)}</div>
+      <div>
+        {messages.map((m, i) => (
+          <p key={i}>
+            [{m.from}] {m.text}
+          </p>
+        ))}
+      </div>
       <input value={input} onChange={(e) => setInput(e.target.value)} />
       <button onClick={send}>Send</button>
     </div>
   );
 }
 ```
-
-> **Live:** [demo.datasole.dev/chat](https://demo.datasole.dev/chat) — open in two tabs, chat with yourself
 
 ---
 
@@ -486,14 +497,16 @@ function SharedCounter() {
       setCount(counter.value());
     });
 
-    return () => { ds.current.disconnect(); };
+    return () => {
+      ds.current.disconnect();
+    };
   }, []);
 
   const increment = () => {
     const counter = store.current.get<PNCounter>('votes')!;
     const op = counter.increment();
-    ds.current.emit('crdt:op', op);  // Send to server
-    setCount(counter.value());        // Optimistic local update
+    ds.current.emit('crdt:op', op); // Send to server
+    setCount(counter.value()); // Optimistic local update
   };
 
   const decrement = () => {
@@ -514,7 +527,7 @@ function SharedCounter() {
 }
 ```
 
-> **Live:** [demo.datasole.dev/counter](https://demo.datasole.dev/counter) — open in 3+ tabs, click buttons, watch convergence
+![Tutorial 6: CRDT shared counter](/screenshots/tutorial-6-crdt.png)
 
 ---
 
@@ -563,17 +576,17 @@ const search = ds.createSyncChannel({
 
 // Simulate high-frequency metric updates
 setInterval(() => {
-  metrics.enqueue([{
-    op: 'replace',
-    path: '/cpu',
-    value: Math.random() * 100,
-  }]);
-}, 50);  // 20 updates/sec, but client sees batched flushes every 200ms
+  metrics.enqueue([
+    {
+      op: 'replace',
+      path: '/cpu',
+      value: Math.random() * 100,
+    },
+  ]);
+}, 50); // 20 updates/sec, but client sees batched flushes every 200ms
 ```
 
 The same server can mix immediate, batched, and debounced channels on different keys — each tuned for its use case.
-
-> **Live:** [demo.datasole.dev/sync](https://demo.datasole.dev/sync) — compare update rates of all three channels side-by-side
 
 ---
 
@@ -599,8 +612,8 @@ const ds = new DatasoleServer({
     return userId ? { authenticated: true, userId } : { authenticated: false };
   },
   session: {
-    flushThreshold: 5,      // Persist after 5 mutations
-    flushIntervalMs: 3000,  // Or every 3 seconds
+    flushThreshold: 5, // Persist after 5 mutations
+    flushIntervalMs: 3000, // Or every 3 seconds
   },
 });
 
@@ -608,24 +621,18 @@ const http = createServer(app);
 ds.attach(http);
 
 // RPC: save user progress (stored in session, auto-flushed to backend)
-ds.rpc<{ level: number; score: number }, { ok: boolean }>(
-  'saveProgress',
-  async (params, ctx) => {
-    ds.setSessionValue(ctx.connection.userId!, 'level', params.level);
-    ds.setSessionValue(ctx.connection.userId!, 'score', params.score);
-    return { ok: true };
-  },
-);
+ds.rpc<{ level: number; score: number }, { ok: boolean }>('saveProgress', async (params, ctx) => {
+  ds.setSessionValue(ctx.connection.userId!, 'level', params.level);
+  ds.setSessionValue(ctx.connection.userId!, 'score', params.score);
+  return { ok: true };
+});
 
 // RPC: get user progress (restored from persistence on reconnect)
-ds.rpc<void, { level: number; score: number }>(
-  'getProgress',
-  async (_params, ctx) => {
-    const level = ds.getSessionValue<number>(ctx.connection.userId!, 'level') ?? 1;
-    const score = ds.getSessionValue<number>(ctx.connection.userId!, 'score') ?? 0;
-    return { level, score };
-  },
-);
+ds.rpc<void, { level: number; score: number }>('getProgress', async (_params, ctx) => {
+  const level = ds.getSessionValue<number>(ctx.connection.userId!, 'level') ?? 1;
+  const score = ds.getSessionValue<number>(ctx.connection.userId!, 'score') ?? 0;
+  return { level, score };
+});
 
 // Listen for session changes (e.g., for a leaderboard)
 ds.onSessionChange((userId, key, value, version) => {
@@ -642,10 +649,12 @@ import { DatasoleClient } from 'datasole/client';
 import { useEffect, useRef, useState } from 'react';
 
 function Game({ userId }: { userId: string }) {
-  const ds = useRef(new DatasoleClient({
-    url: 'ws://localhost:3000',
-    auth: { headers: { 'x-user-id': userId } },
-  }));
+  const ds = useRef(
+    new DatasoleClient({
+      url: 'ws://localhost:3000',
+      auth: { headers: { 'x-user-id': userId } },
+    }),
+  );
   const [level, setLevel] = useState(1);
   const [score, setScore] = useState(0);
 
@@ -658,7 +667,9 @@ function Game({ userId }: { userId: string }) {
       setScore(p.score);
     });
 
-    return () => { ds.current.disconnect(); };
+    return () => {
+      ds.current.disconnect();
+    };
   }, []);
 
   const completeLevel = async () => {
@@ -671,7 +682,9 @@ function Game({ userId }: { userId: string }) {
 
   return (
     <div>
-      <h1>Level {level} — Score {score}</h1>
+      <h1>
+        Level {level} — Score {score}
+      </h1>
       <button onClick={completeLevel}>Complete Level</button>
       <p>Close this tab and reopen it — your progress persists.</p>
     </div>
@@ -679,7 +692,7 @@ function Game({ userId }: { userId: string }) {
 }
 ```
 
-> **Live:** [demo.datasole.dev/session](https://demo.datasole.dev/session) — complete a few levels, close the tab, reopen
+![Tutorial 8: Session persistence](/screenshots/tutorial-8-sessions.png)
 
 ---
 
@@ -780,14 +793,14 @@ Because datasole's concurrency model keeps no shared mutable state in the main p
 
 ### Concurrency model cheat sheet
 
-| Model | Use case | Overhead |
-|---|---|---|
-| `async` | Chat, notifications (I/O-bound) | Lowest — single event loop |
-| `thread` | Per-connection game logic (CPU-bound) | Medium — one `worker_thread` per connection |
-| `thread-pool` | **Default.** General-purpose. | Low–medium — fixed thread pool |
-| `process` | Multi-tenant isolation, untrusted code | Highest — one `child_process` per connection |
+| Model         | Use case                               | Overhead                                     |
+| ------------- | -------------------------------------- | -------------------------------------------- |
+| `async`       | Chat, notifications (I/O-bound)        | Lowest — single event loop                   |
+| `thread`      | Per-connection game logic (CPU-bound)  | Medium — one `worker_thread` per connection  |
+| `thread-pool` | **Default.** General-purpose.          | Low–medium — fixed thread pool               |
+| `process`     | Multi-tenant isolation, untrusted code | Highest — one `child_process` per connection |
 
-> **Live:** [demo.datasole.dev/production](https://demo.datasole.dev/production) — a Redis-backed, clustered instance running the dashboard from Tutorial 4
+<!-- Tutorial 9 covers production deployment with Redis and pm2 — no standalone e2e demo. -->
 
 ---
 
@@ -800,6 +813,7 @@ Because datasole's concurrency model keeps no shared mutable state in the main p
 **Building on:** All previous tutorials
 
 This is a simplified Trello-like board where:
+
 - The board state is a **live server→client data structure** (JSON Patch)
 - Adding/moving tasks uses **RPC** (server validates, updates state, clients see the diff)
 - User presence ("who's online") uses **CRDT counters** (bidirectional, conflict-free)
@@ -833,8 +847,16 @@ const http = createServer(app);
 ds.attach(http);
 
 // ------ Live State: the board ------
-interface Task { id: string; title: string; column: string; assignee?: string }
-interface Board { tasks: Task[]; columns: string[] }
+interface Task {
+  id: string;
+  title: string;
+  column: string;
+  assignee?: string;
+}
+interface Board {
+  tasks: Task[];
+  columns: string[];
+}
 
 const board: Board = {
   columns: ['todo', 'in-progress', 'done'],
@@ -891,14 +913,23 @@ import { DatasoleClient, CrdtStore } from 'datasole/client';
 import { PNCounter } from 'datasole';
 import { useEffect, useRef, useState } from 'react';
 
-interface Task { id: string; title: string; column: string }
-interface Board { tasks: Task[]; columns: string[] }
+interface Task {
+  id: string;
+  title: string;
+  column: string;
+}
+interface Board {
+  tasks: Task[];
+  columns: string[];
+}
 
 function TaskBoard({ username }: { username: string }) {
-  const ds = useRef(new DatasoleClient({
-    url: 'ws://localhost:3000',
-    auth: { headers: { 'x-username': username } },
-  }));
+  const ds = useRef(
+    new DatasoleClient({
+      url: 'ws://localhost:3000',
+      auth: { headers: { 'x-username': username } },
+    }),
+  );
   const [board, setBoard] = useState<Board>({ tasks: [], columns: [] });
   const [online, setOnline] = useState(0);
   const [messages, setMessages] = useState<string[]>([]);
@@ -952,28 +983,38 @@ function TaskBoard({ username }: { username: string }) {
         {board.columns.map((col) => (
           <div key={col} style={{ flex: 1 }}>
             <h2>{col}</h2>
-            {board.tasks.filter((t) => t.column === col).map((task) => (
-              <div key={task.id} style={{ padding: '0.5rem', border: '1px solid #ccc' }}>
-                <p>{task.title}</p>
-                {board.columns.filter((c) => c !== col).map((target) => (
-                  <button key={target} onClick={() => moveTask(task.id, target)}>
-                    → {target}
-                  </button>
-                ))}
-              </div>
-            ))}
+            {board.tasks
+              .filter((t) => t.column === col)
+              .map((task) => (
+                <div key={task.id} style={{ padding: '0.5rem', border: '1px solid #ccc' }}>
+                  <p>{task.title}</p>
+                  {board.columns
+                    .filter((c) => c !== col)
+                    .map((target) => (
+                      <button key={target} onClick={() => moveTask(task.id, target)}>
+                        → {target}
+                      </button>
+                    ))}
+                </div>
+              ))}
           </div>
         ))}
       </div>
 
       <div style={{ marginTop: '1rem' }}>
-        <input value={newTask} onChange={(e) => setNewTask(e.target.value)} placeholder="New task..." />
+        <input
+          value={newTask}
+          onChange={(e) => setNewTask(e.target.value)}
+          placeholder="New task..."
+        />
         <button onClick={addTask}>Add</button>
       </div>
 
       <div style={{ marginTop: '1rem' }}>
         <h3>Chat</h3>
-        {messages.map((m, i) => <p key={i}>{m}</p>)}
+        {messages.map((m, i) => (
+          <p key={i}>{m}</p>
+        ))}
       </div>
     </div>
   );
@@ -981,41 +1022,25 @@ function TaskBoard({ username }: { username: string }) {
 ```
 
 This single page uses **five datasole patterns simultaneously**:
+
 1. **RPC** — `addTask`, `moveTask`
 2. **Server→client live state** — the board, synced via JSON Patch
 3. **Bidirectional events** — chat messages
 4. **CRDT** — online user count, conflict-free across tabs
 5. **Session persistence** — user's board view survives reconnection
 
-> **Live:** [demo.datasole.dev/taskboard](https://demo.datasole.dev/taskboard) — the full demo, open in multiple tabs
+![Tutorial 10: Task board](/screenshots/tutorial-10-taskboard.png)
 
 ---
 
 ## What to Read Next
 
-| You want to... | Read |
-|---|---|
-| Understand the binary protocol | [Architecture](architecture.md) |
-| See every client method | [Client API](client.md) |
-| See every server method | [Server API](server.md) |
-| Swap to Redis or Postgres | [State Backends](state-backends.md) |
-| Set up Prometheus/OpenTelemetry | [Metrics](metrics.md) |
-| Understand why decisions were made | [ADRs](decisions.md) |
-| Contribute | [Contributing](contributing.md) |
-
-## Live Demo Index
-
-All demos run on a single datasole server at `demo.datasole.dev`.
-
-| Demo | Pattern | URL |
-|---|---|---|
-| Hello World | Connection | [demo.datasole.dev/hello](https://demo.datasole.dev/hello) |
-| Calculator | RPC | [demo.datasole.dev/rpc](https://demo.datasole.dev/rpc) |
-| Stock Ticker | Server events | [demo.datasole.dev/ticker](https://demo.datasole.dev/ticker) |
-| Dashboard | Live state | [demo.datasole.dev/dashboard](https://demo.datasole.dev/dashboard) |
-| Chat Room | Client events + auth | [demo.datasole.dev/chat](https://demo.datasole.dev/chat) |
-| Shared Counter | CRDT | [demo.datasole.dev/counter](https://demo.datasole.dev/counter) |
-| Sync Channels | Flush strategies | [demo.datasole.dev/sync](https://demo.datasole.dev/sync) |
-| Game Session | Session persistence | [demo.datasole.dev/session](https://demo.datasole.dev/session) |
-| Production Config | Thread pool + Redis | [demo.datasole.dev/production](https://demo.datasole.dev/production) |
-| Task Board | All patterns combined | [demo.datasole.dev/taskboard](https://demo.datasole.dev/taskboard) |
+| You want to...                     | Read                                |
+| ---------------------------------- | ----------------------------------- |
+| Understand the binary protocol     | [Architecture](architecture.md)     |
+| See every client method            | [Client API](client.md)             |
+| See every server method            | [Server API](server.md)             |
+| Swap to Redis or Postgres          | [State Backends](state-backends.md) |
+| Set up Prometheus/OpenTelemetry    | [Metrics](metrics.md)               |
+| Understand why decisions were made | [ADRs](decisions.md)                |
+| Contribute                         | [Contributing](contributing.md)     |

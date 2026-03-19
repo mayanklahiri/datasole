@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 
 import { captureConsoleLogs, hasErrors } from '../helpers/console-capture';
 import { collectPerfMetrics, savePerfMetrics } from '../helpers/perf-metrics';
+import { saveScreenshot } from '../helpers/screenshots';
 import { ServerHarness } from '../helpers/server-harness';
 
 const harness = new ServerHarness();
@@ -37,6 +38,7 @@ test('connects to WebSocket server', async ({ page }) => {
   expect(connectionState).toBe('connected');
   expect(hasErrors(logs)).toBe(false);
 
+  await saveScreenshot(page, 'tutorial-1-connection');
   await page.evaluate(() => (window as any).__disconnect());
   const disconnectedState = await page.evaluate(() => (window as any).__getConnectionState());
   expect(disconnectedState).toBe('disconnected');

@@ -1,6 +1,7 @@
 # Build outputs
 dist/
 docs-site/dist/
+docs/.vitepress/cache/
 
 # Dependencies
 node_modules/

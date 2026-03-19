@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 import { captureConsoleLogs, hasErrors } from '../helpers/console-capture';
+import { saveScreenshot } from '../helpers/screenshots';
 import { ServerHarness } from '../helpers/server-harness';
 
 const harness = new ServerHarness();
@@ -34,6 +35,7 @@ test.describe('RPC', () => {
   test('add RPC returns computed sum', async ({ page }) => {
     const result = await page.evaluate(() => (window as any).__rpc('add', { a: 3, b: 7 }));
     expect(result).toEqual({ sum: 10 });
+    await saveScreenshot(page, 'tutorial-2-rpc');
   });
 
   test('concurrent RPC calls', async ({ page }) => {
