@@ -13,6 +13,9 @@ concurrency:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+permissions:
+  contents: write
+
 jobs:
   gate:
     runs-on: ubuntu-latest
@@ -91,3 +94,31 @@ jobs:
           name: docs-site
           path: docs-site/dist/
           if-no-files-found: ignore
+
+  deploy-docs:
+    needs: gate
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: deploy-docs
+      cancel-in-progress: false
+    steps:
+      - name: Download docs site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docs-site
+          path: _site/
+
+      - name: Add .nojekyll
+        run: touch _site/.nojekyll
+
+      - name: Deploy to gh-pages branch
+        run: |
+          cd _site
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "docs: deploy from ${GITHUB_SHA::8}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:gh-pages
