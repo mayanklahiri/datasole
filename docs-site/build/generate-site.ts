@@ -170,6 +170,8 @@ function main() {
     `);
   writeFileSync(join(DIST, 'index.html'), indexHtml);
 
+  writeFileSync(join(DIST, '.nojekyll'), '');
+
   console.log(`Docs site generated: ${pages.length} pages + dashboard → ${DIST}`);
 }
 

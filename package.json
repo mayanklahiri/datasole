@@ -62,9 +62,9 @@
     "dist": "npm run gate",
     "collect-metrics": "tsx build/collect-metrics.ts",
     "docs:build": "tsx docs-site/build/generate-site.ts",
-    "docs:preview": "npx serve docs-site/dist",
+    "docs:preview": "DOCS_BASE_PATH= tsx docs-site/build/generate-site.ts && npx serve docs-site/dist",
     "prepublishOnly": "npm run gate",
-    "prepare": "husky"
+    "prepare": "husky && npx playwright install chromium || true"
   },
   "lint-staged": {
     "src/**/*.ts": [
