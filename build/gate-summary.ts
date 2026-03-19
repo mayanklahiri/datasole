@@ -7,12 +7,23 @@ const DIST = join(ROOT, 'dist');
 const REPORTS = join(ROOT, 'reports');
 const DOCS_DIST = join(ROOT, 'docs-site', 'dist');
 const COVERAGE = join(ROOT, 'coverage');
+const E2E_REPORTS = join(ROOT, 'test', 'e2e', 'reports');
+const PLAYWRIGHT_RESULTS = join(E2E_REPORTS, 'playwright-results.json');
+
+/** Must match vitest.config.ts coverage.thresholds */
+const COVERAGE_THRESHOLDS = {
+  lines: 45,
+  functions: 35,
+  branches: 40,
+  statements: 45,
+} as const;
 
 interface GateResult {
   pass: boolean;
   bundles: { file: string; raw: number; gzip: number }[];
   tests: { total: number; passed: number; failed: number; todo: number } | null;
   coverage: { lines: number; branches: number; functions: number; statements: number } | null;
+  coverageThresholdOk: boolean | null;
   docs: { pages: number; totalSize: number } | null;
   e2e: { total: number; passed: number; failed: number } | null;
 }
@@ -40,7 +51,9 @@ function collectBundles(): GateResult['bundles'] {
           });
         }
       }
-    } catch { /* dir may not exist */ }
+    } catch {
+      /* dir may not exist */
+    }
   }
   walk(DIST);
   return result;
@@ -61,19 +74,33 @@ function collectCoverage(): GateResult['coverage'] {
   }
 }
 
+function checkCoverageMeetsThresholds(c: GateResult['coverage']): boolean | null {
+  if (!c) return null;
+  return (
+    c.lines >= COVERAGE_THRESHOLDS.lines &&
+    c.functions >= COVERAGE_THRESHOLDS.functions &&
+    c.branches >= COVERAGE_THRESHOLDS.branches &&
+    c.statements >= COVERAGE_THRESHOLDS.statements
+  );
+}
+
 function collectDocs(): GateResult['docs'] {
   if (!existsSync(DOCS_DIST)) return null;
   let pages = 0;
   let totalSize = 0;
   function walk(dir: string) {
-    for (const entry of readdirSync(dir)) {
-      const full = join(dir, entry);
-      const stat = statSync(full);
-      if (stat.isDirectory()) walk(full);
-      else {
-        totalSize += stat.size;
-        if (entry.endsWith('.html')) pages++;
+    try {
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        const stat = statSync(full);
+        if (stat.isDirectory()) walk(full);
+        else {
+          totalSize += stat.size;
+          if (entry.endsWith('.html')) pages++;
+        }
       }
+    } catch {
+      /* unreadable */
     }
   }
   walk(DOCS_DIST);
@@ -81,17 +108,50 @@ function collectDocs(): GateResult['docs'] {
 }
 
 function collectE2e(): GateResult['e2e'] {
+  if (!existsSync(PLAYWRIGHT_RESULTS)) return null;
   try {
-    const results = JSON.parse(
-      readFileSync(join(ROOT, 'test', 'e2e', 'reports', 'playwright-results.json'), 'utf8'),
-    );
-    return {
-      total: results.stats?.expected ?? 0,
-      passed: results.stats?.expected ?? 0,
-      failed: results.stats?.unexpected ?? 0,
+    const results = JSON.parse(readFileSync(PLAYWRIGHT_RESULTS, 'utf8')) as {
+      stats?: {
+        expected?: number;
+        unexpected?: number;
+        skipped?: number;
+        flaky?: number;
+      };
     };
+    const s = results.stats ?? {};
+    const expected = s.expected ?? 0;
+    const unexpected = s.unexpected ?? 0;
+    const skipped = s.skipped ?? 0;
+    const flaky = s.flaky ?? 0;
+    const total = expected + unexpected + skipped + flaky;
+    const passed = expected + flaky;
+    return { total, passed, failed: unexpected };
   } catch {
     return null;
+  }
+}
+
+function printE2eServerLogsIfPresent(): void {
+  if (!existsSync(E2E_REPORTS)) return;
+  let logFiles: string[] = [];
+  try {
+    logFiles = readdirSync(E2E_REPORTS).filter((f) => f.endsWith('.log'));
+  } catch {
+    return;
+  }
+  if (logFiles.length === 0) return;
+  console.log('');
+  console.log('  E2E report logs (test/e2e/reports):');
+  for (const name of logFiles.sort()) {
+    const path = join(E2E_REPORTS, name);
+    try {
+      const text = readFileSync(path, 'utf8').trimEnd();
+      if (!text) continue;
+      console.log(`  ── ${name} ──`);
+      console.log(text.split('\n').map((l) => `  ${l}`).join('\n'));
+    } catch {
+      /* ignore per-file errors */
+    }
   }
 }
 
@@ -99,19 +159,29 @@ function collectTests(): GateResult['tests'] {
   try {
     const metrics = JSON.parse(readFileSync(join(REPORTS, 'build-metrics.json'), 'utf8'));
     if (metrics.testResults) return metrics.testResults;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return null;
 }
 
 function main() {
+  const coverage = collectCoverage();
+  const coverageThresholdOk = checkCoverageMeetsThresholds(coverage);
+
   const gate: GateResult = {
     pass: true,
     bundles: collectBundles(),
     tests: collectTests(),
-    coverage: collectCoverage(),
+    coverage,
+    coverageThresholdOk,
     docs: collectDocs(),
     e2e: collectE2e(),
   };
+
+  if (coverage !== null && coverageThresholdOk === false) {
+    gate.pass = false;
+  }
 
   const W = 60;
   const line = '═'.repeat(W);
@@ -136,7 +206,17 @@ function main() {
   if (gate.coverage) {
     console.log(`║${'  📊 Coverage'.padEnd(W)}║`);
     console.log(`║${'  ' + thinLine.slice(2)}║`);
-    console.log(`║  Lines: ${(gate.coverage.lines + '%').padEnd(10)} Branches: ${(gate.coverage.branches + '%').padEnd(10)} Funcs: ${(gate.coverage.functions + '%').padEnd(W - 47)}║`);
+    console.log(
+      `║  Lines: ${(gate.coverage.lines + '%').padEnd(10)} Branches: ${(gate.coverage.branches + '%').padEnd(10)} Funcs: ${(gate.coverage.functions + '%').padEnd(W - 47)}║`,
+    );
+    console.log(`║  Statements: ${(gate.coverage.statements + '%').padEnd(44)}║`);
+    if (gate.coverageThresholdOk === false) {
+      const warn = `  ⚠ Below vitest coverage thresholds`;
+      console.log(`║${warn.padEnd(W)}║`);
+    }
+    console.log(`╟${thinLine}╢`);
+  } else if (existsSync(COVERAGE)) {
+    console.log(`║${'  📊 Coverage (summary missing)'.padEnd(W)}║`);
     console.log(`╟${thinLine}╢`);
   }
 
@@ -144,8 +224,13 @@ function main() {
   if (gate.e2e) {
     console.log(`║${'  🌐 E2E Tests'.padEnd(W)}║`);
     console.log(`║${'  ' + thinLine.slice(2)}║`);
-    console.log(`║  Passed: ${gate.e2e.passed}  Failed: ${gate.e2e.failed}  Total: ${String(gate.e2e.total).padEnd(W - 44)}║`);
+    console.log(
+      `║  Passed: ${gate.e2e.passed}  Failed: ${gate.e2e.failed}  Total: ${String(gate.e2e.total).padEnd(W - 44)}║`,
+    );
     if (gate.e2e.failed > 0) gate.pass = false;
+    console.log(`╟${thinLine}╢`);
+  } else if (existsSync(E2E_REPORTS)) {
+    console.log(`║${'  🌐 E2E (no playwright-results.json)'.padEnd(W)}║`);
     console.log(`╟${thinLine}╢`);
   }
 
@@ -153,7 +238,9 @@ function main() {
   if (gate.docs) {
     console.log(`║${'  📖 Documentation Site'.padEnd(W)}║`);
     console.log(`║${'  ' + thinLine.slice(2)}║`);
-    console.log(`║  Pages: ${gate.docs.pages}  Total size: ${formatBytes(gate.docs.totalSize).padEnd(W - 35)}║`);
+    console.log(
+      `║  Pages: ${gate.docs.pages}  Total size: ${formatBytes(gate.docs.totalSize).padEnd(W - 35)}║`,
+    );
     console.log(`╟${thinLine}╢`);
   }
 
@@ -164,6 +251,10 @@ function main() {
   console.log('');
 
   if (!gate.pass) {
+    if (gate.e2e && gate.e2e.failed > 0) {
+      printE2eServerLogsIfPresent();
+      console.log('');
+    }
     process.exit(1);
   }
 }

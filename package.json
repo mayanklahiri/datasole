@@ -4,21 +4,21 @@
   "description": "High-performance, binary-framed, realtime full-stack TypeScript framework with Web Worker transport, JSON Patch state sync, and pluggable backends.",
   "main": "./dist/shared/index.cjs.js",
   "module": "./dist/shared/index.esm.js",
-  "types": "./dist/shared/types/index.d.ts",
+  "types": "./dist/shared/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/shared/types/index.d.ts",
+      "types": "./dist/shared/index.d.ts",
       "import": "./dist/shared/index.esm.js",
       "require": "./dist/shared/index.cjs.js"
     },
     "./client": {
-      "types": "./dist/client/types/index.d.ts",
+      "types": "./dist/client/index.d.ts",
       "import": "./dist/client/datasole.esm.js",
       "require": "./dist/client/datasole.cjs.js",
       "browser": "./dist/client/datasole.esm.js"
     },
     "./server": {
-      "types": "./dist/server/types/index.d.ts",
+      "types": "./dist/server/index.d.ts",
       "import": "./dist/server/index.esm.js",
       "require": "./dist/server/index.cjs.js"
     },
@@ -27,13 +27,13 @@
   "typesVersions": {
     "*": {
       "client": [
-        "dist/client/types/index.d.ts"
+        "dist/client/index.d.ts"
       ],
       "server": [
-        "dist/server/types/index.d.ts"
+        "dist/server/index.d.ts"
       ],
       "*": [
-        "dist/shared/types/index.d.ts"
+        "dist/shared/index.d.ts"
       ]
     }
   },
@@ -43,7 +43,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "rollup -c rollup.config.mjs",
+    "build": "rollup -c rollup.config.mjs && npm run build:types",
+    "build:types": "tsc -p build/tsconfig.declarations.json",
     "build:client": "rollup -c build/rollup.client.mjs",
     "build:server": "rollup -c build/rollup.server.mjs",
     "build:worker": "rollup -c build/rollup.worker.mjs",

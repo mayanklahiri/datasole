@@ -23,8 +23,5 @@ export async function collectPerfMetrics(page: Page): Promise<PerfEntry[]> {
 export function savePerfMetrics(testName: string, metrics: PerfEntry[]): void {
   const dir = path.resolve(__dirname, '../reports/perf');
   mkdirSync(dir, { recursive: true });
-  writeFileSync(
-    path.join(dir, `${testName}.json`),
-    JSON.stringify(metrics, null, 2),
-  );
+  writeFileSync(path.join(dir, `${testName}.json`), JSON.stringify(metrics, null, 2));
 }

@@ -24,7 +24,11 @@ export class DatasoleNestAdapter implements ServerAdapter {
     throw new Error('Not implemented');
   }
 
-  bindMessageHandlers(_client: unknown, _handlers: unknown[], _process: (...args: unknown[]) => unknown): void {
+  bindMessageHandlers(
+    _client: unknown,
+    _handlers: unknown[],
+    _process: (...args: unknown[]) => unknown,
+  ): void {
     throw new Error('Not implemented');
   }
 

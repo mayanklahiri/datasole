@@ -7,19 +7,52 @@ export class WorkerProxy {
   private worker: Worker | null = null;
   private listeners = new Map<string, Set<(...args: unknown[]) => void>>();
 
-  async connect(_url: string, _options?: TransportOptions): Promise<void> {
-    // TODO: spawn worker, setup postMessage bridge, optional SAB
-    throw new Error('Not implemented');
+  async connect(url: string, options?: TransportOptions): Promise<void> {
+    const workerUrl = options?.workerUrl ?? '/datasole-worker.iife.min.js';
+
+    return new Promise<void>((resolve, reject) => {
+      try {
+        this.worker = new Worker(workerUrl);
+      } catch {
+        reject(new Error('Failed to create Worker'));
+        return;
+      }
+
+      const openHandler = (event: MessageEvent) => {
+        const msg = event.data;
+        if (msg.type === 'open') {
+          resolve();
+        } else if (msg.type === 'error') {
+          reject(new Error('WebSocket connection failed in worker'));
+        }
+      };
+      this.worker.addEventListener('message', openHandler, { once: false });
+
+      this.worker.addEventListener('message', (event: MessageEvent) => {
+        const { type, payload } = event.data;
+        const handlers = this.listeners.get(type);
+        if (handlers) {
+          for (const handler of handlers) {
+            handler(payload);
+          }
+        }
+      });
+
+      this.worker.postMessage({ type: 'connect', payload: { url } });
+    });
   }
 
-  async send(_data: Uint8Array): Promise<void> {
-    // TODO: send data via worker postMessage
-    throw new Error('Not implemented');
+  async send(data: Uint8Array): Promise<void> {
+    if (!this.worker) throw new Error('Worker not initialized');
+    this.worker.postMessage({ type: 'send', payload: { data } }, [data.buffer]);
   }
 
   async disconnect(): Promise<void> {
-    this.worker?.terminate();
-    this.worker = null;
+    if (this.worker) {
+      this.worker.postMessage({ type: 'disconnect' });
+      this.worker.terminate();
+      this.worker = null;
+    }
   }
 
   on(event: string, handler: (...args: unknown[]) => void): void {

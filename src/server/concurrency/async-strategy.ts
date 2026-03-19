@@ -1,4 +1,9 @@
-import type { ConcurrencyStrategy, ConnectionWorker, ConcurrencyOptions, WorkerMessage } from './types';
+import type {
+  ConcurrencyStrategy,
+  ConnectionWorker,
+  ConcurrencyOptions,
+  WorkerMessage,
+} from './types';
 
 class AsyncConnectionWorker implements ConnectionWorker {
   readonly type = 'async' as const;

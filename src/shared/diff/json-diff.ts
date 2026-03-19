@@ -1,6 +1,10 @@
+import { compare } from 'fast-json-patch';
+
 import type { StatePatch } from '../types/state';
 
-export function diff(_oldState: unknown, _newState: unknown): StatePatch[] {
-  // TODO: implement RFC 6902 JSON Patch diff
-  throw new Error('Not implemented');
+export function diff(oldState: unknown, newState: unknown): StatePatch[] {
+  const old = oldState === undefined || oldState === null ? {} : oldState;
+  const next = newState === undefined || newState === null ? {} : newState;
+  const ops = compare(old as Record<string, unknown>, next as Record<string, unknown>);
+  return ops as StatePatch[];
 }

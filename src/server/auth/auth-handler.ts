@@ -9,9 +9,26 @@ export interface AuthHandlerInterface {
 }
 
 export function createAuthHandler(
-  _handler: (req: IncomingMessage) => Promise<AuthResult>,
-  _config?: AuthHandlerConfig,
+  handler: (req: IncomingMessage) => Promise<AuthResult>,
+  config?: AuthHandlerConfig,
 ): AuthHandlerInterface {
-  // TODO: wrap user-provided auth function with config defaults
-  throw new Error('Not implemented');
+  const required = config?.required ?? true;
+  const allowAnonymous = config?.allowAnonymous ?? false;
+
+  return {
+    async verify(req: IncomingMessage): Promise<AuthResult> {
+      try {
+        const result = await handler(req);
+        if (!result.authenticated && required && !allowAnonymous) {
+          return { authenticated: false };
+        }
+        return result;
+      } catch {
+        if (allowAnonymous) {
+          return { authenticated: true, userId: 'anonymous' };
+        }
+        return { authenticated: false };
+      }
+    },
+  };
 }

@@ -7,9 +7,76 @@
 </head>
 <body>
   <div id="status">loading</div>
+  <div id="connection-state">disconnected</div>
+  <div id="rpc-result"></div>
+  <div id="event-log"></div>
+  <div id="state-data"></div>
   <script>
-    document.getElementById('status').textContent = 'ready';
     window.__datasole_loaded = typeof Datasole !== 'undefined';
+    document.getElementById('status').textContent = 'ready';
+
+    window.__logs = [];
+    window.__events = [];
+    window.__stateUpdates = [];
+
+    window.__connect = async function(opts) {
+      performance.mark('ws-connect-start');
+      var serverUrl = window.location.origin;
+      var client = new Datasole.DatasoleClient({
+        url: serverUrl,
+        useWorker: false,
+        reconnect: false,
+        ...opts,
+      });
+      window.__client = client;
+
+      await client.connect();
+      performance.mark('ws-connect-end');
+      performance.measure('ws-connect', 'ws-connect-start', 'ws-connect-end');
+      document.getElementById('connection-state').textContent = client.getConnectionState();
+      return client.getConnectionState();
+    };
+
+    window.__rpc = async function(method, params) {
+      performance.mark('rpc-start');
+      const result = await window.__client.rpc(method, params);
+      performance.mark('rpc-end');
+      performance.measure('rpc-' + method, 'rpc-start', 'rpc-end');
+      document.getElementById('rpc-result').textContent = JSON.stringify(result);
+      return result;
+    };
+
+    window.__subscribeEvent = function(eventName) {
+      window.__client.on(eventName, function(payload) {
+        window.__events.push({ event: eventName, data: payload.data, timestamp: payload.timestamp });
+        document.getElementById('event-log').textContent = JSON.stringify(window.__events);
+      });
+    };
+
+    window.__emitEvent = function(eventName, data) {
+      window.__client.emit(eventName, data);
+    };
+
+    window.__subscribeState = function(key) {
+      window.__client.subscribeState(key, function(state) {
+        window.__stateUpdates.push({ key: key, state: state });
+        document.getElementById('state-data').textContent = JSON.stringify(window.__stateUpdates);
+      });
+    };
+
+    window.__disconnect = async function() {
+      if (window.__client) {
+        await window.__client.disconnect();
+        document.getElementById('connection-state').textContent = 'disconnected';
+      }
+    };
+
+    window.__getConnectionState = function() {
+      return window.__client ? window.__client.getConnectionState() : 'no-client';
+    };
+
+    performance.mark('page-loaded');
+    performance.measure('page-load', 'navigationStart', 'page-loaded');
   </script>
 </body>
 </html>

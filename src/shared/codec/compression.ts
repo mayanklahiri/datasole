@@ -1,9 +1,9 @@
-export function compress(_data: Uint8Array): Uint8Array {
-  // TODO: implement pako deflate wrapper
-  throw new Error('Not implemented');
+import pako from 'pako';
+
+export function compress(data: Uint8Array): Uint8Array {
+  return pako.deflate(data);
 }
 
-export function decompress(_data: Uint8Array): Uint8Array {
-  // TODO: implement pako inflate wrapper
-  throw new Error('Not implemented');
+export function decompress(data: Uint8Array): Uint8Array {
+  return pako.inflate(data);
 }

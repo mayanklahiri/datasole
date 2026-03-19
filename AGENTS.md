@@ -34,7 +34,7 @@ This is the single command that validates everything. It runs, in order:
 **The gate MUST pass before any push.** This is enforced by:
 - **pre-commit hook**: `lint-staged` (format + lint staged files)
 - **pre-push hook**: `npm run gate` (full pipeline)
-- **CI**: GitHub Actions runs `npm run gate` on every push/PR to main
+- **CI**: GitHub Actions runs `npm run gate` on every push/PR to `main` and `develop`
 
 `npm run dist` is an alias for `npm run gate`.
 

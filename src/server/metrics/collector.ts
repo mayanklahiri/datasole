@@ -17,6 +17,10 @@ export class MetricsCollector {
     this.counters[counter] += value;
   }
 
+  decrement(counter: keyof typeof this.counters, value = 1): void {
+    this.counters[counter] = Math.max(0, this.counters[counter] - value);
+  }
+
   snapshot(): MetricsSnapshot {
     return {
       ...this.counters,

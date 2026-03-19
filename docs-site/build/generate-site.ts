@@ -1,6 +1,8 @@
 import { readFileSync, writeFileSync, mkdirSync, cpSync, readdirSync } from 'fs';
 import { join, resolve, basename } from 'path';
 
+const BASE_PATH = process.env.DOCS_BASE_PATH ?? '/datasole';
+
 const ROOT = resolve(__dirname, '../..');
 const DOCS = join(ROOT, 'docs');
 const TEMPLATES = join(__dirname, '..', 'templates');
@@ -55,6 +57,15 @@ function generateToc(md: string): string {
   return `<nav class="toc"><ul>${items.join('')}</ul></nav>`;
 }
 
+/** Rewrite root-absolute asset and nav URLs for GitHub Pages (or override via DOCS_BASE_PATH). */
+function applyBasePathToLayout(html: string): string {
+  return html
+    .replaceAll('href="/static/', `href="${BASE_PATH}/static/`)
+    .replaceAll('src="/static/', `src="${BASE_PATH}/static/`)
+    .replaceAll('href="/dashboard/', `href="${BASE_PATH}/dashboard/`)
+    .replace('<a href="/" class="logo">', `<a href="${BASE_PATH}/" class="logo">`);
+}
+
 function main() {
   // Read templates
   let layout: string, pageTemplate: string, metricsTemplate: string;
@@ -66,6 +77,8 @@ function main() {
     console.error('Templates not found. Run from project root.');
     process.exit(1);
   }
+
+  layout = applyBasePathToLayout(layout);
 
   // Parse docs
   const pages: DocPage[] = [];
@@ -88,7 +101,7 @@ function main() {
 
   // Generate nav
   const nav = pages
-    .map((p) => `<a href="/${p.slug}/">${p.title}</a>`)
+    .map((p) => `<a href="${BASE_PATH}/${p.slug}/">${p.title}</a>`)
     .join('\n');
 
   // Clean and create dist
@@ -150,8 +163,8 @@ function main() {
         <h1>datasole</h1>
         <p class="tagline">High-performance, binary-framed, realtime full-stack TypeScript framework.</p>
         <nav class="page-links">
-          ${pages.map((p) => `<a href="/${p.slug}/">${p.title}</a>`).join(' · ')}
-          <a href="/dashboard/">Dashboard</a>
+          ${pages.map((p) => `<a href="${BASE_PATH}/${p.slug}/">${p.title}</a>`).join(' · ')}
+          <a href="${BASE_PATH}/dashboard/">Dashboard</a>
         </nav>
       </div>
     `);

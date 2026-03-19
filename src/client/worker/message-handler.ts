@@ -1,5 +1,42 @@
-import type { Frame } from '../../shared/types';
+import type { Frame } from '../../shared/protocol';
+import { Opcode } from '../../shared/protocol';
 
-export function dispatchFrame(_frame: Frame): void {
-  // TODO: dispatch incoming frame to SAB or postMessage fallback
+export type FrameRouter = {
+  onRpcResponse?: (correlationId: number, payload: unknown) => void;
+  onEvent?: (event: string, data: unknown, timestamp: number) => void;
+  onStatePatch?: (key: string, patches: unknown[]) => void;
+  onStateSnapshot?: (key: string, data: unknown) => void;
+  onPong?: (correlationId: number) => void;
+  onError?: (message: string) => void;
+};
+
+export function dispatchFrame(frame: Frame, router: FrameRouter): void {
+  let parsed: Record<string, unknown>;
+  try {
+    const decoder = new TextDecoder();
+    parsed = JSON.parse(decoder.decode(frame.payload)) as Record<string, unknown>;
+  } catch {
+    return;
+  }
+
+  switch (frame.opcode) {
+    case Opcode.RPC_RES:
+      router.onRpcResponse?.(frame.correlationId, parsed);
+      break;
+    case Opcode.EVENT_S2C:
+      router.onEvent?.(parsed.event as string, parsed.data, parsed.timestamp as number);
+      break;
+    case Opcode.STATE_PATCH:
+      router.onStatePatch?.(parsed.key as string, parsed.patches as unknown[]);
+      break;
+    case Opcode.STATE_SNAPSHOT:
+      router.onStateSnapshot?.(parsed.key as string, parsed.data);
+      break;
+    case Opcode.PONG:
+      router.onPong?.(frame.correlationId);
+      break;
+    case Opcode.ERROR:
+      router.onError?.(parsed.message as string);
+      break;
+  }
 }

@@ -26,11 +26,7 @@ export class DefaultConnectionContext implements ConnectionContext {
 
   private store = new Map<string, unknown>();
 
-  constructor(opts: {
-    connectionId: string;
-    auth: AuthContext | null;
-    remoteAddress: string;
-  }) {
+  constructor(opts: { connectionId: string; auth: AuthContext | null; remoteAddress: string }) {
     this.connectionId = opts.connectionId;
     this.auth = opts.auth;
     this.userId = opts.auth?.userId ?? null;

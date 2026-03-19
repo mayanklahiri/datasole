@@ -5,7 +5,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "lib": ["ES2020"],
-    "rootDir": "../src/shared"
+    "rootDir": "../src"
   },
   "include": ["../src/shared/**/*.ts"]
 }

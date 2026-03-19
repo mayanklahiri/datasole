@@ -43,8 +43,10 @@ export class LWWRegister<T = unknown> implements Crdt<T> {
   }
 
   merge(remote: CrdtState<T>): void {
-    if (remote.metadata.timestamp > this._timestamp ||
-      (remote.metadata.timestamp === this._timestamp && remote.metadata.nodeId > this.nodeId)) {
+    if (
+      remote.metadata.timestamp > this._timestamp ||
+      (remote.metadata.timestamp === this._timestamp && remote.metadata.nodeId > this.nodeId)
+    ) {
       this._value = remote.value;
       this._timestamp = remote.metadata.timestamp;
       this._version = Math.max(this._version, remote.metadata.version) + 1;
