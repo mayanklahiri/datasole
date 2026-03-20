@@ -24,6 +24,4 @@ export class ClientEventEmitter {
       handler(payload);
     }
   }
-
-  // TODO: wire to transport for server-bound events
 }

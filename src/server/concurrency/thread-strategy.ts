@@ -1,20 +1,46 @@
 /**
  * Thread concurrency: spawns a worker_thread per connection.
  */
-import type { ConcurrencyStrategy, ConnectionWorker, ConcurrencyOptions } from './types';
+import { Worker } from 'worker_threads';
+
+import type {
+  ConcurrencyStrategy,
+  ConnectionWorker,
+  ConcurrencyOptions,
+  WorkerMessage,
+} from './types';
+
+const WORKER_SCRIPT = `
+const { parentPort } = require('worker_threads');
+parentPort.on('message', (msg) => {
+  parentPort.postMessage({ type: 'frame', connectionId: msg.connectionId, payload: msg.data });
+});
+`;
 
 class ThreadConnectionWorker implements ConnectionWorker {
   readonly type = 'thread' as const;
+  private worker: Worker;
   private alive = true;
 
-  constructor(readonly id: string) {
-    // TODO: spawn a new worker_thread for this connection
-    // The worker thread runs the connection handler in isolation
+  constructor(
+    readonly id: string,
+    onMessage: (msg: WorkerMessage) => void,
+  ) {
+    this.worker = new Worker(WORKER_SCRIPT, { eval: true });
+    this.worker.on('message', (msg: WorkerMessage) => {
+      onMessage(msg);
+    });
+    this.worker.on('error', () => {
+      this.alive = false;
+    });
+    this.worker.on('exit', () => {
+      this.alive = false;
+    });
   }
 
-  async handleMessage(_connectionId: string, _data: Uint8Array): Promise<void> {
-    // TODO: postMessage to worker_thread
-    throw new Error('Not implemented');
+  async handleMessage(connectionId: string, data: Uint8Array): Promise<void> {
+    if (!this.alive) throw new Error('Worker terminated');
+    this.worker.postMessage({ connectionId, data: Buffer.from(data) });
   }
 
   async handleDisconnect(_connectionId: string): Promise<void> {
@@ -22,8 +48,9 @@ class ThreadConnectionWorker implements ConnectionWorker {
   }
 
   async terminate(): Promise<void> {
-    // TODO: terminate worker_thread
+    if (!this.alive) return;
     this.alive = false;
+    await this.worker.terminate();
   }
 
   isAlive(): boolean {
@@ -35,9 +62,14 @@ export class ThreadStrategy implements ConcurrencyStrategy {
   readonly model = 'thread' as const;
   private workers = new Map<string, ThreadConnectionWorker>();
   private maxThreads: number;
+  private messageHandler: (msg: WorkerMessage) => void = () => {};
 
   constructor(options?: Partial<ConcurrencyOptions>) {
     this.maxThreads = options?.maxThreads ?? 16;
+  }
+
+  onMessage(handler: (msg: WorkerMessage) => void): void {
+    this.messageHandler = handler;
   }
 
   async initialize(): Promise<void> {}
@@ -46,7 +78,7 @@ export class ThreadStrategy implements ConcurrencyStrategy {
     if (this.workers.size >= this.maxThreads) {
       throw new Error(`Thread limit reached (${this.maxThreads})`);
     }
-    const worker = new ThreadConnectionWorker(connectionId);
+    const worker = new ThreadConnectionWorker(connectionId, this.messageHandler);
     this.workers.set(connectionId, worker);
     return worker;
   }
@@ -59,9 +91,9 @@ export class ThreadStrategy implements ConcurrencyStrategy {
     }
   }
 
-  async broadcast(_data: Uint8Array): Promise<void> {
-    // TODO: send to all worker_threads
-    throw new Error('Not implemented');
+  async broadcast(data: Uint8Array): Promise<void> {
+    const sends = [...this.workers.entries()].map(([id, worker]) => worker.handleMessage(id, data));
+    await Promise.all(sends);
   }
 
   getActiveWorkerCount(): number {

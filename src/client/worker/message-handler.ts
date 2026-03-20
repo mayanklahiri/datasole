@@ -12,6 +12,8 @@ export type FrameRouter = {
   onStateSnapshot?: (key: string, data: unknown) => void;
   onPong?: (correlationId: number) => void;
   onError?: (message: string) => void;
+  onCrdtOp?: (key: string, op: unknown) => void;
+  onCrdtState?: (key: string, state: unknown) => void;
 };
 
 export function dispatchFrame(frame: Frame, router: FrameRouter): void {
@@ -41,6 +43,12 @@ export function dispatchFrame(frame: Frame, router: FrameRouter): void {
       break;
     case Opcode.ERROR:
       router.onError?.(parsed.message as string);
+      break;
+    case Opcode.CRDT_OP:
+      router.onCrdtOp?.(parsed.key as string, parsed.op);
+      break;
+    case Opcode.CRDT_STATE:
+      router.onCrdtState?.(parsed.key as string, parsed.state);
       break;
   }
 }

@@ -11,4 +11,6 @@ export enum Opcode {
   PING = 0x07,
   PONG = 0x08,
   ERROR = 0x09,
+  CRDT_OP = 0x0a,
+  CRDT_STATE = 0x0b,
 }

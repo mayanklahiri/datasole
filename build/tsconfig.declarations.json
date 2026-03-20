@@ -12,5 +12,10 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
     "rootDir": "../src"
   },
-  "include": ["../src/shared/**/*.ts", "../src/client/**/*.ts", "../src/server/**/*.ts"]
+  "include": [
+    "../src/shared/**/*.ts",
+    "../src/client/**/*.ts",
+    "../src/server/**/*.ts",
+    "../src/types/**/*.d.ts"
+  ]
 }

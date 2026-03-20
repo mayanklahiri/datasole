@@ -5,18 +5,22 @@ import type { Server as HttpServer } from 'http';
 
 import { compress, decompress, deserialize, serialize } from '../shared/codec';
 import { COMPRESSION_THRESHOLD, DEFAULT_WS_PATH } from '../shared/constants';
-import type { CrdtOperation, CrdtState } from '../shared/crdt';
+import type { Crdt, CrdtOperation, CrdtState } from '../shared/crdt';
+import { LWWMap, LWWRegister, PNCounter } from '../shared/crdt';
 import { decodeFrame, encodeFrame, Opcode } from '../shared/protocol';
 import type { EventHandler, RpcRequest, StatePatch } from '../shared/types';
+import type { DataChannel, LiveStateConfig } from '../shared/types/data-flow';
 
 import type { ServerAdapter } from './adapters/types';
 import type { ConcurrencyOptions, ConcurrencyStrategy } from './concurrency';
 import { createConcurrencyStrategy } from './concurrency';
+import type { ChannelManagerDeps } from './data-flow';
+import { ChannelManager } from './data-flow';
 import { EventBus } from './events';
 import { MetricsCollector } from './metrics';
 import type { MetricsExporter } from './metrics/types';
-import type { RateLimiter, RateLimitConfig } from './rate-limit';
-import { MemoryRateLimiter } from './rate-limit';
+import type { RateLimiter, RateLimitConfig, RateLimitRule } from './rate-limit';
+import { DEFAULT_RATE_LIMIT_RULE, MemoryRateLimiter } from './rate-limit';
 import { RpcDispatcher } from './rpc';
 import type { RpcContext, RpcHandler } from './rpc';
 import { MemoryBackend } from './state/backends';
@@ -51,8 +55,11 @@ export class DatasoleServer {
   private readonly metrics: MetricsCollector;
   private readonly concurrency: ConcurrencyStrategy;
   private readonly rateLimiter: RateLimiter;
+  private readonly rateLimitConfig: RateLimitConfig;
+  private readonly channelManager: ChannelManager;
   private readonly syncChannels = new Map<string, SyncChannel>();
   private readonly connections = new Map<string, Connection>();
+  private readonly crdtRegistry = new Map<string, Crdt>();
   private readonly path: string;
   private readonly authHandler: AuthHandler;
   private readonly perMessageDeflate: boolean | undefined;
@@ -71,6 +78,32 @@ export class DatasoleServer {
     this.metrics = new MetricsCollector();
     this.concurrency = createConcurrencyStrategy(options.concurrency);
     this.rateLimiter = options.rateLimiter ?? new MemoryRateLimiter();
+    this.rateLimitConfig = options.rateLimit ?? { defaultRule: DEFAULT_RATE_LIMIT_RULE };
+
+    const channelDeps: ChannelManagerDeps = {
+      createSyncChannel: (config) => {
+        this.createSyncChannel(config);
+      },
+      registerEventHandler: (event, handler) => {
+        this.eventBus.on(event, handler);
+      },
+      registerCrdt: (key, type) => {
+        if (!this.crdtRegistry.has(key)) {
+          switch (type) {
+            case 'pn-counter':
+              this.crdtRegistry.set(key, new PNCounter('server'));
+              break;
+            case 'lww-register':
+              this.crdtRegistry.set(key, new LWWRegister('server', undefined));
+              break;
+            case 'lww-map':
+              this.crdtRegistry.set(key, new LWWMap('server'));
+              break;
+          }
+        }
+      },
+    };
+    this.channelManager = new ChannelManager(channelDeps);
   }
 
   attach(server: HttpServer, _adapter?: ServerAdapter): void {
@@ -100,7 +133,7 @@ export class DatasoleServer {
       this.metrics.increment('connections');
 
       conn.onMessage((data) => {
-        this.handleIncomingFrame(conn, data);
+        void this.handleIncomingFrame(conn, data);
       });
 
       conn.onClose(() => {
@@ -116,11 +149,22 @@ export class DatasoleServer {
     );
   }
 
-  private handleIncomingFrame(conn: Connection, raw: Uint8Array): void {
+  private async handleIncomingFrame(conn: Connection, raw: Uint8Array): Promise<void> {
     try {
       const data = raw.length > COMPRESSION_THRESHOLD ? decompress(raw) : raw;
       const frame = decodeFrame(data);
       this.metrics.increment('messagesIn');
+
+      const rateLimitKey = this.getRateLimitKey(conn.info.id, frame.opcode, frame.payload);
+      const rule = this.getRateLimitRule(frame.opcode, frame.payload);
+      const rateLimitResult = await this.rateLimiter.consume(rateLimitKey, rule);
+      if (!rateLimitResult.allowed) {
+        this.sendToConnection(conn, Opcode.ERROR, frame.correlationId, {
+          message: 'Rate limit exceeded',
+          retryAfter: rateLimitResult.retryAfter,
+        });
+        return;
+      }
 
       switch (frame.opcode) {
         case Opcode.RPC_REQ: {
@@ -142,6 +186,11 @@ export class DatasoleServer {
         }
         case Opcode.PING: {
           this.sendToConnection(conn, Opcode.PONG, frame.correlationId, null);
+          break;
+        }
+        case Opcode.CRDT_OP: {
+          const payload = deserialize<{ key: string; op: CrdtOperation }>(frame.payload);
+          this.applyCrdtOperation(conn.info.id, { ...payload.op, key: payload.key });
           break;
         }
       }
@@ -181,12 +230,44 @@ export class DatasoleServer {
     this.metrics.increment('messagesOut');
   }
 
+  private getRateLimitKey(connectionId: string, opcode: Opcode, payload: Uint8Array): string {
+    if (this.rateLimitConfig.keyExtractor) {
+      const method = opcode === Opcode.RPC_REQ ? this.tryExtractMethod(payload) : undefined;
+      return this.rateLimitConfig.keyExtractor(connectionId, method);
+    }
+    return `${connectionId}:${opcode}`;
+  }
+
+  private getRateLimitRule(opcode: Opcode, payload: Uint8Array): RateLimitRule {
+    if (opcode === Opcode.RPC_REQ && this.rateLimitConfig.rules) {
+      const method = this.tryExtractMethod(payload);
+      if (method && this.rateLimitConfig.rules[method]) {
+        return this.rateLimitConfig.rules[method];
+      }
+    }
+    return this.rateLimitConfig.defaultRule;
+  }
+
+  private tryExtractMethod(payload: Uint8Array): string | undefined {
+    try {
+      const req = deserialize<{ method?: string }>(payload);
+      return req.method;
+    } catch {
+      return undefined;
+    }
+  }
+
   // --- State ---
 
   async setState<T = unknown>(key: string, value: T): Promise<StatePatch[]> {
     const patches = await this.stateManager.setState(key, value);
     if (patches.length > 0) {
-      this.broadcastFrame(Opcode.STATE_PATCH, { key, patches });
+      const channel = this.syncChannels.get(key);
+      if (channel) {
+        channel.enqueue(patches);
+      } else {
+        this.broadcastFrame(Opcode.STATE_PATCH, { key, patches });
+      }
     }
     return patches;
   }
@@ -199,12 +280,25 @@ export class DatasoleServer {
 
   createSyncChannel<T = unknown>(config: SyncChannelConfig<T>): SyncChannel<T> {
     const channel = new SyncChannel(config);
+    channel.onFlush((patches) => {
+      this.broadcastFrame(Opcode.STATE_PATCH, { key: config.key, patches });
+    });
     this.syncChannels.set(config.key, channel as SyncChannel);
     return channel;
   }
 
   getSyncChannel(key: string): SyncChannel | undefined {
     return this.syncChannels.get(key);
+  }
+
+  // --- Data Flow Channels ---
+
+  createDataChannel<T = unknown>(config: LiveStateConfig<T>): DataChannel {
+    return this.channelManager.create(config);
+  }
+
+  getDataChannel(key: string): DataChannel | undefined {
+    return this.channelManager.get(key);
   }
 
   // --- Session State ---
@@ -254,12 +348,38 @@ export class DatasoleServer {
 
   // --- CRDT ---
 
-  applyCrdtOperation(_connectionId: string, _op: CrdtOperation): void {
-    // TODO: apply CRDT op from client, merge, broadcast
+  applyCrdtOperation(connectionId: string, op: CrdtOperation): void {
+    const key = op.key ?? connectionId;
+    let crdt = this.crdtRegistry.get(key);
+    if (!crdt) {
+      switch (op.type) {
+        case 'pn-counter':
+          crdt = new PNCounter('server');
+          break;
+        case 'lww-register':
+          crdt = new LWWRegister('server', undefined);
+          break;
+        case 'lww-map':
+          crdt = new LWWMap('server');
+          break;
+        default:
+          return;
+      }
+      this.crdtRegistry.set(key, crdt);
+    }
+    crdt.apply(op);
+    this.broadcastFrame(Opcode.CRDT_STATE, {
+      key,
+      state: crdt.state(),
+    });
   }
 
-  getCrdtState(_key: string): CrdtState | undefined {
-    return undefined;
+  getCrdtState(key: string): CrdtState | undefined {
+    return this.crdtRegistry.get(key)?.state();
+  }
+
+  registerCrdt(key: string, crdt: Crdt): void {
+    this.crdtRegistry.set(key, crdt);
   }
 
   // --- Metrics ---
@@ -290,10 +410,12 @@ export class DatasoleServer {
     await this.sessionManager.flushAll();
     this.sessionManager.destroy();
     await this.concurrency.shutdown();
+    this.channelManager.closeAll();
     for (const channel of this.syncChannels.values()) {
       channel.destroy();
     }
     this.syncChannels.clear();
     this.connections.clear();
+    this.crdtRegistry.clear();
   }
 }

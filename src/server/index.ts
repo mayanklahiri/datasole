@@ -9,6 +9,10 @@ export type { ServerAdapter } from './adapters';
 export { createAuthHandler } from './auth';
 export type { AuthHandlerInterface, AuthHandlerConfig } from './auth';
 
+// Data Flow
+export { ChannelManager } from './data-flow';
+export type { ChannelManagerDeps } from './data-flow';
+
 // Concurrency
 export {
   createConcurrencyStrategy,

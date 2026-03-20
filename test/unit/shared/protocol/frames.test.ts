@@ -67,6 +67,8 @@ describe('frames', () => {
       Opcode.PING,
       Opcode.PONG,
       Opcode.ERROR,
+      Opcode.CRDT_OP,
+      Opcode.CRDT_STATE,
     ];
     for (const opcode of opcodes) {
       roundTrip({ opcode, correlationId: opcode * 0x1000, payload: new Uint8Array([opcode]) });

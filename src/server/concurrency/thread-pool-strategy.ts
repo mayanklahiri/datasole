@@ -1,16 +1,40 @@
 /**
  * Thread pool concurrency: fixed pool of workers with least-connections assignment.
  */
-import type { ConcurrencyStrategy, ConnectionWorker, ConcurrencyOptions } from './types';
+import { Worker } from 'worker_threads';
+
+import type {
+  ConcurrencyStrategy,
+  ConnectionWorker,
+  ConcurrencyOptions,
+  WorkerMessage,
+} from './types';
+
+const POOL_WORKER_SCRIPT = `
+const { parentPort } = require('worker_threads');
+parentPort.on('message', (msg) => {
+  parentPort.postMessage({ type: 'frame', connectionId: msg.connectionId, payload: msg.data });
+});
+`;
 
 class PooledWorker {
   readonly id: string;
   private connections = new Set<string>();
+  private worker: Worker;
   private alive = true;
 
-  constructor(id: string) {
+  constructor(id: string, onMessage: (msg: WorkerMessage) => void) {
     this.id = id;
-    // TODO: spawn a long-lived worker_thread
+    this.worker = new Worker(POOL_WORKER_SCRIPT, { eval: true });
+    this.worker.on('message', (msg: WorkerMessage) => {
+      onMessage(msg);
+    });
+    this.worker.on('error', () => {
+      this.alive = false;
+    });
+    this.worker.on('exit', () => {
+      this.alive = false;
+    });
   }
 
   get connectionCount(): number {
@@ -29,9 +53,15 @@ class PooledWorker {
     return this.connections.has(connectionId);
   }
 
+  postMessage(msg: { connectionId: string; data: Buffer }): void {
+    if (!this.alive) throw new Error('Pool worker terminated');
+    this.worker.postMessage(msg);
+  }
+
   async terminate(): Promise<void> {
-    // TODO: terminate the worker_thread
+    if (!this.alive) return;
     this.alive = false;
+    await this.worker.terminate();
   }
 
   isAlive(): boolean {
@@ -47,9 +77,8 @@ class PooledConnectionWorker implements ConnectionWorker {
     private pooledWorker: PooledWorker,
   ) {}
 
-  async handleMessage(_connectionId: string, _data: Uint8Array): Promise<void> {
-    // TODO: postMessage to the pooled worker_thread
-    throw new Error('Not implemented');
+  async handleMessage(connectionId: string, data: Uint8Array): Promise<void> {
+    this.pooledWorker.postMessage({ connectionId, data: Buffer.from(data) });
   }
 
   async handleDisconnect(connectionId: string): Promise<void> {
@@ -57,7 +86,6 @@ class PooledConnectionWorker implements ConnectionWorker {
   }
 
   async terminate(): Promise<void> {
-    // Don't terminate the pool worker, just remove the connection
     this.pooledWorker.removeConnection(this.id);
   }
 
@@ -71,19 +99,23 @@ export class ThreadPoolStrategy implements ConcurrencyStrategy {
   private pool: PooledWorker[] = [];
   private connectionMap = new Map<string, PooledConnectionWorker>();
   private poolSize: number;
+  private messageHandler: (msg: WorkerMessage) => void = () => {};
 
   constructor(options?: Partial<ConcurrencyOptions>) {
     this.poolSize = options?.poolSize ?? 4;
   }
 
+  onMessage(handler: (msg: WorkerMessage) => void): void {
+    this.messageHandler = handler;
+  }
+
   async initialize(): Promise<void> {
     for (let i = 0; i < this.poolSize; i++) {
-      this.pool.push(new PooledWorker(`pool-${i}`));
+      this.pool.push(new PooledWorker(`pool-${i}`, this.messageHandler));
     }
   }
 
   async assignWorker(connectionId: string): Promise<ConnectionWorker> {
-    // Least-connections assignment
     const target = this.pool.reduce((min, w) =>
       w.connectionCount < min.connectionCount ? w : min,
     );
@@ -101,9 +133,14 @@ export class ThreadPoolStrategy implements ConcurrencyStrategy {
     }
   }
 
-  async broadcast(_data: Uint8Array): Promise<void> {
-    // TODO: send to all pool workers which fan out to their connections
-    throw new Error('Not implemented');
+  async broadcast(data: Uint8Array): Promise<void> {
+    const buf = Buffer.from(data);
+    for (const [connId] of this.connectionMap) {
+      const worker = this.connectionMap.get(connId);
+      if (worker) {
+        await worker.handleMessage(connId, buf);
+      }
+    }
   }
 
   getActiveWorkerCount(): number {

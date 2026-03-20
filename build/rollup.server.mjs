@@ -14,6 +14,7 @@ const external = [
   'pg',
   '@nestjs/common',
   '@nestjs/websockets',
+  '@opentelemetry/api',
 ];
 
 function suppressThisIsUndefined(warning, warn) {

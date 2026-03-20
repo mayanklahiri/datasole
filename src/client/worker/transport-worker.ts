@@ -4,8 +4,11 @@
 
 import { decompress } from '../../shared/codec';
 import { COMPRESSION_THRESHOLD } from '../../shared/constants';
-import { decodeFrame } from '../../shared/protocol';
+import { decodeFrame, encodeFrame } from '../../shared/protocol';
 
+import { WorkerSharedBuffer } from './shared-buffer';
+
+const sharedBuffer = new WorkerSharedBuffer();
 let ws: WebSocket | null = null;
 
 self.onmessage = (event: MessageEvent) => {
@@ -19,6 +22,9 @@ self.onmessage = (event: MessageEvent) => {
       break;
     case 'disconnect':
       ws?.close();
+      break;
+    case 'init-sab':
+      sharedBuffer.init(payload.buffer);
       break;
   }
 };
@@ -43,6 +49,15 @@ function connect(url: string, protocols?: string[]) {
     const raw = new Uint8Array(event.data as ArrayBuffer);
     const data = raw.length > COMPRESSION_THRESHOLD ? decompress(raw) : raw;
     const frame = decodeFrame(data);
+
+    if (sharedBuffer.isAvailable()) {
+      const fullFrame = encodeFrame(frame);
+      if (sharedBuffer.write(fullFrame)) {
+        self.postMessage({ type: 'sab-frame', payload: { length: fullFrame.length } });
+        return;
+      }
+    }
+
     self.postMessage({ type: 'message', payload: frame }, [frame.payload.buffer]);
   };
 }

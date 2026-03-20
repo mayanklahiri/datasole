@@ -51,6 +51,11 @@ export class WorkerProxy {
     this.worker.postMessage({ type: 'send', payload: { data } }, [data.buffer]);
   }
 
+  initSharedBuffer(buffer: SharedArrayBuffer): void {
+    if (!this.worker) throw new Error('Worker not initialized');
+    this.worker.postMessage({ type: 'init-sab', payload: { buffer } });
+  }
+
   async disconnect(): Promise<void> {
     if (this.worker) {
       this.worker.postMessage({ type: 'disconnect' });

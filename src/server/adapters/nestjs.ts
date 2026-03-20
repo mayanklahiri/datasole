@@ -1,30 +1,50 @@
 /**
  * NestJS WebSocketAdapter integration for Datasole.
  */
-import type { Server as HttpServer } from 'http';
+import type { Server as HttpServer, IncomingMessage } from 'http';
+import type { Duplex } from 'stream';
 
 import type { ServerAdapter } from './types';
 
 export class DatasoleNestAdapter implements ServerAdapter {
-  attach(_server: HttpServer): void {
-    // TODO: implement NestJS WebSocketAdapter interface
-    // Requires @nestjs/common and @nestjs/websockets as peer deps
+  private server: HttpServer | null = null;
+  private upgradeListener: ((req: IncomingMessage, socket: Duplex, head: Buffer) => void) | null =
+    null;
+  private closeCallbacks = new Set<() => void>();
+
+  attach(server: HttpServer): void {
+    this.server = server;
+  }
+
+  onUpgrade(handler: (req: IncomingMessage, socket: Duplex, head: Buffer) => void): void {
+    if (!this.server) throw new Error('DatasoleNestAdapter not attached to a server');
+    this.upgradeListener = handler;
+    this.server.on('upgrade', this.upgradeListener);
   }
 
   detach(): void {
-    // TODO: cleanup
+    if (this.server && this.upgradeListener) {
+      this.server.removeListener('upgrade', this.upgradeListener);
+    }
+    for (const cb of this.closeCallbacks) cb();
+    this.closeCallbacks.clear();
+    this.server = null;
+    this.upgradeListener = null;
   }
 
-  create(_port: number, _options?: unknown): unknown {
-    throw new Error('Not implemented');
+  create(_port: number, _options?: unknown): HttpServer | null {
+    return this.server;
   }
 
-  bindClientConnect(_server: unknown, _callback: (...args: unknown[]) => unknown): void {
-    throw new Error('Not implemented');
+  bindClientConnect(_server: unknown, callback: (...args: unknown[]) => unknown): void {
+    if (this.server) {
+      this.server.on('connection', callback);
+    }
   }
 
-  bindClientDisconnect(_client: unknown, _callback: (...args: unknown[]) => unknown): void {
-    throw new Error('Not implemented');
+  bindClientDisconnect(client: unknown, callback: (...args: unknown[]) => unknown): void {
+    const socket = client as { on?: (event: string, fn: () => void) => void };
+    socket.on?.('close', callback as () => void);
   }
 
   bindMessageHandlers(
@@ -32,10 +52,10 @@ export class DatasoleNestAdapter implements ServerAdapter {
     _handlers: unknown[],
     _process: (...args: unknown[]) => unknown,
   ): void {
-    throw new Error('Not implemented');
+    // Message routing is handled by DatasoleServer's frame dispatcher
   }
 
   close(_server: unknown): void {
-    throw new Error('Not implemented');
+    this.detach();
   }
 }
