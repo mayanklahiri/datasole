@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 import { captureConsoleLogs, hasErrors } from '../helpers/console-capture';
-import { saveScreenshot } from '../helpers/screenshots';
+import { snap } from '../helpers/screenshots';
 import { ServerHarness } from '../helpers/server-harness';
 
 const harness = new ServerHarness();
@@ -15,20 +15,17 @@ test.afterAll(async () => {
 });
 
 test.describe('Events', () => {
-  test('receives server broadcast events', async ({ page }) => {
+  test('receives server broadcast events', async ({ page }, testInfo) => {
     const logs = captureConsoleLogs(page);
     await page.goto(harness.getUrl());
     await expect(page.locator('#status')).toHaveText('ready');
     await page.evaluate(() => (window as any).__connect());
     await page.evaluate(() => (window as any).__subscribeEvent('server-pong'));
 
-    // Give client time to register
     await page.waitForTimeout(200);
 
-    // Server broadcasts an event
     harness.getDatasoleServer().broadcast('server-pong', { msg: 'hello from server' });
 
-    // Wait for event to arrive
     await page.waitForFunction(() => (window as any).__events.length > 0, null, { timeout: 5000 });
 
     const events = await page.evaluate(() => (window as any).__events);
@@ -36,11 +33,12 @@ test.describe('Events', () => {
     expect(events[0].data).toEqual({ msg: 'hello from server' });
     expect(hasErrors(logs)).toBe(false);
 
-    await saveScreenshot(page, 'tutorial-3-events');
+    await snap(page, testInfo, 'events-server-broadcast');
+
     await page.evaluate(() => (window as any).__disconnect());
   });
 
-  test('client sends event to server', async ({ page }) => {
+  test('client sends event to server', async ({ page }, testInfo) => {
     await page.goto(harness.getUrl());
     await expect(page.locator('#status')).toHaveText('ready');
     await page.evaluate(() => (window as any).__connect());
@@ -48,13 +46,14 @@ test.describe('Events', () => {
 
     await page.waitForTimeout(200);
 
-    // Client sends event to server, server echoes back as broadcast
     await page.evaluate(() => (window as any).__emitEvent('client-ping', { message: 'ping!' }));
 
     await page.waitForFunction(() => (window as any).__events.length > 0, null, { timeout: 5000 });
 
     const events = await page.evaluate(() => (window as any).__events);
     expect(events.length).toBeGreaterThan(0);
+
+    await snap(page, testInfo, 'events-client-send');
 
     await page.evaluate(() => (window as any).__disconnect());
   });

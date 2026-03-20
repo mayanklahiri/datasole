@@ -23,7 +23,7 @@ features:
     details: WebSocket runs in a Web Worker — no UI jank. Binary frames with pako compression (60–80% smaller than JSON). SharedArrayBuffer zero-copy transfer. Four server concurrency models. Client IIFE 20.9 KB gzip.
   - icon: ✓
     title: Correctness
-    details: 122 unit tests + 19 e2e tests (Playwright, headless Chromium, production bundle). CI matrix on Node 22 LTS and Node 24. Coverage thresholds enforced on every push. Strict TypeScript with .d.ts on every export. Shared types between client and server — no codegen, no drift.
+    details: 122 unit tests + 38 e2e tests (Playwright, headless Chromium, production bundle — desktop 1280×720 + Pixel 7 mobile). CI matrix on Node 22 LTS and Node 24. Coverage thresholds enforced on every push. Strict TypeScript with .d.ts on every export. Shared types between client and server — no codegen, no drift.
   - icon: 🛠
     title: Developer experience
     details: Single npm package for client, server, shared types, and Web Worker. Works with React, Vue, Svelte, Next.js, Express, NestJS, Fastify. Progressive 10-step tutorial. Copy-paste examples. AGENTS.md for AI coding assistants.

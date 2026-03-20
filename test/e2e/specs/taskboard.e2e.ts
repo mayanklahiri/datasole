@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import { saveScreenshot } from '../helpers/screenshots';
+import { snap } from '../helpers/screenshots';
 import { ServerHarness } from '../helpers/server-harness';
 
 test.describe('Task Board', () => {
@@ -14,7 +14,7 @@ test.describe('Task Board', () => {
     await harness.stop();
   });
 
-  test('RPC addTask and moveTask work end-to-end', async ({ page }) => {
+  test('RPC addTask and moveTask work end-to-end', async ({ page }, testInfo) => {
     await page.goto(harness.getUrl());
     await page.waitForSelector('#status', { state: 'attached' });
 
@@ -27,23 +27,26 @@ test.describe('Task Board', () => {
     expect(addResult.id).toBeTruthy();
     expect(typeof addResult.id).toBe('string');
 
+    await snap(page, testInfo, 'taskboard-task-added');
+
     const moveResult = await page.evaluate(
       (id: string) => (window as any).__rpc('moveTask', { taskId: id, column: 'done' }),
       addResult.id,
     );
     expect(moveResult.ok).toBe(true);
 
+    await snap(page, testInfo, 'taskboard-task-moved');
+
     await page.evaluate(() => (window as any).__disconnect());
   });
 
-  test('board state sync via server setState', async ({ page }) => {
+  test('board state sync via server setState', async ({ page }, testInfo) => {
     await page.goto(harness.getUrl());
     await page.waitForSelector('#status', { state: 'attached' });
 
     await page.evaluate(() => (window as any).__connect());
     await page.waitForFunction(() => (window as any).__getConnectionState() === 'connected');
 
-    // Use a fresh key (not pre-set by server startup) to test state sync
     await page.evaluate(() => (window as any).__subscribeState('taskboard'));
 
     await harness.getDatasoleServer().setState('taskboard', {
@@ -62,11 +65,12 @@ test.describe('Task Board', () => {
     expect(boardUpdate.state.tasks.length).toBe(1);
     expect(boardUpdate.state.tasks[0].title).toBe('E2E task');
 
-    await saveScreenshot(page, 'tutorial-10-taskboard');
+    await snap(page, testInfo, 'taskboard-state-synced');
+
     await page.evaluate(() => (window as any).__disconnect());
   });
 
-  test('chat event roundtrip via server broadcast', async ({ page }) => {
+  test('chat event roundtrip via server broadcast', async ({ page }, testInfo) => {
     await page.goto(harness.getUrl());
     await page.waitForSelector('#status', { state: 'attached' });
 
@@ -76,7 +80,6 @@ test.describe('Task Board', () => {
     await page.evaluate(() => (window as any).__subscribeEvent('chat:message'));
     await page.waitForTimeout(200);
 
-    // Client sends chat:send, server handler broadcasts chat:message
     await page.evaluate(() => (window as any).__emitEvent('chat:send', { text: 'board msg' }));
 
     await page.waitForFunction(() => (window as any).__events.length > 0, null, {
@@ -85,6 +88,8 @@ test.describe('Task Board', () => {
 
     const events = await page.evaluate(() => (window as any).__events);
     expect(events[0].data.text).toBe('board msg');
+
+    await snap(page, testInfo, 'taskboard-chat-event');
 
     await page.evaluate(() => (window as any).__disconnect());
   });

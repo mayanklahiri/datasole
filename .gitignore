@@ -11,6 +11,9 @@ reports/
 coverage/
 test/e2e/reports/
 
+# E2E screenshot baselines (local only, regenerated on first run)
+.screenshots/
+
 # IDE state (keep shared configs, ignore user-specific)
 .idea/*.iml
 .idea/workspace.xml

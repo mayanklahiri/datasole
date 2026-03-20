@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+import { snap } from '../helpers/screenshots';
 import { ServerHarness } from '../helpers/server-harness';
-import { saveScreenshot } from '../helpers/screenshots';
 
 test.describe('Sessions', () => {
   const harness = new ServerHarness();
@@ -14,39 +14,36 @@ test.describe('Sessions', () => {
     await harness.stop();
   });
 
-  test('saves and retrieves session data across reconnections', async ({ page }) => {
+  test('saves and retrieves session data across reconnections', async ({ page }, testInfo) => {
     await page.goto(harness.getUrl());
     await page.waitForSelector('#status', { state: 'attached' });
 
-    // Connect as user-1
     await page.evaluate(() =>
       (window as any).__connect({ auth: { headers: { 'x-user-id': 'session-user-1' } } }),
     );
     await page.waitForFunction(() => (window as any).__getConnectionState() === 'connected');
 
-    // Save progress
     const saveResult = await page.evaluate(() => (window as any).__saveProgress(5, 500));
     expect(saveResult).toEqual({ ok: true });
 
-    // Read it back
     const progress = await page.evaluate(() => (window as any).__getProgress());
     expect(progress).toEqual({ level: 5, score: 500 });
 
-    // Disconnect
+    await snap(page, testInfo, 'session-saved');
+
     await page.evaluate(() => (window as any).__disconnect());
     await page.waitForFunction(() => (window as any).__getConnectionState() !== 'connected');
 
-    // Reconnect as the same user
     await page.evaluate(() =>
       (window as any).__connect({ auth: { headers: { 'x-user-id': 'session-user-1' } } }),
     );
     await page.waitForFunction(() => (window as any).__getConnectionState() === 'connected');
 
-    // Progress should persist
     const restored = await page.evaluate(() => (window as any).__getProgress());
     expect(restored).toEqual({ level: 5, score: 500 });
 
-    await saveScreenshot(page, 'tutorial-8-sessions');
+    await snap(page, testInfo, 'session-restored');
+
     await page.evaluate(() => (window as any).__disconnect());
   });
 });
