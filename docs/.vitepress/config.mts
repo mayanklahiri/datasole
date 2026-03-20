@@ -40,6 +40,7 @@ export default withMermaid(
       nav: [
         { text: 'Guide', link: '/tutorials' },
         { text: 'API', link: '/client' },
+        { text: 'About', link: '/about' },
         {
           text: 'GitHub',
           link: 'https://github.com/mayanklahiri/datasole',
@@ -58,6 +59,7 @@ export default withMermaid(
           text: 'Architecture',
           items: [
             { text: 'Overview', link: '/architecture' },
+            { text: 'Wire Protocol', link: '/protocol' },
             { text: 'Composability', link: '/composability' },
             { text: 'Comparison', link: '/comparison' },
           ],
@@ -80,6 +82,7 @@ export default withMermaid(
         {
           text: 'Project',
           items: [
+            { text: 'About', link: '/about' },
             { text: 'Quality Dashboard', link: '/quality' },
             { text: 'AI & LLM Guide', link: '/ai-guide' },
             { text: 'Decisions', link: '/decisions' },

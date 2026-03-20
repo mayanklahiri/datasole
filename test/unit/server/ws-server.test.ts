@@ -1,248 +1,227 @@
-import type { Server as HttpServer } from 'http';
+import { createServer, type Server } from 'http';
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-const { mockWss } = vi.hoisted(() => {
-  const mockWss = {
-    clients: new Set<{ close: ReturnType<typeof vi.fn> }>(),
-    handleUpgrade: vi.fn(),
-    close: vi.fn((cb: () => void) => cb()),
-    on: vi.fn(),
-  };
-  return { mockWss };
-});
-
-vi.mock('ws', () => {
-  function FakeWebSocketServer() {
-    return mockWss;
-  }
-  return { WebSocketServer: FakeWebSocketServer };
-});
+import { afterEach, describe, expect, it } from 'vitest';
+import WebSocket from 'ws';
 
 import { WsServer } from '../../../src/server/transport/ws-server';
 
-interface MockHttpServer {
-  on: ReturnType<typeof vi.fn>;
-  _listeners: Map<string, (...args: unknown[]) => void>;
+let httpServer: Server;
+let wsServer: WsServer;
+
+function listenHttp(): Promise<number> {
+  httpServer = createServer();
+  return new Promise((resolve) => {
+    httpServer.listen(0, () => {
+      const addr = httpServer.address();
+      resolve(typeof addr === 'object' && addr ? addr.port : 0);
+    });
+  });
 }
 
-type WsServerInternals = {
-  wss: unknown;
-  connectionHandler: unknown;
-  authHandler: unknown;
-};
-
-function asHttp(mock: MockHttpServer): HttpServer {
-  return mock as unknown as HttpServer;
+function connectWs(port: number, path = '/__ds'): Promise<WebSocket> {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(`ws://localhost:${port}${path}`);
+    ws.once('open', () => resolve(ws));
+    ws.once('error', reject);
+  });
 }
 
-function internals(ws: WsServer): WsServerInternals {
-  return ws as unknown as WsServerInternals;
+function connectWsRaw(port: number, path = '/__ds'): WebSocket {
+  return new WebSocket(`ws://localhost:${port}${path}`);
 }
 
-function makeHttpServer(): MockHttpServer {
-  const listeners = new Map<string, (...args: unknown[]) => void>();
-  return {
-    on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
-      listeners.set(event, handler);
-    }),
-    _listeners: listeners,
-  };
-}
+afterEach(async () => {
+  if (wsServer) await wsServer.stop();
+  await new Promise<void>((resolve) => {
+    if (httpServer) httpServer.close(() => resolve());
+    else resolve();
+  });
+});
 
-function makeSocket() {
-  return {
-    write: vi.fn(),
-    destroy: vi.fn(),
-  };
-}
+describe('WsServer (live)', () => {
+  it('start creates WebSocketServer and accepts connections', async () => {
+    const port = await listenHttp();
+    wsServer = new WsServer();
+    await wsServer.start({ server: httpServer, path: '/__ds' });
 
-function makeRequest(url = '/__ds', remoteAddress = '10.0.0.1') {
-  return {
-    url,
-    headers: { host: 'localhost' },
-    socket: { remoteAddress },
-  };
-}
-
-describe('WsServer (mocked ws)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockWss.clients.clear();
-    mockWss.handleUpgrade.mockReset();
-    mockWss.close.mockReset().mockImplementation((cb: () => void) => cb());
+    const ws = await connectWs(port);
+    expect(ws.readyState).toBe(WebSocket.OPEN);
+    ws.close();
   });
 
-  it('onConnection sets handler', () => {
-    const ws = new WsServer();
-    const handler = vi.fn();
-    ws.onConnection(handler);
-    expect(internals(ws).connectionHandler).toBe(handler);
+  it('onConnection fires for each incoming WebSocket', async () => {
+    const port = await listenHttp();
+    wsServer = new WsServer();
+
+    const connected: string[] = [];
+    wsServer.onConnection((_ws, info) => {
+      connected.push(info.id);
+    });
+
+    await wsServer.start({ server: httpServer, path: '/__ds' });
+
+    const ws1 = await connectWs(port);
+    const ws2 = await connectWs(port);
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(connected.length).toBe(2);
+    expect(connected[0]).toMatch(/^conn-/);
+    expect(connected[1]).toMatch(/^conn-/);
+    ws1.close();
+    ws2.close();
   });
 
-  it('setAuthHandler sets auth handler', () => {
-    const ws = new WsServer();
-    const handler = vi.fn();
-    ws.setAuthHandler(handler);
-    expect(internals(ws).authHandler).toBe(handler);
+  it('setAuthHandler with successful auth passes auth result to onConnection', async () => {
+    const port = await listenHttp();
+    wsServer = new WsServer();
+    wsServer.setAuthHandler(async () => ({
+      authenticated: true,
+      userId: 'alice',
+      roles: ['admin'],
+    }));
+
+    let authResult: unknown;
+    wsServer.onConnection((_ws, info) => {
+      authResult = info.auth;
+    });
+
+    await wsServer.start({ server: httpServer, path: '/__ds' });
+    const ws = await connectWs(port);
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(authResult).toEqual(expect.objectContaining({ authenticated: true, userId: 'alice' }));
+    ws.close();
   });
 
-  it('start creates WebSocketServer and registers upgrade handler', async () => {
-    const ws = new WsServer();
-    const httpServer = makeHttpServer();
-    await ws.start({ server: asHttp(httpServer), path: '/__ds' });
+  it('setAuthHandler rejection sends 401 and destroys socket', async () => {
+    const port = await listenHttp();
+    wsServer = new WsServer();
+    wsServer.setAuthHandler(async () => ({ authenticated: false }));
 
-    expect(internals(ws).wss).toBe(mockWss);
-    expect(httpServer.on).toHaveBeenCalledWith('upgrade', expect.any(Function));
+    await wsServer.start({ server: httpServer, path: '/__ds' });
+
+    const ws = connectWsRaw(port);
+    const error = await new Promise<Error>((resolve) => {
+      ws.on('error', resolve);
+    });
+    expect(error).toBeDefined();
   });
 
-  it('stop closes all clients and wss, sets wss to null', async () => {
-    const ws = new WsServer();
-    const httpServer = makeHttpServer();
-    await ws.start({ server: asHttp(httpServer), path: '/__ds' });
-
-    const client1 = { close: vi.fn() };
-    const client2 = { close: vi.fn() };
-    mockWss.clients.add(client1);
-    mockWss.clients.add(client2);
-
-    await ws.stop();
-
-    expect(client1.close).toHaveBeenCalledWith(1001, 'Server shutting down');
-    expect(client2.close).toHaveBeenCalledWith(1001, 'Server shutting down');
-    expect(mockWss.close).toHaveBeenCalled();
-    expect(internals(ws).wss).toBeNull();
-  });
-
-  it('stop when not started is a no-op', async () => {
-    const ws = new WsServer();
-    await expect(ws.stop()).resolves.toBeUndefined();
-  });
-
-  it('getClientCount returns 0 when not started', () => {
-    const ws = new WsServer();
-    expect(ws.getClientCount()).toBe(0);
-  });
-
-  it('getClientCount returns clients.size when started', async () => {
-    const ws = new WsServer();
-    const httpServer = makeHttpServer();
-    await ws.start({ server: asHttp(httpServer), path: '/__ds' });
-
-    mockWss.clients.add({ close: vi.fn() });
-    mockWss.clients.add({ close: vi.fn() });
-    expect(ws.getClientCount()).toBe(2);
-  });
-
-  it('handleUpgrade with successful auth calls wss.handleUpgrade and fires connection handler', async () => {
-    const ws = new WsServer();
-    const connectionHandler = vi.fn();
-    ws.onConnection(connectionHandler);
-    ws.setAuthHandler(async () => ({ authenticated: true, userId: 'u1', roles: ['admin'] }));
-
-    const httpServer = makeHttpServer();
-    await ws.start({ server: asHttp(httpServer), path: '/__ds' });
-
-    mockWss.handleUpgrade.mockImplementation(
-      (_req: unknown, _socket: unknown, _head: unknown, cb: (ws: unknown) => void) => {
-        cb({ fake: 'ws' });
-      },
-    );
-
-    const upgradeHandler = httpServer._listeners.get('upgrade')!;
-    const req = makeRequest('/__ds');
-    const socket = makeSocket();
-    const head = Buffer.alloc(0);
-
-    upgradeHandler(req, socket, head);
-    await new Promise((r) => setTimeout(r, 10));
-
-    expect(mockWss.handleUpgrade).toHaveBeenCalledWith(req, socket, head, expect.any(Function));
-    expect(connectionHandler).toHaveBeenCalledWith(
-      { fake: 'ws' },
-      expect.objectContaining({
-        id: expect.stringContaining('conn-'),
-        remoteAddress: '10.0.0.1',
-        auth: expect.objectContaining({ authenticated: true }),
-      }),
-    );
-  });
-
-  it('handleUpgrade with failed auth writes 401 and destroys socket', async () => {
-    const ws = new WsServer();
-    ws.setAuthHandler(async () => ({ authenticated: false }));
-
-    const httpServer = makeHttpServer();
-    await ws.start({ server: asHttp(httpServer), path: '/__ds' });
-
-    const upgradeHandler = httpServer._listeners.get('upgrade')!;
-    const req = makeRequest('/__ds');
-    const socket = makeSocket();
-    const head = Buffer.alloc(0);
-
-    upgradeHandler(req, socket, head);
-    await new Promise((r) => setTimeout(r, 10));
-
-    expect(socket.write).toHaveBeenCalledWith('HTTP/1.1 401 Unauthorized\r\n\r\n');
-    expect(socket.destroy).toHaveBeenCalled();
-    expect(mockWss.handleUpgrade).not.toHaveBeenCalled();
-  });
-
-  it('handleUpgrade with auth error writes 500 and destroys socket', async () => {
-    const ws = new WsServer();
-    ws.setAuthHandler(async () => {
+  it('auth handler exception sends 500 and destroys socket', async () => {
+    const port = await listenHttp();
+    wsServer = new WsServer();
+    wsServer.setAuthHandler(async () => {
       throw new Error('auth boom');
     });
 
-    const httpServer = makeHttpServer();
-    await ws.start({ server: asHttp(httpServer), path: '/__ds' });
+    await wsServer.start({ server: httpServer, path: '/__ds' });
 
-    const upgradeHandler = httpServer._listeners.get('upgrade')!;
-    const req = makeRequest('/__ds');
-    const socket = makeSocket();
-    const head = Buffer.alloc(0);
-
-    upgradeHandler(req, socket, head);
-    await new Promise((r) => setTimeout(r, 10));
-
-    expect(socket.write).toHaveBeenCalledWith('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-    expect(socket.destroy).toHaveBeenCalled();
+    const ws = connectWsRaw(port);
+    const error = await new Promise<Error>((resolve) => {
+      ws.on('error', resolve);
+    });
+    expect(error).toBeDefined();
   });
 
-  it('upgrade request with wrong path destroys socket', async () => {
-    const ws = new WsServer();
-    const httpServer = makeHttpServer();
-    await ws.start({ server: asHttp(httpServer), path: '/__ds' });
+  it('wrong path destroys socket without upgrade', async () => {
+    const port = await listenHttp();
+    wsServer = new WsServer();
+    await wsServer.start({ server: httpServer, path: '/__ds' });
 
-    const upgradeHandler = httpServer._listeners.get('upgrade')!;
-    const req = makeRequest('/wrong-path');
-    const socket = makeSocket();
-    const head = Buffer.alloc(0);
-
-    upgradeHandler(req, socket, head);
-    await new Promise((r) => setTimeout(r, 10));
-
-    expect(socket.destroy).toHaveBeenCalled();
-    expect(mockWss.handleUpgrade).not.toHaveBeenCalled();
+    const ws = connectWsRaw(port, '/wrong-path');
+    const error = await new Promise<Error>((resolve) => {
+      ws.on('error', resolve);
+    });
+    expect(error).toBeDefined();
   });
 
-  it('connection handler not called when none registered', async () => {
-    const ws = new WsServer();
-    ws.setAuthHandler(async () => ({ authenticated: true }));
+  it('getClientCount reflects connected clients', async () => {
+    const port = await listenHttp();
+    wsServer = new WsServer();
+    await wsServer.start({ server: httpServer, path: '/__ds' });
 
-    const httpServer = makeHttpServer();
-    await ws.start({ server: asHttp(httpServer), path: '/__ds' });
+    expect(wsServer.getClientCount()).toBe(0);
 
-    mockWss.handleUpgrade.mockImplementation(
-      (_req: unknown, _socket: unknown, _head: unknown, cb: (ws: unknown) => void) => {
-        cb({ fake: 'ws' });
-      },
-    );
+    const ws1 = await connectWs(port);
+    const ws2 = await connectWs(port);
+    expect(wsServer.getClientCount()).toBe(2);
 
-    const upgradeHandler = httpServer._listeners.get('upgrade')!;
-    upgradeHandler(makeRequest('/__ds'), makeSocket(), Buffer.alloc(0));
-    await new Promise((r) => setTimeout(r, 10));
+    ws1.close();
+    await new Promise((r) => setTimeout(r, 100));
+    expect(wsServer.getClientCount()).toBe(1);
 
-    expect(mockWss.handleUpgrade).toHaveBeenCalled();
+    ws2.close();
+    await new Promise((r) => setTimeout(r, 100));
+    expect(wsServer.getClientCount()).toBe(0);
+  });
+
+  it('stop closes all connected clients', async () => {
+    const port = await listenHttp();
+    wsServer = new WsServer();
+    await wsServer.start({ server: httpServer, path: '/__ds' });
+
+    const ws = await connectWs(port);
+    const closePromise = new Promise<number>((resolve) => {
+      ws.on('close', (code: number) => resolve(code));
+    });
+
+    await wsServer.stop();
+    const closeCode = await closePromise;
+    expect(closeCode).toBe(1001);
+  });
+
+  it('stop when not started is a no-op', async () => {
+    wsServer = new WsServer();
+    await expect(wsServer.stop()).resolves.toBeUndefined();
+  });
+
+  it('getClientCount returns 0 when not started', () => {
+    wsServer = new WsServer();
+    expect(wsServer.getClientCount()).toBe(0);
+  });
+
+  it('provides remoteAddress in connection info', async () => {
+    const port = await listenHttp();
+    wsServer = new WsServer();
+
+    let remoteAddr = '';
+    wsServer.onConnection((_ws, info) => {
+      remoteAddr = info.remoteAddress;
+    });
+
+    await wsServer.start({ server: httpServer, path: '/__ds' });
+    const ws = await connectWs(port);
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(remoteAddr).toBeTruthy();
+    ws.close();
+  });
+
+  it('binary messages pass through on connected WebSocket', async () => {
+    const port = await listenHttp();
+    wsServer = new WsServer();
+
+    const messages: Uint8Array[] = [];
+    wsServer.onConnection((ws) => {
+      ws.on('message', (data: Buffer) => {
+        messages.push(new Uint8Array(data));
+        ws.send(data);
+      });
+    });
+
+    await wsServer.start({ server: httpServer, path: '/__ds' });
+    const ws = await connectWs(port);
+
+    const payload = new Uint8Array([0x01, 0x02, 0x03]);
+    ws.send(payload);
+
+    const echo = await new Promise<Uint8Array>((resolve) => {
+      ws.on('message', (data: Buffer) => {
+        resolve(new Uint8Array(data));
+      });
+    });
+    expect(echo).toEqual(payload);
+    expect(messages.length).toBe(1);
+    ws.close();
   });
 });

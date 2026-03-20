@@ -13,13 +13,12 @@
   <a href="https://www.npmjs.com/package/datasole"><img src="https://img.shields.io/npm/v/datasole.svg" alt="npm version"></a>
   <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-strict-blue.svg" alt="TypeScript"></a>
+  <a href="https://mayanklahiri.github.io/datasole/quality"><img src="https://img.shields.io/badge/coverage-%E2%89%A580%25-brightgreen.svg" alt="Coverage ≥80%"></a>
 </p>
 
 <p align="center">
   <strong><a href="https://mayanklahiri.github.io/datasole/">Documentation</a></strong> · <strong><a href="https://mayanklahiri.github.io/datasole/tutorials">Tutorials</a></strong> · <strong><a href="https://mayanklahiri.github.io/datasole/client">API Reference</a></strong>
 </p>
-
-> **Production-proven** — datasole powers realtime control-plane infrastructure at a Fortune 50 cloud provider.
 
 ## Why datasole?
 
@@ -32,7 +31,11 @@ You're building something realtime. You've evaluated the options:
 
 **Nothing gives you the full stack in a single TypeScript package.**
 
-datasole does. One `npm install` — server, client, shared types, Web Worker, `.d.ts` declarations. No platform signup. No codegen. You own the server, you pick the database, you deploy where you want.
+Anything interesting enough to build will probably need a _combination_ of these primitives — typed RPC, realtime events, state sync, CRDTs, auth, rate limiting, metrics. Especially now with agentic AI coding, where LLMs compose libraries on your behalf: the more deterministic and well-tested the building blocks, the less likely your agent stitches together an incompatible, untested, non-performant Frankenstein. datasole is the known set of Lego blocks — one package, deeply tested, designed to compose.
+
+Instead of letting your agent non-deterministically re-integrate five separate libraries every time, datasole is a full-stack, scalable, performant, observable, and thoroughly tested framework. It lets you focus on the fun, creative parts of realtime applications without worrying about compatibility, performance, scalability, or raw WebSocket plumbing — plus all the "enterprise" pieces (auth, rate limiting, session persistence, metrics, structured logging) are built in.
+
+One `npm install` — server, client, shared types, Web Worker, `.d.ts` declarations. No platform signup. No codegen. You own the server, you pick the database, you deploy where you want.
 
 ```bash
 npm install datasole

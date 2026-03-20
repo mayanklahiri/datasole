@@ -10,33 +10,60 @@ This page compares datasole to the most widely used realtime frameworks as of 20
 
 ## Summary matrix
 
-| Feature                          |          datasole           |       Socket.IO        |       Ably        |      Pusher       |      Liveblocks      |    PartyKit     |
-| -------------------------------- | :-------------------------: | :--------------------: | :---------------: | :---------------: | :------------------: | :-------------: |
-| **Hosting model**                |         Self-hosted         |      Self-hosted       |      Managed      |      Managed      |       Managed        | Cloudflare edge |
-| **Open source**                  |        ✅ Apache 2.0        |         ✅ MIT         |        ❌         |        ❌         |          ❌          |     ✅ MIT      |
-| **Full-stack single TS package** |             ✅              |      ❌ separate       |        ❌         |        ❌         |     ❌ multiple      |   ❌ multiple   |
-| **Binary frames**                |          ✅ always          |  ⚠️ opt-in (msgpack)   |        ✅         |        ❌         |          ❌          |       ❌        |
-| **Compression**                  |     ✅ pako user-space¹     | ⚠️ permessage-deflate² |        ❌         |        ❌         |          ❌          |       ❌        |
-| **Web Worker transport**         |             ✅              |           ❌           |        ❌         |        ❌         |          ❌          |       ❌        |
-| **JSON Patch state sync**        |         ✅ RFC 6902         |           ❌           |        ❌         |        ❌         |          ❌          |       ❌        |
-| **Built-in CRDTs**               |     ✅ LWW, PN, LWW-Map     |           ❌           |        ❌         |        ❌         | ✅ LiveMap, LiveList |   ⚠️ via Yjs    |
-| **Typed RPC**                    |       ✅ multiplexed        |           ❌           |        ❌         |        ❌         |          ❌          |       ❌        |
-| **Server concurrency models**    |         ✅ 4 modes          |      ❌ 1 (async)      |    N/A managed    |    N/A managed    |     N/A managed      | Durable Objects |
-| **Frame-level rate limiting**    |      ✅ memory + Redis      |           ❌           |    ✅ managed     |    ✅ managed     |      ✅ managed      |       ❌        |
-| **Session persistence**          |        ✅ pluggable         |           ❌           |        ❌         |        ❌         |          ✅          | ⚠️ storage API  |
-| **Sync channels**                | ✅ immediate/batch/debounce |           ❌           |        ❌         |        ❌         |          ❌          |       ❌        |
-| **Pluggable backends**           |     ✅ memory/Redis/PG      |     ⚠️ via adapter     |    ❌ managed     |    ❌ managed     |      ❌ managed      | ⚠️ storage API  |
-| **Prometheus / OTel metrics**    |             ✅              |           ❌           |   ❌ dashboard    |   ❌ dashboard    |     ❌ dashboard     |       ❌        |
-| **Client bundle (gzip)**         |    36 KB (client+worker)    |        11–15 KB        |       31 KB       |      ~14 KB       |       ~50 KB+        |     varies      |
-| **TypeScript (strict)**          |        ✅ end-to-end        |   ⚠️ types included    | ⚠️ types included | ⚠️ types included |          ✅          |       ✅        |
-| **E2e test suite**               |        ✅ Playwright        |           ❌           |        N/A        |        N/A        |         N/A          |       ❌        |
-| **Free tier / pricing**          |    ✅ free (self-hosted)    | ✅ free (self-hosted)  |   ❌ 6M msg/mo    |  ❌ 200K msg/day  |   ❌ 500 rooms/mo    |  ❌ CF pricing  |
-| **HTTP polling fallback**        |             ❌              |           ✅           |        ✅         |        ✅         |          ✅          |       ❌        |
-| **Rooms / namespaces**           |             ❌              |           ✅           |        ✅         |        ✅         |          ✅          |       ✅        |
-| **Native mobile SDKs**           |             ❌              |           ✅           |   ✅ 25+ langs    |        ✅         |          ❌          |       ❌        |
-| **Rich-text CRDT**               |             ❌              |           ❌           |        ❌         |        ❌         |        ✅ Yjs        |     ✅ Yjs      |
-| **Global edge network**          |             ❌              |           ❌           |        ✅         |        ✅         |          ✅          |       ✅        |
-| **Community size**               |          ❌ small           |       ✅ massive       |     ✅ large      |     ✅ large      |      ⚠️ growing      |   ⚠️ growing    |
+The matrix below compares core capabilities. Each row lists the feature and, where applicable, details for each framework.
+
+<div class="comparison-grid">
+
+### Transport & Protocol
+
+| Feature              |   datasole    |  Socket.IO  |  Ably   | Pusher  | Liveblocks | PartyKit |
+| -------------------- | :-----------: | :---------: | :-----: | :-----: | :--------: | :------: |
+| **Hosting**          |  Self-hosted  | Self-hosted | Managed | Managed |  Managed   | CF edge  |
+| **Open source**      | ✅ Apache-2.0 |   ✅ MIT    |   ❌    |   ❌    |     ❌     |  ✅ MIT  |
+| **Binary frames**    |   ✅ always   |  ⚠️ opt-in  |   ✅    |   ❌    |     ❌     |    ❌    |
+| **Compression**      |   ✅ pako¹    | ⚠️ deflate² |   ❌    |   ❌    |     ❌     |    ❌    |
+| **Worker transport** |      ✅       |     ❌      |   ❌    |   ❌    |     ❌     |    ❌    |
+| **HTTP fallback**    |      ❌       |     ✅      |   ✅    |   ✅    |     ✅     |    ❌    |
+
+### State & Sync
+
+| Feature             |     datasole      |  Socket.IO  | Ably | Pusher | Liveblocks | PartyKit |
+| ------------------- | :---------------: | :---------: | :--: | :----: | :--------: | :------: |
+| **Full-stack TS**   |   ✅ single pkg   | ❌ separate |  ❌  |   ❌   |  ❌ multi  | ❌ multi |
+| **JSON Patch sync** |    ✅ RFC 6902    |     ❌      |  ❌  |   ❌   |     ❌     |    ❌    |
+| **Built-in CRDTs**  |   ✅ LWW/PN/Map   |     ❌      |  ❌  |   ❌   | ✅ LiveMap |  ⚠️ Yjs  |
+| **Rich-text CRDT**  |        ❌         |     ❌      |  ❌  |   ❌   |   ✅ Yjs   |  ✅ Yjs  |
+| **Typed RPC**       |  ✅ multiplexed   |     ❌      |  ❌  |   ❌   |     ❌     |    ❌    |
+| **Sessions**        |   ✅ pluggable    |     ❌      |  ❌  |   ❌   |     ✅     |    ⚠️    |
+| **Sync channels**   | ✅ batch/debounce |     ❌      |  ❌  |   ❌   |     ❌     |    ❌    |
+
+### Infrastructure
+
+| Feature           |    datasole     |   Socket.IO   |  Ably   | Pusher  | Liveblocks | PartyKit |
+| ----------------- | :-------------: | :-----------: | :-----: | :-----: | :--------: | :------: |
+| **Concurrency**   |   ✅ 4 modes    | ❌ async-only |   N/A   |   N/A   |    N/A     |    DO    |
+| **Backends**      | ✅ mem/Redis/PG |  ⚠️ adapter   |   ❌    |   ❌    |     ❌     |    ⚠️    |
+| **Rate limiting** |  ✅ mem+Redis   |      ❌       |   ✅    |   ✅    |     ✅     |    ❌    |
+| **Metrics**       |  ✅ Prom/OTel   |      ❌       | ❌ dash | ❌ dash |  ❌ dash   |    ❌    |
+| **Rooms**         |       ❌        |      ✅       |   ✅    |   ✅    |     ✅     |    ✅    |
+| **Edge network**  |       ❌        |      ❌       |   ✅    |   ✅    |     ✅     |    ✅    |
+| **Mobile SDKs**   |       ❌        |      ✅       | ✅ 25+  |   ✅    |     ❌     |    ❌    |
+
+### Developer Experience
+
+| Feature         |    datasole     | Socket.IO  |    Ably    |   Pusher   | Liveblocks  |  PartyKit  |
+| --------------- | :-------------: | :--------: | :--------: | :--------: | :---------: | :--------: |
+| **Strict TS**   |  ✅ end-to-end  |  ⚠️ types  |  ⚠️ types  |  ⚠️ types  |     ✅      |     ✅     |
+| **E2E tests**   |  ✅ Playwright  |     ❌     |    N/A     |    N/A     |     N/A     |     ❌     |
+| **Client gzip** |      36 KB      |  11–15 KB  |   31 KB    |   ~14 KB   |   ~50 KB+   |   varies   |
+| **Pricing**     | ✅ free forever |  ✅ free   | ❌ per-msg | ❌ per-msg | ❌ per-room |   ❌ CF    |
+| **Community**   |    ❌ small     | ✅ massive |  ✅ large  |  ✅ large  | ⚠️ growing  | ⚠️ growing |
+
+</div>
+
+> ¹ datasole compresses every binary frame >256 B using pako in user-space, inside the Web Worker. No extension negotiation, no per-connection zlib state, no browser compatibility issues.
+>
+> ² Socket.IO [disabled permessage-deflate by default](https://github.com/socketio/engine.io/commit/5ad273601eb66c7b318542f87026837bf9dddd21) due to memory leaks and production crashes. The ws library documented a race condition leaking 89K PerMessageDeflate objects after mass disconnects ([ws#1617](https://github.com/websockets/ws/issues/1617)). Jetty reported data corruption on Edge 133 ([jetty#12826](https://github.com/jetty/jetty.project/issues/12826)). Node.js undici had 54 test failures out of 517 when adding permessage-deflate support (2024).
 
 > ¹ datasole compresses every binary frame >256 B using pako in user-space, inside the Web Worker. No extension negotiation, no per-connection zlib state, no browser compatibility issues.
 >

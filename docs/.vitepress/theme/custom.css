@@ -84,9 +84,19 @@ div[class*='language-'] > pre {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
+/* ── Hero image ── */
+.VPHero .VPImage.image-src {
+  max-width: 100px !important;
+  max-height: 100px !important;
+}
+
 /* ── Feature card images ── */
 .VPFeature .VPImage {
-  width: 48px;
-  height: 48px;
+  width: auto;
+  height: 80px;
+  max-width: 100%;
   border-radius: 8px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
 }

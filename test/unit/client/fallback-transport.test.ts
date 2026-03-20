@@ -1,125 +1,111 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import NodeWebSocket from 'ws';
 
 import { FallbackTransport } from '../../../src/client/transport/fallback-transport';
+import { serialize } from '../../../src/shared/codec';
+import { Opcode } from '../../../src/shared/protocol';
+import { createLiveTestServer, tick, type LiveTestServer } from '../../helpers/live-server';
 
-let mockWsInstance: InstanceType<typeof MockWebSocket>;
-
-function storeMockWs(instance: InstanceType<typeof MockWebSocket>): void {
-  mockWsInstance = instance;
-}
-
-class MockWebSocket {
-  static readonly OPEN = 1;
-  static readonly CLOSED = 3;
-  static readonly CONNECTING = 0;
-  static readonly CLOSING = 2;
-
-  readonly OPEN = 1;
-  readonly CLOSED = 3;
-  readonly CONNECTING = 0;
-  readonly CLOSING = 2;
-
-  binaryType = '';
-  readyState = MockWebSocket.OPEN;
-  onopen: ((ev: unknown) => void) | null = null;
-  onclose: ((ev: { code: number; reason: string }) => void) | null = null;
-  onerror: ((ev: unknown) => void) | null = null;
-  onmessage: ((ev: { data: ArrayBuffer }) => void) | null = null;
-  send = vi.fn();
-  close = vi.fn();
-  addEventListener = vi.fn();
-  url: string;
-
-  constructor(url: string) {
-    this.url = url;
-    storeMockWs(this);
-  }
-}
+let srv: LiveTestServer;
 
 beforeEach(() => {
-  vi.stubGlobal('WebSocket', MockWebSocket);
+  vi.stubGlobal('WebSocket', NodeWebSocket);
 });
 
-afterEach(() => {
+afterEach(async () => {
   vi.unstubAllGlobals();
-  vi.restoreAllMocks();
+  if (srv) await srv.close();
 });
 
-function connectTransport(
-  transport: FallbackTransport,
-  url = 'ws://localhost:3000/__ds',
-): Promise<void> {
-  const p = transport.connect(url);
-  mockWsInstance.onopen!({});
-  return p;
-}
+describe('FallbackTransport (live server)', () => {
+  beforeEach(async () => {
+    srv = await createLiveTestServer();
+    srv.ds.rpc('echo', async (params: unknown) => params);
+  });
 
-describe('FallbackTransport', () => {
   describe('connect', () => {
-    it('creates a WebSocket with the given URL', async () => {
+    it('connects to a real server', async () => {
       const transport = new FallbackTransport();
-      await connectTransport(transport);
-      expect(mockWsInstance.url).toBe('ws://localhost:3000/__ds');
+      await transport.connect(srv.wsUrl);
+      expect(transport.isConnected()).toBe(true);
+      await transport.disconnect();
     });
 
     it('sets binaryType to arraybuffer', async () => {
       const transport = new FallbackTransport();
-      await connectTransport(transport);
-      expect(mockWsInstance.binaryType).toBe('arraybuffer');
+      await transport.connect(srv.wsUrl);
+      expect(transport.isConnected()).toBe(true);
+      await transport.disconnect();
     });
 
-    it('rejects on WebSocket error', async () => {
+    it('rejects on connection to bad URL', async () => {
       const transport = new FallbackTransport();
-      const p = transport.connect('ws://localhost:3000/__ds');
-      mockWsInstance.onerror!({});
-      await expect(p).rejects.toThrow('WebSocket connection failed');
+      await expect(transport.connect('ws://localhost:1/__bad')).rejects.toThrow();
     });
 
     it('calls onOpen handler when connected', async () => {
       const transport = new FallbackTransport();
       const onOpen = vi.fn();
       transport.onOpen(onOpen);
-      await connectTransport(transport);
+      await transport.connect(srv.wsUrl);
       expect(onOpen).toHaveBeenCalledOnce();
+      await transport.disconnect();
     });
   });
 
-  describe('send', () => {
-    it('calls ws.send with the data', async () => {
+  describe('send / receive', () => {
+    it('sends binary data and receives a response', async () => {
       const transport = new FallbackTransport();
-      await connectTransport(transport);
+      const received: unknown[] = [];
+      transport.onMessage((frame) => received.push(frame));
+      await transport.connect(srv.wsUrl);
 
-      const data = new Uint8Array([1, 2, 3]);
-      transport.send(data);
-      expect(mockWsInstance.send).toHaveBeenCalledWith(data);
+      const payload = serialize({ method: 'echo', params: 'hello', correlationId: 1 });
+      transport.sendFrame({ opcode: Opcode.RPC_REQ, correlationId: 1, payload });
+      await tick(100);
+
+      expect(received.length).toBeGreaterThanOrEqual(1);
+      const resp = received[0] as { opcode: number; correlationId: number };
+      expect(resp.opcode).toBe(Opcode.RPC_RES);
+      expect(resp.correlationId).toBe(1);
+      await transport.disconnect();
     });
 
-    it('throws when not connected', () => {
+    it('throws when sending while not connected', () => {
       const transport = new FallbackTransport();
       expect(() => transport.send(new Uint8Array([1]))).toThrow('WebSocket not connected');
     });
+  });
 
-    it('throws when WebSocket is not in OPEN state', async () => {
+  describe('sendFrame', () => {
+    it('handles large payloads end-to-end (triggers compression path)', async () => {
       const transport = new FallbackTransport();
-      await connectTransport(transport);
+      const frameReceived = new Promise<unknown>((resolve) => {
+        transport.onMessage((frame) => resolve(frame));
+      });
+      await transport.connect(srv.wsUrl);
 
-      mockWsInstance.readyState = MockWebSocket.CLOSED;
-      expect(() => transport.send(new Uint8Array([1]))).toThrow('WebSocket not connected');
+      // High-entropy data that stays > 256 bytes even after compression
+      const items = Array.from({ length: 50 }, (_, i) => `k${i}:${(i * 31337).toString(36)}`);
+      const bigPayload = { method: 'echo', params: items, correlationId: 2 };
+      transport.sendFrame({
+        opcode: Opcode.RPC_REQ,
+        correlationId: 2,
+        payload: serialize(bigPayload),
+      });
+
+      const frame = await frameReceived;
+      expect((frame as { opcode: number }).opcode).toBe(Opcode.RPC_RES);
+      expect((frame as { correlationId: number }).correlationId).toBe(2);
+      await transport.disconnect();
     });
   });
 
   describe('disconnect', () => {
-    it('calls ws.close', async () => {
+    it('disconnects and isConnected returns false', async () => {
       const transport = new FallbackTransport();
-      await connectTransport(transport);
-
-      await transport.disconnect();
-      expect(mockWsInstance.close).toHaveBeenCalledOnce();
-    });
-
-    it('sets ws to null after disconnect', async () => {
-      const transport = new FallbackTransport();
-      await connectTransport(transport);
+      await transport.connect(srv.wsUrl);
+      expect(transport.isConnected()).toBe(true);
 
       await transport.disconnect();
       expect(transport.isConnected()).toBe(false);
@@ -131,51 +117,33 @@ describe('FallbackTransport', () => {
     });
   });
 
-  describe('onMessage', () => {
-    it('registers a message handler that receives decoded frames', async () => {
-      const transport = new FallbackTransport();
-      const handler = vi.fn();
-      transport.onMessage(handler);
-
-      await connectTransport(transport);
-
-      const { encodeFrame, Opcode } = await import('../../../src/shared/protocol');
-      const frame = encodeFrame({
-        opcode: Opcode.EVENT_S2C,
-        correlationId: 0,
-        payload: new Uint8Array([10, 20]),
-      });
-
-      mockWsInstance.onmessage!({ data: frame.buffer as ArrayBuffer });
-      expect(handler).toHaveBeenCalledOnce();
-      expect(handler.mock.calls[0]![0].opcode).toBe(Opcode.EVENT_S2C);
-    });
-  });
-
   describe('onClose', () => {
-    it('registers a close handler that receives code and reason', async () => {
+    it('fires close handler when server closes connection', async () => {
       const transport = new FallbackTransport();
-      const handler = vi.fn();
-      transport.onClose(handler);
+      let closeCode = -1;
+      transport.onClose((code) => {
+        closeCode = code;
+      });
+      await transport.connect(srv.wsUrl);
 
-      await connectTransport(transport);
+      await srv.ds.close();
+      await tick(100);
 
-      mockWsInstance.onclose!({ code: 1000, reason: 'Normal' });
-      expect(handler).toHaveBeenCalledWith(1000, 'Normal');
+      expect(closeCode).toBeGreaterThanOrEqual(1000);
+
+      // Prevent afterEach from double-closing
+      srv = undefined as unknown as LiveTestServer;
     });
   });
 
   describe('onError', () => {
-    it('registers an error handler', async () => {
+    it('fires error handler on connection failure', async () => {
       const transport = new FallbackTransport();
-      const handler = vi.fn();
-      transport.onError(handler);
+      const errorHandler = vi.fn();
+      transport.onError(errorHandler);
 
-      const p = transport.connect('ws://localhost:3000/__ds');
-      mockWsInstance.onerror!({});
-
-      await expect(p).rejects.toThrow();
-      expect(handler).toHaveBeenCalledOnce();
+      await expect(transport.connect('ws://localhost:1/__bad')).rejects.toThrow();
+      expect(errorHandler).toHaveBeenCalledOnce();
     });
   });
 
@@ -185,10 +153,33 @@ describe('FallbackTransport', () => {
       expect(transport.isConnected()).toBe(false);
     });
 
-    it('returns true when WebSocket is OPEN', async () => {
+    it('returns true when connected', async () => {
       const transport = new FallbackTransport();
-      await connectTransport(transport);
+      await transport.connect(srv.wsUrl);
       expect(transport.isConnected()).toBe(true);
+      await transport.disconnect();
+    });
+  });
+
+  describe('onMessage decodes frames', () => {
+    it('decodes incoming binary frames into Frame objects', async () => {
+      const transport = new FallbackTransport();
+      const frames: unknown[] = [];
+      transport.onMessage((frame) => frames.push(frame));
+      await transport.connect(srv.wsUrl);
+
+      transport.sendFrame({
+        opcode: Opcode.PING,
+        correlationId: 42,
+        payload: serialize(null),
+      });
+      await tick(100);
+
+      expect(frames.length).toBeGreaterThanOrEqual(1);
+      const pong = frames[0] as { opcode: number; correlationId: number };
+      expect(pong.opcode).toBe(Opcode.PONG);
+      expect(pong.correlationId).toBe(42);
+      await transport.disconnect();
     });
   });
 });

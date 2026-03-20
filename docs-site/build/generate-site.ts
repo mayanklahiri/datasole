@@ -158,7 +158,7 @@ function main() {
     <div class="hero">
       <h1>datasole</h1>
       <p class="tagline">The full-stack realtime primitive for TypeScript.</p>
-      <p class="hero-sub">Production-proven at Fortune 50 scale. One <code>npm install</code> — you own the server, the data, and the deployment.</p>
+      <p class="hero-sub">One <code>npm install</code> — you own the server, the data, and the deployment.</p>
       <nav class="hero-actions">
         <a href="${BASE_PATH}/tutorials/" class="btn-primary">Start the tutorial</a>
         <a href="${BASE_PATH}/examples/" class="btn-secondary">See examples</a>
