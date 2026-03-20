@@ -1,23 +1,52 @@
-# datasole
+<p align="center">
+  <img src="src/shared/assets/datasole-logo.png" width="160" alt="datasole">
+</p>
 
-[![CI](https://github.com/mayanklahiri/datasole/actions/workflows/ci.yml/badge.svg)](https://github.com/mayanklahiri/datasole/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/datasole.svg)](https://www.npmjs.com/package/datasole)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](https://www.typescriptlang.org/)
+<h1 align="center">datasole</h1>
 
-**[Documentation](https://mayanklahiri.github.io/datasole/)** · **[Tutorials](https://mayanklahiri.github.io/datasole/tutorials)** · **[API Reference](https://mayanklahiri.github.io/datasole/client)**
+<p align="center">
+  <strong>The full-stack realtime primitive for TypeScript</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/mayanklahiri/datasole/actions/workflows/ci.yml"><img src="https://github.com/mayanklahiri/datasole/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.npmjs.com/package/datasole"><img src="https://img.shields.io/npm/v/datasole.svg" alt="npm version"></a>
+  <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-strict-blue.svg" alt="TypeScript"></a>
+</p>
+
+<p align="center">
+  <strong><a href="https://mayanklahiri.github.io/datasole/">Documentation</a></strong> · <strong><a href="https://mayanklahiri.github.io/datasole/tutorials">Tutorials</a></strong> · <strong><a href="https://mayanklahiri.github.io/datasole/client">API Reference</a></strong>
+</p>
 
 > **Production-proven** — datasole powers realtime control-plane infrastructure at a Fortune 50 cloud provider.
 
 ## Why datasole?
 
-You're building something realtime. You've evaluated the options. Socket.IO is text-only JSON with no state primitives. The managed services charge per message and own your infra. The CRDT libraries give you sync but no transport. The transport libraries give you WebSockets but no sync. Nothing gives you everything in one package without vendor lock-in.
+You're building something realtime. You've evaluated the options:
 
-**datasole is the missing full-stack realtime primitive for TypeScript.** One `npm install`. No platform signup. No codegen. You own the server, you pick the database, you deploy where you want.
+- **Socket.IO** — text-only JSON, no state primitives, compression disabled by default due to memory leaks
+- **Managed services** (Ably, Pusher) — per-message pricing, vendor lock-in, "contact sales" for scaling
+- **CRDT libraries** (Yjs, Automerge) — sync but no transport
+- **Transport libraries** — WebSockets but no sync, no state, no types
+
+**Nothing gives you the full stack in a single TypeScript package.**
+
+datasole does. One `npm install` — server, client, shared types, Web Worker, `.d.ts` declarations. No platform signup. No codegen. You own the server, you pick the database, you deploy where you want.
 
 ```bash
 npm install datasole
 ```
+
+### The big four
+
+1. **Full-stack TypeScript, single package** — Server, client, shared types, Web Worker, and `.d.ts` declarations from one `npm install`. No codegen, no separate client/server packages, no polyglot friction. ESM, CJS, and IIFE bundles included.
+
+2. **Guaranteed compression (not permessage-deflate)** — datasole compresses every binary frame >256 B using pako in user-space. No extension negotiation, no per-connection zlib state, no browser compatibility matrix. Socket.IO [disabled permessage-deflate by default](https://github.com/socketio/engine.io/commit/5ad273601eb66c7b318542f87026837bf9dddd21) due to memory leaks crashing production servers. datasole sidesteps the entire problem.
+
+3. **Scale without "contact sales"** — Swap in Redis or Postgres endpoints and go from single-process to distributed with zero code changes. Four concurrency models (async, thread, pool, process). pm2/k8s ready. Horizontal scaling is built in, not a pricing tier.
+
+4. **Open source, Apache-2.0, free forever** — No per-message pricing. No vendor lock-in. No "enterprise tier for production use." Self-host on your infra, your terms.
 
 ### What you get
 
@@ -26,11 +55,29 @@ npm install datasole
 - **Automatic state sync** — Server mutates state, clients get diffs. No manual diffing, no full snapshots.
 - **Built-in CRDTs** — Conflict-free bidirectional sync for collaborative features. No resolution code.
 - **Typed RPC** — Multiplexed request/response over the same connection. Types flow end-to-end.
-- **Four concurrency models** — Event loop, thread-per-connection, thread pool, or process isolation.
 - **Pluggable everything** — State backends (memory, Redis, Postgres), rate limiters, metric exporters.
-- **One package** — Client, server, shared types, Web Worker, `.d.ts` declarations. ESM, CJS, and IIFE.
+- **Observability** — Prometheus and OpenTelemetry metric exporters built in.
 - **Framework-agnostic** — React, Vue, Svelte, vanilla JS on the client. Express, NestJS, Fastify, `http.createServer()` on the server.
 - **36 KB total** — Client + worker gzip. Includes compression, framing, diffing, CRDTs, and the worker transport.
+
+### Use cases
+
+datasole is a good fit anywhere you need performant, scalable realtime communication:
+
+- Realtime multiplayer games and game lobbies
+- Interactive internal tools and admin dashboards
+- Live analytics and monitoring dashboards
+- Wrapped native apps (Bun single-executable, Node SEA, Electron, Tauri) with rich web UIs
+- Synchronized streaming (internet radio, watch parties, live commentary)
+- Rich frontends for local-process application servers (dev tools, CLIs with a web UI)
+- Collaborative editing and shared whiteboards
+- IoT device control panels and telemetry viewers
+- Trading and financial data feeds
+- Live customer support and chat systems
+- Auction and bidding platforms
+- Live sports scoreboards and event tickers
+- CI/CD pipeline status walls
+- Classroom and webinar interactive Q&A
 
 ## Quick start
 
@@ -223,19 +270,30 @@ A browser downloads the client IIFE + worker for a total of **36 KB gzip** — t
 
 ## How datasole compares
 
-| Capability                     |   datasole   |   Socket.IO    |      Ably      |     Pusher     | Liveblocks |    PartyKit     |
-| ------------------------------ | :----------: | :------------: | :------------: | :------------: | :--------: | :-------------: |
-| Self-hosted / open source      | ✓ Apache 2.0 |     ✓ MIT      |    Managed     |    Managed     |  Managed   |   Cloudflare    |
-| Web Worker transport           |      ✓       |       —        |       —        |       —        |     —      |        —        |
-| Binary frames + compression    |   ✓ always   |     Opt-in     |       ✓        |       —        |     —      |        —        |
-| JSON Patch state sync          |      ✓       |       —        |       —        |       —        |     —      |        —        |
-| Built-in CRDTs                 |      ✓       |       —        |       —        |       —        | ✓ LiveMap  |     Via Yjs     |
-| Typed RPC (multiplexed)        |      ✓       |       —        |       —        |       —        |     —      |        —        |
-| Server concurrency models      |      4       |   1 (async)    |      N/A       |      N/A       |    N/A     | Durable Objects |
-| Frame-level rate limiting      |      ✓       |       —        |    Managed     |    Managed     |  Managed   |        —        |
-| Sync channels (batch/debounce) |      ✓       |       —        |       —        |       —        |     —      |        —        |
-| Session persistence            |      ✓       |       —        |       —        |       —        |     ✓      |   Via storage   |
-| Strict TypeScript end-to-end   |      ✓       | Types included | Types included | Types included |     ✓      |        ✓        |
+| Capability                     |           datasole            |         Socket.IO          |            Ably            |           Pusher           |         Liveblocks         |        PartyKit        |
+| ------------------------------ | :---------------------------: | :------------------------: | :------------------------: | :------------------------: | :------------------------: | :--------------------: |
+| Self-hosted / open source      | :white_check_mark: Apache 2.0 |   :white_check_mark: MIT   |        :x: Managed         |        :x: Managed         |        :x: Managed         |  :warning: Cloudflare  |
+| Full-stack single TS package   |      :white_check_mark:       |        :x: separate        |            :x:             |            :x:             |        :x: multiple        |      :x: multiple      |
+| Web Worker transport           |      :white_check_mark:       |            :x:             |            :x:             |            :x:             |            :x:             |          :x:           |
+| Binary frames + compression    |   :white_check_mark: always   |     :warning: opt-in¹      |     :white_check_mark:     |            :x:             |            :x:             |          :x:           |
+| JSON Patch state sync          |      :white_check_mark:       |            :x:             |            :x:             |            :x:             |            :x:             |          :x:           |
+| Built-in CRDTs                 |      :white_check_mark:       |            :x:             |            :x:             |            :x:             | :white_check_mark: LiveMap |   :warning: via Yjs    |
+| Typed RPC (multiplexed)        |      :white_check_mark:       |            :x:             |            :x:             |            :x:             |            :x:             |          :x:           |
+| Server concurrency models      |  :white_check_mark: 4 modes   |       :x: 1 (async)        |            N/A             |            N/A             |            N/A             |    Durable Objects     |
+| Pluggable backends (Redis/PG)  |      :white_check_mark:       |   :warning: via adapter    |        :x: managed         |        :x: managed         |        :x: managed         | :warning: storage API  |
+| Frame-level rate limiting      |      :white_check_mark:       |            :x:             | :white_check_mark: managed | :white_check_mark: managed | :white_check_mark: managed |          :x:           |
+| Sync channels (batch/debounce) |      :white_check_mark:       |            :x:             |            :x:             |            :x:             |            :x:             |          :x:           |
+| Session persistence            |      :white_check_mark:       |            :x:             |            :x:             |            :x:             |     :white_check_mark:     |   :warning: storage    |
+| Prometheus / OTel metrics      |      :white_check_mark:       |            :x:             |       :x: dashboard        |       :x: dashboard        |       :x: dashboard        |          :x:           |
+| HTTP polling fallback          |              :x:              |     :white_check_mark:     |     :white_check_mark:     |     :white_check_mark:     |     :white_check_mark:     |          :x:           |
+| Rooms / namespaces             |              :x:              |     :white_check_mark:     |     :white_check_mark:     |     :white_check_mark:     |     :white_check_mark:     |   :white_check_mark:   |
+| Native mobile SDKs             |              :x:              |     :white_check_mark:     |     :white_check_mark:     |     :white_check_mark:     |            :x:             |          :x:           |
+| Rich-text CRDT                 |              :x:              |            :x:             |            :x:             |            :x:             |   :white_check_mark: Yjs   | :white_check_mark: Yjs |
+| Global edge network            |              :x:              |            :x:             |     :white_check_mark:     |     :white_check_mark:     |     :white_check_mark:     |   :white_check_mark:   |
+| Community size                 |           :x: small           | :white_check_mark: massive |  :white_check_mark: large  |  :white_check_mark: large  |     :warning: growing      |   :warning: growing    |
+| Free forever (self-hosted)     |      :white_check_mark:       |     :white_check_mark:     |        :x: per-msg         |        :x: per-msg         |        :x: per-room        |     :x: CF pricing     |
+
+> ¹ Socket.IO [disabled permessage-deflate by default](https://github.com/socketio/engine.io/commit/5ad273601eb66c7b318542f87026837bf9dddd21) due to memory leaks and crashes in production. datasole uses user-space pako compression on every frame >256 B — no negotiation, no per-connection zlib state, no browser compat issues.
 
 ## Test coverage
 

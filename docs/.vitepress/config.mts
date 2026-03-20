@@ -5,13 +5,38 @@ export default withMermaid(
   defineConfig({
     title: 'datasole',
     description:
-      'Realtime TypeScript framework with binary WebSocket transport, JSON Patch state sync, typed RPC, and CRDTs.',
+      'Full-stack realtime TypeScript framework — binary WebSocket transport, state sync, CRDTs, typed RPC. Self-hosted, Apache-2.0, free.',
     base: '/datasole/',
     outDir: '../docs-site/dist',
-    head: [['link', { rel: 'icon', href: '/datasole/favicon.svg' }]],
+    head: [
+      ['link', { rel: 'icon', href: '/datasole/favicon.svg' }],
+      [
+        'link',
+        {
+          rel: 'preconnect',
+          href: 'https://fonts.googleapis.com',
+        },
+      ],
+      [
+        'link',
+        {
+          rel: 'preconnect',
+          href: 'https://fonts.gstatic.com',
+          crossorigin: '',
+        },
+      ],
+      [
+        'link',
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;600&display=swap',
+        },
+      ],
+    ],
     cleanUrls: true,
     themeConfig: {
       siteTitle: 'datasole',
+      logo: '/datasole-logo.png',
       nav: [
         { text: 'Guide', link: '/tutorials' },
         { text: 'API', link: '/client' },
@@ -68,6 +93,17 @@ export default withMermaid(
     },
     markdown: {
       theme: { light: 'github-light', dark: 'github-dark' },
+    },
+    mermaid: {
+      theme: 'base',
+      themeVariables: {
+        primaryColor: '#e8842c',
+        primaryTextColor: '#1a1a1e',
+        primaryBorderColor: '#c06820',
+        lineColor: '#e8842c',
+        secondaryColor: '#fdf0e0',
+        tertiaryColor: '#f5f5f0',
+      },
     },
   }),
 );

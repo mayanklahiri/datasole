@@ -1,26 +1,37 @@
+@import './brand.css';
+
+/* ── Map brand tokens → VitePress variables ── */
 :root {
-  --vp-c-brand-1: #8b0000;
-  --vp-c-brand-2: #6e0000;
-  --vp-c-brand-3: #a00000;
-  --vp-c-brand-soft: rgba(139, 0, 0, 0.12);
+  --vp-c-brand-1: var(--ds-color-primary);
+  --vp-c-brand-2: var(--ds-color-primary-hover);
+  --vp-c-brand-3: var(--ds-color-primary);
+  --vp-c-brand-soft: var(--ds-color-primary-soft);
 
-  --vp-font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --vp-font-family-mono: 'SF Mono', 'Fira Code', Consolas, monospace;
+  --vp-font-family-base: var(--ds-font-heading);
+  --vp-font-family-mono: var(--ds-font-mono);
 
-  --vp-home-hero-name-color: #1a1a1a;
+  --vp-c-bg: var(--ds-color-surface);
+  --vp-c-bg-soft: var(--ds-color-surface-soft);
+
+  --vp-home-hero-name-color: var(--ds-color-accent);
   --vp-home-hero-name-background: none;
   --vp-home-hero-image-background-image: none;
   --vp-home-hero-image-filter: none;
 }
 
 .dark {
-  --vp-c-brand-1: #d44040;
-  --vp-c-brand-2: #e05050;
-  --vp-c-brand-3: #b03030;
-  --vp-c-brand-soft: rgba(212, 64, 64, 0.12);
+  --vp-c-brand-1: var(--ds-color-primary);
+  --vp-c-brand-2: var(--ds-color-primary-hover);
+  --vp-c-brand-3: var(--ds-color-primary);
+  --vp-c-brand-soft: var(--ds-color-primary-soft);
+
+  --vp-c-bg: var(--ds-color-surface);
+  --vp-c-bg-soft: var(--ds-color-surface-soft);
+
   --vp-home-hero-name-color: #ffffff;
 }
 
+/* ── Hero refinements ── */
 .VPHero .text {
   font-size: 1.5rem !important;
   line-height: 1.5 !important;
@@ -32,6 +43,7 @@
   line-height: 1.7 !important;
 }
 
+/* ── Tables ── */
 .vp-doc table {
   font-variant-numeric: tabular-nums;
 }
@@ -43,7 +55,21 @@
   max-width: 100%;
 }
 
-/* Code block improvements */
+/* ── Comparison table cell highlighting ── */
+.vp-doc td.cell-yes {
+  background: var(--ds-color-success-soft);
+  font-weight: 600;
+}
+
+.vp-doc td.cell-no {
+  background: var(--ds-color-danger-soft);
+}
+
+.vp-doc td.cell-partial {
+  background: rgba(234, 179, 8, 0.12);
+}
+
+/* ── Code block improvements ── */
 div[class*='language-'] {
   border-radius: 6px !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -56,4 +82,11 @@ div[class*='language-'] > pre {
 .dark div[class*='language-'] {
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Feature card images ── */
+.VPFeature .VPImage {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
 }

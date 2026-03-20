@@ -357,7 +357,7 @@ export class DatasoleServer {
           crdt = new PNCounter('server');
           break;
         case 'lww-register':
-          crdt = new LWWRegister('server', undefined);
+          crdt = new LWWRegister('server', undefined, 0);
           break;
         case 'lww-map':
           crdt = new LWWMap('server');
