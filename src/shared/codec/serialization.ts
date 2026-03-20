@@ -1,3 +1,6 @@
+/**
+ * JSON serialization and deserialization via TextEncoder and TextDecoder.
+ */
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 

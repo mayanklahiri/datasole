@@ -1,3 +1,6 @@
+/**
+ * Process concurrency: forks a child process per connection.
+ */
 import type { ConcurrencyStrategy, ConnectionWorker, ConcurrencyOptions } from './types';
 
 class ProcessConnectionWorker implements ConnectionWorker {

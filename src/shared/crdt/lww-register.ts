@@ -1,3 +1,6 @@
+/**
+ * Last-writer-wins register CRDT with hybrid logical clock timestamps.
+ */
 import type { Crdt, CrdtOperation, CrdtState, CrdtMetadata } from './types';
 
 export class LWWRegister<T = unknown> implements Crdt<T> {

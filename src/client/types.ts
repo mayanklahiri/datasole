@@ -1,3 +1,7 @@
+/**
+ * Client-facing type re-exports from shared and client modules.
+ */
+
 export type {
   RpcCallOptions,
   RpcResult,

@@ -1,3 +1,6 @@
+/**
+ * Collects Playwright performance measures from the page and writes them as JSON under `reports/perf/`.
+ */
 import type { Page } from '@playwright/test';
 import { writeFileSync, mkdirSync } from 'fs';
 import path from 'path';

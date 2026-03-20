@@ -1,3 +1,6 @@
+/**
+ * In-memory sliding-window rate limiter with periodic cleanup of expired windows.
+ */
 import type { RateLimiter, RateLimitResult, RateLimitRule } from './types';
 
 interface WindowEntry {

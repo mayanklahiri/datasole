@@ -1,3 +1,7 @@
+/**
+ * Client-side state store: holds server-synced state, applies JSON patches, notifies subscribers.
+ */
+
 import { applyPatch } from '../../shared/diff';
 import type { StatePatch, StateSubscription } from '../../shared/types';
 

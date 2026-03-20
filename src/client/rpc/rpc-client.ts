@@ -1,3 +1,7 @@
+/**
+ * Client-side RPC: sends requests with correlation IDs, tracks pending calls, resolves responses.
+ */
+
 import { serialize } from '../../shared/codec';
 import { encodeFrame, Opcode } from '../../shared/protocol';
 import type { RpcCallOptions, RpcRequest, RpcResponse, RpcResult } from '../../shared/types';

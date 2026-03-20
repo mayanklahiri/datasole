@@ -1,3 +1,6 @@
+/**
+ * Data flow pattern types: sync granularity, live state config, and data channels.
+ */
 export type DataFlowPattern =
   | 'rpc'
   | 'server-event'

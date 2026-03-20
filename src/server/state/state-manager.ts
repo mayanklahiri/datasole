@@ -1,3 +1,6 @@
+/**
+ * Coordinates get/set and diff-driven patches over a StateBackend, with subscribe/publish for reactive updates.
+ */
 import { diff } from '../../shared/diff';
 import type { StatePatch } from '../../shared/types';
 

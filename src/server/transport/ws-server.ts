@@ -1,3 +1,6 @@
+/**
+ * WebSocket server layer: HTTP upgrade wiring, connection lifecycle, and binary frame dispatch to handlers.
+ */
 import type { Server as HttpServer, IncomingMessage } from 'http';
 import type { Duplex } from 'stream';
 

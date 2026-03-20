@@ -1,3 +1,7 @@
+/**
+ * E2E screenshot capture with pixelmatch baseline comparison; writes to `.screenshots/` and copies
+ * desktop viewport shots into the docs tree for tutorials.
+ */
 import type { Page, TestInfo } from '@playwright/test';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';

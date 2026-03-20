@@ -1,3 +1,6 @@
+/**
+ * Creates concurrency strategy instances from ConcurrencyOptions (async, thread, thread-pool, or process).
+ */
 import { AsyncStrategy } from './async-strategy';
 import { ProcessStrategy } from './process-strategy';
 import { ThreadPoolStrategy } from './thread-pool-strategy';

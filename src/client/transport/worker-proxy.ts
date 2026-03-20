@@ -1,3 +1,7 @@
+/**
+ * Main-thread proxy that communicates with the transport Web Worker via postMessage.
+ */
+
 export interface TransportOptions {
   workerUrl?: string;
   useSharedArrayBuffer?: boolean;

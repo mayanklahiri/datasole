@@ -1,3 +1,6 @@
+/**
+ * Applies JSON Patch operations to state objects.
+ */
 import { applyPatch as fjpApply, deepClone, type Operation } from 'fast-json-patch';
 
 import type { StatePatch } from '../types/state';

@@ -1,3 +1,6 @@
+/**
+ * Last-writer-wins map CRDT built on LWWRegister entries.
+ */
 import { LWWRegister } from './lww-register';
 import type { Crdt, CrdtOperation, CrdtState } from './types';
 

@@ -1,3 +1,6 @@
+/**
+ * Thread pool concurrency: fixed pool of workers with least-connections assignment.
+ */
 import type { ConcurrencyStrategy, ConnectionWorker, ConcurrencyOptions } from './types';
 
 class PooledWorker {

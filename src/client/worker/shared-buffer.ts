@@ -1,3 +1,7 @@
+/**
+ * Worker-side SharedArrayBuffer management for zero-copy frame transfer.
+ */
+
 export class WorkerSharedBuffer {
   private buffer: SharedArrayBuffer | null = null;
   private view: Int32Array | null = null;

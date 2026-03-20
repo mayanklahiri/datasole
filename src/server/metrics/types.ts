@@ -1,3 +1,6 @@
+/**
+ * Metrics snapshot shape and exporter interface for serializing server telemetry.
+ */
 export interface MetricsSnapshot {
   connections: number;
   messagesIn: number;

@@ -1,3 +1,6 @@
+/**
+ * Buffers state patches for a logical channel and flushes them on a schedule according to the configured strategy.
+ */
 import type { StatePatch } from '../../shared/types';
 
 import type { SyncChannelConfig } from './types';

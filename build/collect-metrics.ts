@@ -1,3 +1,6 @@
+/**
+ * Collects build metrics (bundle sizes, coverage, e2e results, docs stats) and writes them to `reports/`.
+ */
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from 'fs';
 import { join, resolve } from 'path';
 import { gzipSync } from 'zlib';

@@ -1,3 +1,6 @@
+/**
+ * Rate limiter contracts: rule definitions, check/consume results, and optional configuration hooks.
+ */
 export interface RateLimitResult {
   allowed: boolean;
   remaining: number;

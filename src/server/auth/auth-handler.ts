@@ -1,3 +1,6 @@
+/**
+ * Builds auth handler wrappers that honor required and allowAnonymous configuration when verifying upgrade requests.
+ */
 import type { IncomingMessage } from 'http';
 
 import type { AuthResult } from '../../shared/types';

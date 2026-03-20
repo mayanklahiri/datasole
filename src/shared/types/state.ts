@@ -1,3 +1,6 @@
+/**
+ * Shared state types: patches, snapshots, and subscriptions.
+ */
 export interface StatePatch {
   op: 'add' | 'remove' | 'replace' | 'move' | 'copy' | 'test';
   path: string;

@@ -1,3 +1,6 @@
+/**
+ * Captures browser console messages and page errors during Playwright tests.
+ */
 import type { Page, ConsoleMessage } from '@playwright/test';
 
 export interface CapturedLog {

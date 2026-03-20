@@ -1,3 +1,6 @@
+/**
+ * Shared event types: event names, payloads, and handlers.
+ */
 export type EventName = string;
 
 export interface EventPayload<T = unknown> {

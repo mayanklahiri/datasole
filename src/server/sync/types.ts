@@ -1,3 +1,6 @@
+/**
+ * Sync channel configuration types: flush strategies, batching options, sync direction, and patch modes.
+ */
 export type FlushStrategy = 'immediate' | 'batched' | 'debounced';
 
 export interface SyncChannelOptions {

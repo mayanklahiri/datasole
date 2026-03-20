@@ -1,3 +1,7 @@
+/**
+ * Routes decoded frames by opcode to the appropriate handler callbacks.
+ */
+
 import type { Frame } from '../../shared/protocol';
 import { Opcode } from '../../shared/protocol';
 

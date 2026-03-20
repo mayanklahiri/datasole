@@ -1,3 +1,6 @@
+/**
+ * Shared RPC types: methods, requests, responses, and errors.
+ */
 export type RpcMethod = string;
 
 export interface RpcRequest<T = unknown> {

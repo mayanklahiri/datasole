@@ -1,3 +1,6 @@
+/**
+ * Ephemeral StateBackend backed by an in-memory Map with EventEmitter-based key subscriptions.
+ */
 import { EventEmitter } from 'events';
 
 import type { StateBackend, StateBackendOptions } from '../types';

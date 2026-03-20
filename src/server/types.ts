@@ -1,3 +1,6 @@
+/**
+ * Server-side type re-exports.
+ */
 export type { AuthResult, AuthContext, AuthCredentials } from '../shared/types';
 export type { StateBackend, StateBackendOptions } from './state/types';
 export type { MetricsExporter, MetricsSnapshot } from './metrics/types';

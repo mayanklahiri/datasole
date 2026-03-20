@@ -1,3 +1,6 @@
+/**
+ * PostgreSQL state backend (placeholder).
+ */
 import type { StateBackend, StateBackendOptions } from '../types';
 
 export interface PostgresBackendOptions extends StateBackendOptions {

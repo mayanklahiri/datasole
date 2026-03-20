@@ -1,3 +1,6 @@
+/**
+ * OpenTelemetry metrics bridge (placeholder).
+ */
 import type { MetricsExporter, MetricsSnapshot } from '../types';
 
 export class OpenTelemetryExporter implements MetricsExporter {

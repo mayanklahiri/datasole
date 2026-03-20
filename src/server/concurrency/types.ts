@@ -1,3 +1,6 @@
+/**
+ * Concurrency model identifiers, strategy options, connection worker contracts, and worker IPC message shapes.
+ */
 export type ConcurrencyModel = 'async' | 'thread' | 'thread-pool' | 'process';
 
 export interface ConcurrencyOptions {

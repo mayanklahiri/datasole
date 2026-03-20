@@ -1,3 +1,7 @@
+/**
+ * Framework-agnostic browser client: manages WebSocket connection, RPC, events, state subscriptions, and CRDT sync.
+ */
+
 import { serialize } from '../shared/codec';
 import { DEFAULT_WS_PATH } from '../shared/constants';
 import { encodeFrame, Opcode } from '../shared/protocol';

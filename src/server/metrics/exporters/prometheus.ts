@@ -1,3 +1,6 @@
+/**
+ * MetricsExporter that formats snapshot fields as Prometheus text exposition lines.
+ */
 import type { MetricsExporter, MetricsSnapshot } from '../types';
 
 export class PrometheusExporter implements MetricsExporter {

@@ -1,3 +1,6 @@
+/**
+ * Build-time constants: library version, protocol version, default WebSocket path, and frame limits.
+ */
 export const BUILD_CONSTANTS = {
   PACKAGE_NAME: 'datasole',
   VERSION: '__BUILD_VERSION__' as string,

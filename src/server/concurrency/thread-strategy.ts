@@ -1,3 +1,6 @@
+/**
+ * Thread concurrency: spawns a worker_thread per connection.
+ */
 import type { ConcurrencyStrategy, ConnectionWorker, ConcurrencyOptions } from './types';
 
 class ThreadConnectionWorker implements ConnectionWorker {

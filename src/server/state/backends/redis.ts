@@ -1,3 +1,6 @@
+/**
+ * Redis state backend (placeholder).
+ */
 import type { StateBackend, StateBackendOptions } from '../types';
 
 export interface RedisBackendOptions extends StateBackendOptions {

@@ -1,3 +1,6 @@
+/**
+ * Redis-backed rate limiter (placeholder).
+ */
 import type { RateLimiter, RateLimitResult, RateLimitRule } from './types';
 
 export interface RedisRateLimiterOptions {

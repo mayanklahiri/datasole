@@ -1,3 +1,6 @@
+/**
+ * Type definitions for CRDT operations, state, and metadata.
+ */
 export type CrdtType = 'g-counter' | 'pn-counter' | 'g-set' | 'or-set' | 'lww-register' | 'lww-map';
 
 export interface CrdtMetadata {

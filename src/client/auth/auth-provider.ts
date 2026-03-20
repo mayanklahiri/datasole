@@ -1,3 +1,7 @@
+/**
+ * Manages authentication credentials and HTTP upgrade headers for WebSocket connections.
+ */
+
 import type { AuthCredentials } from '../../shared/types';
 
 export class AuthProvider {

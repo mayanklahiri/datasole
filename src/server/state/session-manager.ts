@@ -1,3 +1,6 @@
+/**
+ * Persists per-user session blobs in a StateBackend so clients can resume state after reconnects, with optional flushing.
+ */
 import type { ConnectionContext } from '../transport/connection-context';
 
 import type { StateBackend } from './types';

@@ -1,3 +1,6 @@
+/**
+ * Test harness that starts and stops a DatasoleServer with an HTTP server for e2e tests.
+ */
 import type { Server } from 'http';
 
 import type { DatasoleServer } from '../../../src/server/server';

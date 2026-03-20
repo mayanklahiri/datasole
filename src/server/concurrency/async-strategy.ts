@@ -1,3 +1,6 @@
+/**
+ * Async concurrency: runs connections on the Node.js event loop with no worker or process isolation.
+ */
 import type {
   ConcurrencyStrategy,
   ConnectionWorker,

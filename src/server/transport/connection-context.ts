@@ -1,3 +1,6 @@
+/**
+ * Per-connection bag for authenticated identity, addressing metadata, and arbitrary key/value context.
+ */
 import type { AuthContext } from '../../shared/types';
 
 export interface ConnectionContext {

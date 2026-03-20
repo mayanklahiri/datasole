@@ -1,3 +1,7 @@
+/**
+ * Web Worker entry point: opens WebSocket, sends/receives binary frames, dispatches to main thread.
+ */
+
 import { decompress } from '../../shared/codec';
 import { COMPRESSION_THRESHOLD } from '../../shared/constants';
 import { decodeFrame } from '../../shared/protocol';

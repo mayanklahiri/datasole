@@ -1,3 +1,6 @@
+/**
+ * Main Datasole server: orchestrates WebSocket transport, auth, RPC dispatch, event bus, state management, and CRDT sync.
+ */
 import type { Server as HttpServer } from 'http';
 
 import { compress, decompress, deserialize, serialize } from '../shared/codec';

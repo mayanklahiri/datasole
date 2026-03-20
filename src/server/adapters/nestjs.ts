@@ -1,3 +1,6 @@
+/**
+ * NestJS WebSocketAdapter integration for Datasole.
+ */
 import type { Server as HttpServer } from 'http';
 
 import type { ServerAdapter } from './types';

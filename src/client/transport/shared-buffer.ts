@@ -1,3 +1,7 @@
+/**
+ * Main-thread SharedArrayBuffer creation and management.
+ */
+
 export class MainThreadSharedBuffer {
   private buffer: SharedArrayBuffer | null = null;
 

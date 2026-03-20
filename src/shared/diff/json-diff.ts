@@ -1,3 +1,6 @@
+/**
+ * Computes JSON diffs between two state objects, producing StatePatch arrays.
+ */
 import { compare } from 'fast-json-patch';
 
 import type { StatePatch } from '../types/state';

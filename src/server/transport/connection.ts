@@ -1,3 +1,6 @@
+/**
+ * Wraps a ws WebSocket with identity, ConnectionContext, and helpers used by the rest of the server stack.
+ */
 import type { WebSocket } from 'ws';
 
 import type { AuthContext } from '../../shared/types';

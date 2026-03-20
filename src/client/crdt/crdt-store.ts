@@ -1,3 +1,7 @@
+/**
+ * Client-side CRDT store: registers CRDT types, applies operations, merges remote state.
+ */
+
 import type { CrdtOperation, CrdtState, Crdt } from '../../shared/crdt';
 import { LWWRegister, LWWMap, PNCounter } from '../../shared/crdt';
 

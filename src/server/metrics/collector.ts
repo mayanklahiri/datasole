@@ -1,3 +1,6 @@
+/**
+ * Collects runtime counters for connections, messages, bytes, RPC calls/errors, state patches, and uptime.
+ */
 import type { MetricsSnapshot } from './types';
 
 export class MetricsCollector {

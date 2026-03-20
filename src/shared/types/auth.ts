@@ -1,3 +1,6 @@
+/**
+ * Shared authentication types: credentials, results, and context.
+ */
 export interface AuthCredentials {
   token?: string;
   headers?: Record<string, string>;

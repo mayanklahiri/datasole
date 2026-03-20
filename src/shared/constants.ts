@@ -1,3 +1,6 @@
+/**
+ * Re-exports build-time constants for public API consumption.
+ */
 import { BUILD_CONSTANTS } from './build-constants';
 
 export const PROTOCOL_VERSION = BUILD_CONSTANTS.PROTOCOL_VERSION;

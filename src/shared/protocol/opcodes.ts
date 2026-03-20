@@ -1,3 +1,6 @@
+/**
+ * Wire protocol opcode enum for frame type identification.
+ */
 export enum Opcode {
   RPC_REQ = 0x01,
   RPC_RES = 0x02,

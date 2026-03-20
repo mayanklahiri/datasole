@@ -1,3 +1,7 @@
+/**
+ * Fallback WebSocket transport for environments where Web Workers are unavailable.
+ */
+
 import { compress, decompress } from '../../shared/codec';
 import { COMPRESSION_THRESHOLD } from '../../shared/constants';
 import { decodeFrame, encodeFrame } from '../../shared/protocol';

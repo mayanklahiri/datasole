@@ -1,3 +1,6 @@
+/**
+ * Protocol-level types: envelope, version, and frame re-exports.
+ */
 import type { Frame } from '../protocol/frames';
 
 export type { Frame };

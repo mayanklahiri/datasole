@@ -1,3 +1,6 @@
+/**
+ * Prints the quality gate summary table and exits non-zero when the gate fails.
+ */
 import { readFileSync, readdirSync, statSync, existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { gzipSync } from 'zlib';

@@ -1,3 +1,6 @@
+/**
+ * ServerAdapter implementation for Express HTTP servers.
+ */
 import type { Server as HttpServer } from 'http';
 
 import type { ServerAdapter } from './types';

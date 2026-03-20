@@ -1,3 +1,6 @@
+/**
+ * Registers RPC method handlers, dispatches incoming requests with connection context, and surfaces errors to clients.
+ */
 import type { AuthContext, RpcRequest, RpcResponse } from '../../shared/types';
 import type { ConnectionContext } from '../transport/connection-context';
 

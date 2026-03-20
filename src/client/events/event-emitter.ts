@@ -1,3 +1,7 @@
+/**
+ * Client-side event emitter: subscribe, unsubscribe, and emit typed events.
+ */
+
 import type { EventHandler, EventName } from '../../shared/types';
 
 export class ClientEventEmitter {

@@ -1,3 +1,6 @@
+/**
+ * Server-side event bus: publish/subscribe for internal handlers and client-facing event delivery.
+ */
 import type { EventHandler, EventName } from '../../shared/types';
 
 export class EventBus {

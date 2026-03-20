@@ -1,3 +1,6 @@
+/**
+ * Positive-negative counter CRDT with distributed increment and decrement.
+ */
 import type { Crdt, CrdtOperation, CrdtState } from './types';
 
 export interface PNCounterVector {

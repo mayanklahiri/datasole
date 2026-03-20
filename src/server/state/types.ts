@@ -1,3 +1,6 @@
+/**
+ * Pluggable state backend interface and options for key/value storage and pub/sub notifications.
+ */
 export interface StateBackend {
   get<T = unknown>(key: string): Promise<T | undefined>;
   set<T = unknown>(key: string, value: T): Promise<void>;
