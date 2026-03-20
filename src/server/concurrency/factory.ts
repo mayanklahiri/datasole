@@ -23,6 +23,6 @@ export function createConcurrencyStrategy(
     case 'process':
       return new ProcessStrategy(opts);
     default:
-      throw new Error(`Unknown concurrency model: ${opts.model}`);
+      throw new Error(`Unknown concurrency model: ${String(opts.model)}`);
   }
 }

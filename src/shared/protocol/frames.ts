@@ -1,7 +1,7 @@
 /**
  * Binary frame encoding and decoding for the wire protocol.
  */
-import { Opcode } from './opcodes';
+import { type Opcode } from './opcodes';
 
 export const FRAME_HEADER_SIZE = 9;
 

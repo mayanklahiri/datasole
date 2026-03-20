@@ -407,10 +407,19 @@ http.listen(3000);
 ### NestJS
 
 ```typescript
-import { DatasoleServer, DatasoleNestAdapter } from 'datasole/server';
+// NestJS — attach in main.ts bootstrap
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { DatasoleServer } from 'datasole/server';
 
-const ds = new DatasoleServer();
-app.useWebSocketAdapter(new DatasoleNestAdapter(ds));
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  const ds = new DatasoleServer();
+  ds.rpc('ping', async () => ({ pong: Date.now() }));
+  ds.attach(app.getHttpServer());
+  await app.listen(3000);
+}
+bootstrap();
 ```
 
 ### Native HTTP (no framework)

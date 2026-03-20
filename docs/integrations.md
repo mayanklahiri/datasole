@@ -119,29 +119,33 @@ For a composable that can be shared across components:
 ```typescript
 // composables/useDatasole.ts
 import { DatasoleClient } from 'datasole/client';
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, shallowRef } from 'vue';
 
 let sharedClient: DatasoleClient | null = null;
-const refCount = ref(0);
+let refCount = 0;
 
 export function useDatasole(url: string) {
+  const client = shallowRef<DatasoleClient | null>(null);
+
   onMounted(() => {
     if (!sharedClient) {
       sharedClient = new DatasoleClient({ url });
       sharedClient.connect();
     }
-    refCount.value++;
+    refCount++;
+    client.value = sharedClient;
   });
 
   onUnmounted(() => {
-    refCount.value--;
-    if (refCount.value === 0 && sharedClient) {
+    refCount--;
+    if (refCount === 0 && sharedClient) {
       sharedClient.disconnect();
       sharedClient = null;
     }
+    client.value = null;
   });
 
-  return { client: sharedClient! };
+  return { client };
 }
 ```
 
@@ -510,3 +514,45 @@ const ds = new DatasoleServer({
 ```
 
 The auth result is available in RPC handlers and event callbacks via the connection context.
+
+## Common pitfalls
+
+### WebSocket path
+
+datasole listens for WebSocket upgrades on `/__ds` by default. If you have a reverse proxy (nginx, Cloudflare, Vercel), make sure it forwards WebSocket upgrades for this path. You can change it:
+
+```typescript
+const ds = new DatasoleServer({ path: '/my-ws-path' });
+const client = new DatasoleClient({ url: 'ws://localhost:3000/my-ws-path' });
+```
+
+### Server-side rendering (SSR)
+
+`datasole/client` uses browser APIs (`WebSocket`, `Worker`). In SSR environments (Next.js, Nuxt, SvelteKit), only import and use the client in client-side code:
+
+- **Next.js**: Mark components with `"use client"`
+- **Nuxt**: Use `<ClientOnly>` wrapper or `onMounted`
+- **SvelteKit**: Use `browser` check from `$app/environment`
+
+### React Native
+
+React Native doesn't support Web Workers. Disable the worker transport:
+
+```typescript
+const ds = new DatasoleClient({ url: 'ws://localhost:3000', useWorker: false });
+```
+
+### CORS and SharedArrayBuffer
+
+SharedArrayBuffer (for zero-copy transfer) requires specific HTTP headers:
+
+```
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
+
+Without these headers, datasole falls back to `postMessage` with `Transferable` — still fast, just not zero-copy. The client handles this automatically.
+
+### Reconnection
+
+datasole automatically reconnects on disconnect with exponential backoff. No configuration needed for basic reconnection. The client emits `disconnect` and `reconnect` events you can listen to for UI feedback.

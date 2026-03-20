@@ -36,7 +36,7 @@ export class RedisBackend implements StateBackend {
 
   async connect(): Promise<void> {
     const Redis = await this.loadRedis();
-    this.client = new Redis(this.url) as unknown as RedisClient;
+    this.client = new Redis(this.url) as RedisClient;
     this.subscriber = this.client.duplicate();
     this.subscriber.on('message', (channel: unknown, message: unknown) => {
       const key = (channel as string).slice(this.keyPrefix.length);

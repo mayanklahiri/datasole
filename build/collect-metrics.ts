@@ -133,6 +133,61 @@ function generateMarkdown(metrics: BuildMetrics): string {
   return lines.join('\n');
 }
 
+interface HistoryEntry {
+  timestamp: string;
+  coverage: { lines: number; branches: number; functions: number; statements: number } | null;
+  clientIifeGzip: number | null;
+  workerIifeGzip: number | null;
+  sharedEsmGzip: number | null;
+  serverEsmGzip: number | null;
+  unitTests: number | null;
+  e2eTests: number | null;
+}
+
+const HISTORY_FILE = join(ROOT, 'docs', 'public', 'metrics-history.json');
+const MAX_HISTORY = 100;
+
+function appendToHistory(metrics: BuildMetrics): void {
+  let history: HistoryEntry[] = [];
+  try {
+    history = JSON.parse(readFileSync(HISTORY_FILE, 'utf8'));
+  } catch {
+    // first run
+  }
+
+  const cov = metrics.coverage as Record<string, Record<string, { pct: number }>> | null;
+  const total = cov?.['total'];
+
+  const findBundle = (pattern: string) =>
+    metrics.bundles.find((b) => b.file.includes(pattern))?.sizeGzip ?? null;
+
+  const e2e = metrics.e2eResults as { stats?: { expected?: number } } | null;
+
+  const entry: HistoryEntry = {
+    timestamp: metrics.timestamp,
+    coverage: total
+      ? {
+          lines: total['lines']?.pct ?? 0,
+          branches: total['branches']?.pct ?? 0,
+          functions: total['functions']?.pct ?? 0,
+          statements: total['statements']?.pct ?? 0,
+        }
+      : null,
+    clientIifeGzip: findBundle('datasole.iife.min'),
+    workerIifeGzip: findBundle('datasole-worker.iife'),
+    sharedEsmGzip: findBundle('shared/index.mjs'),
+    serverEsmGzip: findBundle('server/index.mjs'),
+    unitTests: null,
+    e2eTests: e2e?.stats?.expected ?? null,
+  };
+
+  history.push(entry);
+  if (history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY);
+
+  mkdirSync(join(ROOT, 'docs', 'public'), { recursive: true });
+  writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+}
+
 function main() {
   mkdirSync(REPORTS, { recursive: true });
 
@@ -146,6 +201,7 @@ function main() {
 
   writeFileSync(join(REPORTS, 'build-metrics.json'), JSON.stringify(metrics, null, 2));
   writeFileSync(join(REPORTS, 'build-metrics.md'), generateMarkdown(metrics));
+  appendToHistory(metrics);
 
   console.log('Build metrics written to reports/');
   console.log(`  Bundles: ${metrics.bundles.length}`);

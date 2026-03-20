@@ -71,7 +71,7 @@ export class LWWMap<T = unknown> implements Crdt<Record<string, T>> {
     // we'd need per-field metadata; simplified: treat as bulk LWW
     if (remote.value && typeof remote.value === 'object') {
       for (const [key, val] of Object.entries(remote.value)) {
-        this.set(key, val as T, remote.metadata.timestamp);
+        this.set(key, val, remote.metadata.timestamp);
       }
     }
     this._version++;

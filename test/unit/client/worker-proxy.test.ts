@@ -5,11 +5,11 @@ import { WorkerProxy } from '../../../src/client/transport/worker-proxy';
 describe('WorkerProxy', () => {
   it('constructs without error and exposes expected API', () => {
     const p = new WorkerProxy();
-    expect(p.connect).toBeTypeOf('function');
-    expect(p.send).toBeTypeOf('function');
-    expect(p.disconnect).toBeTypeOf('function');
-    expect(p.on).toBeTypeOf('function');
-    expect(p.off).toBeTypeOf('function');
+    expect(typeof p.connect).toBe('function');
+    expect(typeof p.send).toBe('function');
+    expect(typeof p.disconnect).toBe('function');
+    expect(typeof p.on).toBe('function');
+    expect(typeof p.off).toBe('function');
   });
 
   it('on adds listener and off removes it', () => {

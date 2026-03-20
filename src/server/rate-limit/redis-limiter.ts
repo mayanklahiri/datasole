@@ -37,7 +37,7 @@ export class RedisRateLimiter implements RateLimiter {
     try {
       const mod = await import('ioredis');
       const Redis = (mod.default ?? mod) as unknown as new (url: string) => unknown;
-      this.client = new Redis(this.url) as unknown as RedisClient;
+      this.client = new Redis(this.url) as RedisClient;
     } catch {
       throw new Error(
         'RedisRateLimiter requires the "ioredis" package. Install it: npm install ioredis',

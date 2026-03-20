@@ -33,6 +33,7 @@ export default withMermaid(
           text: 'Architecture',
           items: [
             { text: 'Overview', link: '/architecture' },
+            { text: 'Composability', link: '/composability' },
             { text: 'Comparison', link: '/comparison' },
           ],
         },
@@ -54,6 +55,7 @@ export default withMermaid(
         {
           text: 'Project',
           items: [
+            { text: 'Quality Dashboard', link: '/quality' },
             { text: 'Decisions', link: '/decisions' },
             { text: 'Contributing', link: '/contributing' },
             { text: 'Build & Release', link: '/build-and-release' },

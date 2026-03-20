@@ -1,3 +1,5 @@
+import type { IncomingMessage } from 'http';
+
 import { describe, it, expect, vi } from 'vitest';
 
 import { createAuthHandler } from '../../../src/server/auth/auth-handler';
@@ -47,7 +49,7 @@ describe('createAuthHandler', () => {
 
   it('invokes user handler with request', async () => {
     const fn = vi.fn(async () => ({ authenticated: true, userId: 'x' }));
-    const req = { url: '/x' } as import('http').IncomingMessage;
+    const req = { url: '/x' } as IncomingMessage;
     const h = createAuthHandler(fn);
     await h.verify(req);
     expect(fn).toHaveBeenCalledWith(req);

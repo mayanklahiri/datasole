@@ -109,21 +109,26 @@ PartyKit (now part of Cloudflare) runs realtime "parties" on Cloudflare Durable 
 - No server infrastructure to manage
 - Scales automatically per-party
 
-## When to choose datasole
+## When datasole shines
 
-datasole is a good fit when you need:
+- **Control-plane dashboards and admin panels** — You need realtime data flowing to a dashboard, the server owns the state, and you want diffs not full refreshes. This is datasole's sweet spot.
+- **Internal tooling at companies that self-host** — You have infra, you don't want vendor lock-in, and you need something that runs on your k8s cluster or VPS.
+- **Apps where main-thread perf matters** — Trading UIs, data-intensive dashboards, monitoring tools where network I/O on the main thread causes jank.
+- **Multiplayer features bolted onto existing servers** — You already have Express/NestJS/Fastify, you just need realtime on top. datasole attaches to your HTTP server — it's not a platform change.
+- **Type safety across the wire** — If you care that server handler types flow to client call sites without codegen, datasole does this natively.
 
-- **Full control over infrastructure** — self-hosted, no vendor lock-in, no per-message pricing
-- **Main-thread performance** — Web Worker transport keeps the UI responsive under heavy real-time loads
-- **Server→client state sync** — JSON Patch diffing eliminates manual event-to-state mapping
-- **Bidirectional CRDTs** — conflict-free shared state without external libraries
-- **Server-side concurrency** — thread pool or process isolation for CPU-bound handlers
-- **Type safety end-to-end** — strict TypeScript from server handler to client call site
+## When to pick something else
 
-## When to choose something else
+- **You don't want to run servers** — Ably, Pusher, or Liveblocks are managed. You pay per message but you don't operate anything.
+- **Rich-text collaborative editing** — Liveblocks or Yjs have mature document CRDTs. datasole's CRDTs are counters, registers, and maps — not rich text.
+- **You need 10M+ connections** — Managed services like Ably scale horizontally with zero ops. datasole scales via pm2/k8s but you're operating it yourself.
+- **Mobile SDKs (iOS/Android native)** — Socket.IO and Ably have native SDKs. datasole is TypeScript/JavaScript only.
+- **Edge-first architecture** — If you're all-in on Cloudflare Workers, PartyKit is the natural fit.
+- **Bundle size is everything** — Socket.IO client is 11-15 KB gzip. datasole is 36 KB. If you just need simple events and every KB counts, Socket.IO is lighter.
+- **You need HTTP polling fallback** — Socket.IO degrades to HTTP long-polling when WebSockets are blocked. datasole is WebSocket-only.
 
-- **No server infrastructure**: If you don't want to run servers, choose Ably, Pusher, or Liveblocks.
-- **Collaborative editing**: If your primary need is rich-text CRDT editing, Liveblocks or PartyKit + Yjs have more mature document CRDTs.
-- **Massive scale with minimal ops**: If you need millions of connections with managed infrastructure, Ably or Pusher handle the scaling.
-- **Ecosystem breadth**: If you need client SDKs for iOS, Android, Flutter, Unity, etc., Socket.IO or Ably have broader language support.
-- **Edge-first architecture**: If you're already on Cloudflare Workers, PartyKit is the natural choice.
+## The honest take
+
+datasole fills a specific gap: you want a **self-hosted, strongly-typed, realtime primitive** that gives you state sync, CRDTs, typed RPC, and off-main-thread networking in one package. It's not trying to be a platform (Ably, Liveblocks) or a protocol (Socket.IO). It's a library that does the hard parts of realtime so you don't have to glue together 5 packages.
+
+If that matches your use case, datasole will save you weeks of integration work. If it doesn't, one of the alternatives above is probably a better fit.

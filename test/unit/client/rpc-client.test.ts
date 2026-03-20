@@ -22,11 +22,9 @@ describe('RpcClient', () => {
     expect(sent).toHaveLength(1);
     const frame = decodeFrame(sent[0]!);
     expect(frame.opcode).toBe(Opcode.RPC_REQ);
-    const req = deserialize(frame.payload) as {
-      method: string;
-      params: unknown;
-      correlationId: number;
-    };
+    const req: { method: string; params: unknown; correlationId: number } = deserialize(
+      frame.payload,
+    );
     expect(req.method).toBe('hello');
     expect(req.params).toEqual({ a: 1 });
     expect(req.correlationId).toBe(frame.correlationId);

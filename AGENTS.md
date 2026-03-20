@@ -110,3 +110,48 @@ When making changes:
 - Barrel exports via `index.ts` in each directory
 - Imports from `shared` only — no cross-imports between `client` and `server`
 - Run `npm run gate` before pushing — it catches everything
+
+## Integrating datasole into an existing project
+
+**Pattern:** server — `DatasoleServer` then `ds.attach(httpServer)` on the existing Node HTTP server; client — `DatasoleClient` (or a thin wrapper) pointed at that server.
+
+**Stacks (key wiring only):**
+
+- **NestJS + Vue 3**
+
+```ts
+const app = await NestFactory.create(AppModule);
+const ds = new DatasoleServer(/* opts */);
+ds.attach(app.getHttpServer());
+```
+
+Vue: composable with `shallowRef<DatasoleClient | null>`; create/dispose in `onMounted` / `onUnmounted`.
+
+- **Next.js + Express**
+
+Run Datasole in a **separate Node process** from the Next dev/server; Next app uses a `"use client"` provider that constructs `DatasoleClient`.
+
+- **Express + React**
+
+```ts
+const httpServer = createServer(app);
+const ds = new DatasoleServer(/* opts */);
+ds.attach(httpServer);
+```
+
+React: `useRef` for the client + `useEffect` to construct and `disconnect()` on teardown.
+
+- **AdonisJS + vanilla JS**
+
+```ts
+server.ready(() => {
+  const httpServer = server.getNodeServer();
+  if (httpServer) ds.attach(httpServer);
+});
+```
+
+Browser: IIFE bundle via `<script>`; no bundler required for a minimal page.
+
+**Docs:** `docs/integrations.md` — full copy-paste examples per stack; `docs/examples.md` — pattern recipes.
+
+**Pitfalls:** SSR / App Router — client code must run in a client boundary (`"use client"` or equivalent); React Native — `useWorker: false`; default WebSocket path is `/__ds` (configure `path` / proxy if needed).

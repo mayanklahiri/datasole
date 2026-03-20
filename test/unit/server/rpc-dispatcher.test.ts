@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 
+import type { RpcContext } from '../../../src/server/rpc/rpc-dispatcher';
 import { RpcDispatcher } from '../../../src/server/rpc/rpc-dispatcher';
 import type { ConnectionContext } from '../../../src/server/transport/connection-context';
 import type { RpcRequest } from '../../../src/shared/types';
 
-function mockCtx(): import('../../../src/server/rpc/rpc-dispatcher').RpcContext {
+function mockCtx(): RpcContext {
   const connection = {} as ConnectionContext;
   return {
     auth: null,

@@ -39,7 +39,7 @@ export class SessionManager {
     this.ttlMs = options?.ttlMs ?? 3600_000;
 
     if (this.flushIntervalMs > 0) {
-      this.flushTimer = setInterval(() => this.flushAll(), this.flushIntervalMs);
+      this.flushTimer = setInterval(() => void this.flushAll(), this.flushIntervalMs);
     }
   }
 

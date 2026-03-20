@@ -38,7 +38,7 @@ export class PostgresBackend implements StateBackend {
 
   async connect(): Promise<void> {
     const { Pool } = await this.loadPg();
-    this.pool = new Pool({ connectionString: this.connectionString }) as unknown as PgPool;
+    this.pool = new Pool({ connectionString: this.connectionString }) as PgPool;
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS ${this.tableName} (
         key TEXT PRIMARY KEY,

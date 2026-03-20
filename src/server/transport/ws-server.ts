@@ -4,7 +4,7 @@
 import type { Server as HttpServer, IncomingMessage } from 'http';
 import type { Duplex } from 'stream';
 
-import { WebSocketServer, WebSocket } from 'ws';
+import { WebSocketServer, type WebSocket } from 'ws';
 
 import type { AuthResult } from '../../shared/types';
 

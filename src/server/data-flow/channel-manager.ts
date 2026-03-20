@@ -97,7 +97,7 @@ export class ChannelManager {
       case 'bidirectional-crdt':
         return this.createCrdtChannel(config);
       default:
-        throw new Error(`Unknown data flow pattern: ${config.pattern}`);
+        throw new Error(`Unknown data flow pattern: ${String(config.pattern)}`);
     }
   }
 
