@@ -122,7 +122,7 @@ client.on('crdt:state', ({ data }) => {
 
 | Method                              | Description                                                       |
 | ----------------------------------- | ----------------------------------------------------------------- |
-| `connect()`                         | Establish WebSocket connection (in worker)                        |
+| `connect()`                         | Establish WebSocket connection                                    |
 | `disconnect()`                      | Close connection                                                  |
 | `rpc<T>(method, params?, options?)` | Call server RPC method with typed response                        |
 | `on<T>(event, handler)`             | Subscribe to server-pushed events                                 |
@@ -131,6 +131,8 @@ client.on('crdt:state', ({ data }) => {
 | `subscribeState<T>(key, handler)`   | Subscribe to state changes (JSON Patch applied)                   |
 | `getState<T>(key)`                  | Get current state snapshot                                        |
 | `getConnectionState()`              | `'disconnected' \| 'connecting' \| 'connected' \| 'reconnecting'` |
+| `registerCrdt(nodeId)`              | Register a `CrdtStore` for this client (returns `CrdtStore`)      |
+| `getCrdtStore()`                    | Get the registered `CrdtStore` (or `null`)                        |
 
 ## Framework Integration
 
@@ -244,7 +246,7 @@ client.connect();
 
 ## Worker Architecture
 
-The WebSocket connection runs in a [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API) by default. This keeps the main thread free for rendering:
+When `useWorker: true`, the WebSocket connection runs in a [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API), keeping the main thread free for rendering. The default is `useWorker: false` (direct connection on the main thread).
 
 ```mermaid
 flowchart LR

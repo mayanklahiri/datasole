@@ -151,8 +151,8 @@ const form = ds.createSyncChannel({
 Per-user state that survives disconnections. Auto-flushes to the state backend.
 
 ```typescript
-// Restore session on reconnect
-const state = await ds.restoreSession(ctx);
+// Restore session on reconnect (pass ConnectionContext, not RpcContext)
+const state = await ds.restoreSession(ctx.connection);
 
 // Read/write session values
 ds.setSessionValue('user-123', 'lastPage', '/dashboard');
@@ -286,23 +286,28 @@ server.listen(3000);
 
 ## Full Method Reference
 
-| Method                                | Description                                                   |
-| ------------------------------------- | ------------------------------------------------------------- |
-| `attach(httpServer, adapter?)`        | Attach to HTTP server (adapter accepted but currently unused) |
-| `setState<T>(key, value)`             | Set state (diffs and broadcasts patches)                      |
-| `getState<T>(key)`                    | Get current state                                             |
-| `createSyncChannel<T>(config)`        | Create a sync channel with configurable flush                 |
-| `getSyncChannel(key)`                 | Get existing sync channel                                     |
-| `snapshotSession(ctx)`                | Snapshot session from persistence                             |
-| `restoreSession(ctx)`                 | Restore session on reconnect                                  |
-| `setSessionValue(userId, key, value)` | Set session value (auto-flushes)                              |
-| `getSessionValue<T>(userId, key)`     | Get session value                                             |
-| `onSessionChange(handler)`            | Listen for session mutations                                  |
-| `rpc<TReq, TRes>(method, handler)`    | Register typed RPC handler                                    |
-| `on<T>(event, handler)`               | Listen for client events                                      |
-| `off<T>(event, handler)`              | Unsubscribe                                                   |
-| `broadcast(event, data)`              | Send event to all clients                                     |
-| `getMetrics()`                        | Access metrics collector                                      |
-| `getRateLimiter()`                    | Access rate limiter                                           |
-| `getConcurrency()`                    | Access concurrency strategy                                   |
-| `close()`                             | Flush sessions, shut down workers, close connections          |
+| Method                                | Description                                                             |
+| ------------------------------------- | ----------------------------------------------------------------------- |
+| `attach(httpServer, adapter?)`        | Attach to HTTP server (adapter accepted but currently unused)           |
+| `setState<T>(key, value)`             | Set state, diff, and broadcast patches. Returns `Promise<StatePatch[]>` |
+| `getState<T>(key)`                    | Get current state. Returns `Promise<T \| undefined>`                    |
+| `createSyncChannel<T>(config)`        | Create a sync channel with configurable flush                           |
+| `getSyncChannel(key)`                 | Get existing sync channel                                               |
+| `createDataChannel<T>(config)`        | Create a data channel for bidirectional data flow                       |
+| `getDataChannel(key)`                 | Get existing data channel                                               |
+| `snapshotSession(ctx)`                | Snapshot session from persistence (`ctx` is `ConnectionContext`)        |
+| `restoreSession(ctx)`                 | Restore session on reconnect (`ctx` is `ConnectionContext`)             |
+| `setSessionValue(userId, key, value)` | Set session value (auto-flushes)                                        |
+| `getSessionValue<T>(userId, key)`     | Get session value                                                       |
+| `onSessionChange(handler)`            | Listen for session mutations. Returns unsubscribe `() => void`          |
+| `rpc<TReq, TRes>(method, handler)`    | Register typed RPC handler                                              |
+| `on<T>(event, handler)`               | Listen for client events                                                |
+| `off<T>(event, handler)`              | Unsubscribe                                                             |
+| `broadcast(event, data)`              | Send event to all clients                                               |
+| `registerCrdt(key, crdt)`             | Register a CRDT instance by key                                         |
+| `getCrdtState(key)`                   | Get current CRDT state for a key                                        |
+| `getConnectionCount()`                | Number of currently connected clients                                   |
+| `getMetrics()`                        | Access metrics collector                                                |
+| `getRateLimiter()`                    | Access rate limiter                                                     |
+| `getConcurrency()`                    | Access concurrency strategy                                             |
+| `close()`                             | Flush sessions, shut down workers, close. Returns `Promise<void>`       |

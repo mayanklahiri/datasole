@@ -43,12 +43,13 @@ Requires `ioredis` peer dependency. Uses Redis pub/sub for cross-process state n
 ```typescript
 import { DatasoleServer, RedisBackend } from 'datasole/server';
 
-const ds = new DatasoleServer({
-  stateBackend: new RedisBackend({
-    url: 'redis://localhost:6379',
-    prefix: 'ds:',
-  }),
+const backend = new RedisBackend({
+  url: 'redis://localhost:6379',
+  prefix: 'ds:',
 });
+await backend.connect();
+
+const ds = new DatasoleServer({ stateBackend: backend });
 ```
 
 ### PostgresBackend
@@ -58,12 +59,13 @@ Requires `pg` peer dependency. Persists state to Postgres with LISTEN/NOTIFY for
 ```typescript
 import { DatasoleServer, PostgresBackend } from 'datasole/server';
 
-const ds = new DatasoleServer({
-  stateBackend: new PostgresBackend({
-    connectionString: 'postgres://user:pass@localhost:5432/mydb',
-    tableName: 'datasole_state',
-  }),
+const backend = new PostgresBackend({
+  connectionString: 'postgres://user:pass@localhost:5432/mydb',
+  tableName: 'datasole_state',
 });
+await backend.connect();
+
+const ds = new DatasoleServer({ stateBackend: backend });
 ```
 
 ## Session Persistence
@@ -71,8 +73,11 @@ const ds = new DatasoleServer({
 The `SessionManager` sits on top of any state backend to provide per-user state that survives disconnections:
 
 ```typescript
+const redisBackend = new RedisBackend({ url: 'redis://localhost:6379' });
+await redisBackend.connect();
+
 const ds = new DatasoleServer({
-  stateBackend: new RedisBackend({ url: 'redis://localhost:6379' }),
+  stateBackend: redisBackend,
   session: {
     flushThreshold: 10, // Persist after 10 mutations
     flushIntervalMs: 5000, // Or every 5 seconds

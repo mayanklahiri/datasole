@@ -723,6 +723,9 @@ import {
 
 const app = express();
 
+const redisBackend = new RedisBackend({ url: 'redis://localhost:6379', prefix: 'ds:' });
+await redisBackend.connect();
+
 const ds = new DatasoleServer({
   // Pluggable auth
   authHandler: async (req) => {
@@ -736,7 +739,7 @@ const ds = new DatasoleServer({
   concurrency: { model: 'thread-pool', poolSize: 4 },
 
   // Redis for state persistence (enables multi-process pub/sub)
-  stateBackend: new RedisBackend({ url: 'redis://localhost:6379', prefix: 'ds:' }),
+  stateBackend: redisBackend,
 
   // Rate limiting: 200 requests/minute per connection
   rateLimiter: new MemoryRateLimiter(),

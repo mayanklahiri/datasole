@@ -111,6 +111,28 @@ When making changes:
 - Imports from `shared` only — no cross-imports between `client` and `server`
 - Run `npm run gate` before pushing — it catches everything
 
+## Skills
+
+Reusable agent skills live in `.cursor/skills/`. Each skill is a `SKILL.md` with instructions for a specific workflow.
+
+| Skill               | Path                                      | Purpose                                                                          |
+| ------------------- | ----------------------------------------- | -------------------------------------------------------------------------------- |
+| **codebase-health** | `.cursor/skills/codebase-health/SKILL.md` | Scan for stubs/TODOs/drafts, fix implementations, align docs with code, run gate |
+
+### Running the codebase-health skill
+
+Ask the agent: _"Run the codebase-health skill"_ or _"Scan for stubs and fix them"_.
+
+The skill performs a 7-phase audit:
+
+1. Source scan — grep `src/` for TODO/FIXME/STUB/unimplemented/placeholder markers
+2. Test scan — grep `test/` for skipped/pending/placeholder tests
+3. Doc-code alignment — cross-reference every `docs/*.md` API reference against `src/` implementation
+4. README alignment — verify bundle sizes, feature claims, code examples
+5. AGENTS.md alignment — verify project structure, gate steps, integration patterns
+6. Regenerate — run `npm run gate` to rebuild and verify everything
+7. Commit — stage and commit all fixes
+
 ## Integrating datasole into an existing project
 
 **Pattern:** server — `DatasoleServer` then `ds.attach(httpServer)` on the existing Node HTTP server; client — `DatasoleClient` (or a thin wrapper) pointed at that server.

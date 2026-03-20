@@ -30,7 +30,7 @@ Each primitive is independent — you can use RPC without ever touching CRDTs, o
 All primitives multiplex over the same binary WebSocket connection via opcodes in the 9-byte frame header. There's no "mode" to set, no channel subscription to manage. You just call the API:
 
 ```typescript
-import { PNCounter } from 'datasole/shared';
+import { PNCounter } from 'datasole';
 
 // Server — all on the same DatasoleServer instance
 ds.rpc('addTask', handler); // RPC
@@ -104,7 +104,7 @@ ds.on('chat', ({ data }) => appendMessage(data));
 Shared counters for voting (CRDT convergence), a server-owned task board (live state), and RPCs for structured mutations.
 
 ```typescript
-import { PNCounter } from 'datasole/shared';
+import { PNCounter } from 'datasole';
 
 // Server
 ds.registerCrdt('votes:task-1', new PNCounter('server'));

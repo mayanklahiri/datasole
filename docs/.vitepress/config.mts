@@ -81,6 +81,7 @@ export default withMermaid(
           text: 'Project',
           items: [
             { text: 'Quality Dashboard', link: '/quality' },
+            { text: 'AI & LLM Guide', link: '/ai-guide' },
             { text: 'Decisions', link: '/decisions' },
             { text: 'Contributing', link: '/contributing' },
             { text: 'Build & Release', link: '/build-and-release' },
