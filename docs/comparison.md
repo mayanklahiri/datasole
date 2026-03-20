@@ -15,7 +15,7 @@ This page compares datasole to the most widely used realtime frameworks as of 20
 | **Hosting model**             |            Self-hosted            |         Self-hosted         |      Managed      |      Managed      |        Managed        |  Cloudflare edge   |
 | **Open source**               |            Apache 2.0             |             MIT             |        No         |        No         |          No           |        MIT         |
 | **Binary frames**             |            ✓ (always)             |      Opt-in (msgpack)       |         ✓         |         ✗         |           ✗           |         ✗          |
-| **Compression**               |       ✓ (pako, every frame)       | Opt-in (permessage-deflate) |         ✗         |         ✗         |           ✗           |         ✗          |
+| **Compression**               |      ✓ (pako, frames >256 B)      | Opt-in (permessage-deflate) |         ✗         |         ✗         |           ✗           |         ✗          |
 | **Web Worker transport**      |                 ✓                 |              ✗              |         ✗         |         ✗         |           ✗           |         ✗          |
 | **JSON Patch state sync**     |           ✓ (RFC 6902)            |              ✗              |         ✗         |         ✗         |           ✗           |         ✗          |
 | **Built-in CRDTs**            |       ✓ (LWW, PN, LWW-Map)        |              ✗              |         ✗         |         ✗         | ✓ (LiveMap, LiveList) |      Via Yjs       |

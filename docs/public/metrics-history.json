@@ -88,5 +88,35 @@
     "serverEsmGzip": 77135,
     "unitTests": null,
     "e2eTests": 38
+  },
+  {
+    "timestamp": "2026-03-20T05:36:11.026Z",
+    "coverage": {
+      "lines": 58.37,
+      "branches": 50.45,
+      "functions": 58.59,
+      "statements": 58.61
+    },
+    "clientIifeGzip": 22020,
+    "workerIifeGzip": 15382,
+    "sharedEsmGzip": 66340,
+    "serverEsmGzip": 77135,
+    "unitTests": null,
+    "e2eTests": 38
+  },
+  {
+    "timestamp": "2026-03-20T05:47:18.274Z",
+    "coverage": {
+      "lines": 58.37,
+      "branches": 50.45,
+      "functions": 58.59,
+      "statements": 58.61
+    },
+    "clientIifeGzip": 22020,
+    "workerIifeGzip": 15382,
+    "sharedEsmGzip": 66340,
+    "serverEsmGzip": 77135,
+    "unitTests": null,
+    "e2eTests": 38
   }
 ]

@@ -101,7 +101,7 @@ Clients subscribe with `client.subscribeState('dashboard', handler)` — no poll
 
 ```typescript
 // Listen for client events
-ds.on<{ text: string }>('chat:message', (data) => {
+ds.on<{ text: string }>('chat:message', ({ data }) => {
   console.log('Received:', data.text);
 });
 
@@ -286,23 +286,23 @@ server.listen(3000);
 
 ## Full Method Reference
 
-| Method                                | Description                                          |
-| ------------------------------------- | ---------------------------------------------------- |
-| `attach(httpServer, adapter?)`        | Attach to HTTP server                                |
-| `setState<T>(key, value)`             | Set state (diffs and broadcasts patches)             |
-| `getState<T>(key)`                    | Get current state                                    |
-| `createSyncChannel<T>(config)`        | Create a sync channel with configurable flush        |
-| `getSyncChannel(key)`                 | Get existing sync channel                            |
-| `snapshotSession(ctx)`                | Snapshot session from persistence                    |
-| `restoreSession(ctx)`                 | Restore session on reconnect                         |
-| `setSessionValue(userId, key, value)` | Set session value (auto-flushes)                     |
-| `getSessionValue<T>(userId, key)`     | Get session value                                    |
-| `onSessionChange(handler)`            | Listen for session mutations                         |
-| `rpc<TReq, TRes>(method, handler)`    | Register typed RPC handler                           |
-| `on<T>(event, handler)`               | Listen for client events                             |
-| `off<T>(event, handler)`              | Unsubscribe                                          |
-| `broadcast(event, data)`              | Send event to all clients                            |
-| `getMetrics()`                        | Access metrics collector                             |
-| `getRateLimiter()`                    | Access rate limiter                                  |
-| `getConcurrency()`                    | Access concurrency strategy                          |
-| `close()`                             | Flush sessions, shut down workers, close connections |
+| Method                                | Description                                                   |
+| ------------------------------------- | ------------------------------------------------------------- |
+| `attach(httpServer, adapter?)`        | Attach to HTTP server (adapter accepted but currently unused) |
+| `setState<T>(key, value)`             | Set state (diffs and broadcasts patches)                      |
+| `getState<T>(key)`                    | Get current state                                             |
+| `createSyncChannel<T>(config)`        | Create a sync channel with configurable flush                 |
+| `getSyncChannel(key)`                 | Get existing sync channel                                     |
+| `snapshotSession(ctx)`                | Snapshot session from persistence                             |
+| `restoreSession(ctx)`                 | Restore session on reconnect                                  |
+| `setSessionValue(userId, key, value)` | Set session value (auto-flushes)                              |
+| `getSessionValue<T>(userId, key)`     | Get session value                                             |
+| `onSessionChange(handler)`            | Listen for session mutations                                  |
+| `rpc<TReq, TRes>(method, handler)`    | Register typed RPC handler                                    |
+| `on<T>(event, handler)`               | Listen for client events                                      |
+| `off<T>(event, handler)`              | Unsubscribe                                                   |
+| `broadcast(event, data)`              | Send event to all clients                                     |
+| `getMetrics()`                        | Access metrics collector                                      |
+| `getRateLimiter()`                    | Access rate limiter                                           |
+| `getConcurrency()`                    | Access concurrency strategy                                   |
+| `close()`                             | Flush sessions, shut down workers, close connections          |

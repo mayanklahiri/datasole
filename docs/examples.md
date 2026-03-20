@@ -91,8 +91,8 @@ import { DatasoleClient } from 'datasole/client';
 const ds = new DatasoleClient({ url: 'ws://localhost:3000' });
 ds.connect();
 
-ds.on('heartbeat', (data) => console.log('Server heartbeat:', data));
-ds.on('price:update', (data) => console.log(`${data.symbol}: $${data.price}`));
+ds.on('heartbeat', ({ data }) => console.log('Server heartbeat:', data));
+ds.on('price:update', ({ data }) => console.log(`${data.symbol}: $${data.price}`));
 ```
 
 ---
@@ -219,8 +219,8 @@ http.listen(3000);
 // Shared document: each field is a LWW register
 const doc = new LWWMap<string>('server');
 
-ds.on('doc:op', (op) => {
-  doc.apply(op);
+ds.on('doc:op', ({ data }) => {
+  doc.apply(data);
   ds.broadcast('doc:state', doc.state());
 });
 
@@ -237,7 +237,7 @@ const store = new CrdtStore('client-' + crypto.randomUUID());
 const doc = store.register<string>('doc', 'lww-map');
 
 ds.connect();
-ds.on('doc:state', (state) => store.mergeRemoteState('doc', state));
+ds.on('doc:state', ({ data }) => store.mergeRemoteState('doc', data));
 
 // Local edit → immediate local update + async server sync
 function setField(key: string, value: string) {

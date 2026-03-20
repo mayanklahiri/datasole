@@ -19,14 +19,17 @@ const client = new DatasoleClient({
   url: 'wss://example.com', // Server URL (ws:// or wss://)
   path: '/__ds', // WebSocket path (default: /__ds)
   auth: {
-    // Optional auth credentials
-    token: 'jwt-token', //   Sent during upgrade handshake
-    headers: { 'x-api-key': 'abc' },
+    token: 'jwt-token', // Sent as ?token= query parameter on the WebSocket URL
   },
-  useWorker: true, // Run WebSocket in Web Worker (default: true)
-  useSharedArrayBuffer: true, // Zero-copy via SAB when available (default: true)
+  useWorker: false, // Run WebSocket in Web Worker (default: false)
+  useSharedArrayBuffer: false, // Zero-copy via SAB when available (default: false)
+  reconnect: true, // Auto-reconnect on disconnect (default: true)
+  reconnectInterval: 1000, // Base delay in ms between attempts (default: 1000)
+  maxReconnectAttempts: 10, // Give up after N attempts (default: 10)
 });
 ```
+
+> **Note:** Only `auth.token` is supported. It is sent as a query parameter (`?token=…`) because the browser WebSocket API does not allow custom headers during the upgrade handshake.
 
 ### Connection
 
@@ -44,7 +47,7 @@ const user = await client.rpc<{ name: string }>('getUser', { userId: '123' });
 console.log(user.name);
 
 // With timeout
-const result = await client.rpc('slowQuery', { q: 'test' }, { timeoutMs: 10000 });
+const result = await client.rpc('slowQuery', { q: 'test' }, { timeout: 10000 });
 
 // Multiple calls in flight simultaneously — they're multiplexed over one WebSocket
 const [a, b, c] = await Promise.all([
@@ -60,7 +63,7 @@ const [a, b, c] = await Promise.all([
 
 ```typescript
 // Subscribe to server-pushed events
-client.on<{ symbol: string; price: number }>('price', (data) => {
+client.on<{ symbol: string; price: number }>('price', ({ data }) => {
   console.log(`${data.symbol}: $${data.price}`);
 });
 
@@ -107,8 +110,8 @@ const op = counter.increment();
 client.emit('crdt:op', op);
 
 // Apply remote state
-client.on('crdt:state', (state) => {
-  store.mergeRemoteState('votes', state);
+client.on('crdt:state', ({ data }) => {
+  store.mergeRemoteState('votes', data);
   console.log('Counter:', counter.value());
 });
 ```

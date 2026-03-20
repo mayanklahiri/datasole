@@ -81,7 +81,7 @@ setInterval(() => {
 }, 1000);
 
 // client
-ds.on('price', (data) => updateTicker(data));
+ds.on('price', ({ data }) => updateTicker(data));
 ```
 
 ### Live state — server owns it, clients mirror it
@@ -123,8 +123,8 @@ function TodoList() {
 ds.emit('analytics', { action: 'click', target: 'buy-button' });
 
 // server
-ds.onClientEvent('analytics', (data, ctx) => {
-  telemetry.track(ctx.connectionId, data);
+ds.on('analytics', ({ data }) => {
+  telemetry.track(data);
 });
 ```
 
@@ -132,13 +132,16 @@ ds.onClientEvent('analytics', (data, ctx) => {
 
 ```typescript
 // server
-ds.registerCrdt('votes', 'pn-counter');
+import { PNCounter } from 'datasole';
+ds.registerCrdt('votes', new PNCounter('server'));
 
 // client A
-ds.crdtIncrement('votes', 1);
+const store = ds.registerCrdt('clientA');
+const counter = store.register('votes', 'pn-counter');
+counter.increment(1);
 
 // client B (simultaneously)
-ds.crdtIncrement('votes', 1);
+counter.increment(1);
 
 // both converge to votes: 2, no conflicts
 ```

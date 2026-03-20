@@ -161,7 +161,7 @@ setInterval(() => {
 <script>
   const ds = new Datasole.DatasoleClient({ url: 'ws://localhost:3000' });
   ds.connect();
-  ds.on('price', (data) => {
+  ds.on('price', ({ data }) => {
     document.getElementById('price').textContent = '$' + data.price.toFixed(2);
   });
 </script>
@@ -179,7 +179,7 @@ const price = ref<string>('—');
 
 onMounted(() => {
   client.connect();
-  client.on<{ symbol: string; price: number }>('price', (data) => {
+  client.on<{ symbol: string; price: number }>('price', ({ data }) => {
     price.value = `$${data.price.toFixed(2)}`;
   });
 });
@@ -329,7 +329,8 @@ app.use(express.static('public'));
 
 const ds = new DatasoleServer({
   authHandler: async (req) => {
-    const name = req.headers['x-username'] as string;
+    const url = new URL(req.url || '', 'http://localhost');
+    const name = url.searchParams.get('token');
     if (!name) return { authenticated: false };
     return { authenticated: true, userId: name, metadata: { displayName: name } };
   },
@@ -339,7 +340,7 @@ const http = createServer(app);
 ds.attach(http);
 
 // Listen for chat messages from clients
-ds.on<{ text: string }>('chat:message', (data) => {
+ds.on<{ text: string }>('chat:message', ({ data }) => {
   // ctx.connection gives you the sender's identity
   // Broadcast to all connected clients
   ds.broadcast('chat:message', {
@@ -364,12 +365,12 @@ http.listen(3000);
   const username = prompt('Your name?') || 'anon';
   const ds = new Datasole.DatasoleClient({
     url: 'ws://localhost:3000',
-    auth: { headers: { 'x-username': username } },
+    auth: { token: username },
   });
   ds.connect();
 
   // Receive messages
-  ds.on('chat:message', (msg) => {
+  ds.on('chat:message', ({ data: msg }) => {
     const div = document.createElement('div');
     div.textContent = `[${msg.from}] ${msg.text}`;
     document.getElementById('messages').appendChild(div);
@@ -400,7 +401,7 @@ function ChatRoom({ username }: { username: string }) {
   const ds = useRef(
     new DatasoleClient({
       url: 'ws://localhost:3000',
-      auth: { headers: { 'x-username': username } },
+      auth: { token: username },
     }),
   );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -408,7 +409,7 @@ function ChatRoom({ username }: { username: string }) {
 
   useEffect(() => {
     ds.current.connect();
-    ds.current.on<ChatMessage>('chat:message', (msg) => {
+    ds.current.on<ChatMessage>('chat:message', ({ data: msg }) => {
       setMessages((prev) => [...prev, msg]);
     });
     return () => {
@@ -463,16 +464,13 @@ http.listen(3000);
 const counter = new PNCounter('server');
 
 // When a client sends a CRDT operation, apply it and broadcast the merged state
-ds.on('crdt:op', (op) => {
+ds.on('crdt:op', ({ data: op }) => {
   counter.apply(op);
   ds.broadcast('crdt:state', counter.state());
 });
 
-// Send current state to new connections
-// (In production, use session snapshot/restore for this)
-ds.on('connection', () => {
-  ds.broadcast('crdt:state', counter.state());
-});
+// Expose current state so new clients can fetch it on connect
+ds.rpc('crdt:getState', async () => counter.state());
 ```
 
 ### Client — increment from anywhere, state converges
@@ -492,7 +490,13 @@ function SharedCounter() {
     ds.current.connect();
 
     // Apply server state updates
-    ds.current.on('crdt:state', (state) => {
+    ds.current.on('crdt:state', ({ data: state }) => {
+      store.current.mergeRemoteState('votes', state);
+      setCount(counter.value());
+    });
+
+    // Fetch initial state on connect
+    ds.current.rpc('crdt:getState').then((state) => {
       store.current.mergeRemoteState('votes', state);
       setCount(counter.value());
     });
@@ -566,10 +570,10 @@ const metrics = ds.createSyncChannel({
   flush: { flushStrategy: 'batched', batchIntervalMs: 200 },
 });
 
-// Debounced: wait for 500ms of inactivity before flushing (e.g., search-as-you-type)
+// Debounced: wait for 500ms of inactivity before flushing (e.g., search results)
 const search = ds.createSyncChannel({
-  key: 'search',
-  direction: 'client-to-server',
+  key: 'search-results',
+  direction: 'server-to-client',
   mode: 'json-patch',
   flush: { flushStrategy: 'debounced', debounceMs: 500 },
 });
@@ -608,7 +612,8 @@ import { DatasoleServer } from 'datasole/server';
 const app = express();
 const ds = new DatasoleServer({
   authHandler: async (req) => {
-    const userId = req.headers['x-user-id'] as string;
+    const url = new URL(req.url || '', 'http://localhost');
+    const userId = url.searchParams.get('token');
     return userId ? { authenticated: true, userId } : { authenticated: false };
   },
   session: {
@@ -652,7 +657,7 @@ function Game({ userId }: { userId: string }) {
   const ds = useRef(
     new DatasoleClient({
       url: 'ws://localhost:3000',
-      auth: { headers: { 'x-user-id': userId } },
+      auth: { token: userId },
     }),
   );
   const [level, setLevel] = useState(1);
@@ -721,9 +726,9 @@ const app = express();
 const ds = new DatasoleServer({
   // Pluggable auth
   authHandler: async (req) => {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    const url = new URL(req.url || '', 'http://localhost');
+    const token = url.searchParams.get('token');
     if (!token) return { authenticated: false };
-    // Verify JWT, look up user, etc.
     return { authenticated: true, userId: token, roles: ['user'] };
   },
 
@@ -834,7 +839,8 @@ app.use(express.static('public'));
 
 const ds = new DatasoleServer({
   authHandler: async (req) => {
-    const name = req.headers['x-username'] as string;
+    const url = new URL(req.url || '', 'http://localhost');
+    const name = url.searchParams.get('token');
     return name
       ? { authenticated: true, userId: name, metadata: { displayName: name } }
       : { authenticated: false };
@@ -899,7 +905,7 @@ ds.on('user:leave', () => {
 });
 
 // ------ Events: chat ------
-ds.on<{ text: string }>('chat', (data) => {
+ds.on<{ text: string }>('chat', ({ data }) => {
   ds.broadcast('chat', { text: data.text, timestamp: Date.now() });
 });
 
@@ -927,7 +933,7 @@ function TaskBoard({ username }: { username: string }) {
   const ds = useRef(
     new DatasoleClient({
       url: 'ws://localhost:3000',
-      auth: { headers: { 'x-username': username } },
+      auth: { token: username },
     }),
   );
   const [board, setBoard] = useState<Board>({ tasks: [], columns: [] });
@@ -946,13 +952,13 @@ function TaskBoard({ username }: { username: string }) {
     const store = new CrdtStore('client-' + username);
     store.register('online', 'pn-counter');
     client.emit('user:join', {});
-    client.on('presence', (state) => {
+    client.on('presence', ({ data: state }) => {
       store.mergeRemoteState('online', state);
       setOnline(store.get<PNCounter>('online')!.value());
     });
 
     // Chat
-    client.on<{ text: string }>('chat', (msg) => {
+    client.on<{ text: string }>('chat', ({ data: msg }) => {
       setMessages((prev) => [...prev.slice(-49), msg.text]);
     });
 

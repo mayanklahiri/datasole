@@ -30,22 +30,31 @@ Each primitive is independent — you can use RPC without ever touching CRDTs, o
 All primitives multiplex over the same binary WebSocket connection via opcodes in the 9-byte frame header. There's no "mode" to set, no channel subscription to manage. You just call the API:
 
 ```typescript
+import { PNCounter } from 'datasole/shared';
+
 // Server — all on the same DatasoleServer instance
 ds.rpc('addTask', handler); // RPC
 ds.broadcast('notification', data); // Server event
-ds.onClientEvent('typing', handler); // Client event
+ds.on('typing', handler); // Client event
 await ds.setState('board', board); // Live state
-ds.registerCrdt('votes', 'pn-counter'); // CRDT
-ds.createSyncChannel({ key: 'cursors', flush: 'debounced', debounceMs: 50 }); // Sync channel
+ds.registerCrdt('votes', new PNCounter('server')); // CRDT
+ds.createSyncChannel({
+  key: 'cursors',
+  direction: 'server-to-client',
+  mode: 'json-patch',
+  flush: { flushStrategy: 'debounced', debounceMs: 50 },
+}); // Sync channel
 ```
 
 ```typescript
 // Client — all on the same DatasoleClient instance
 await ds.rpc('addTask', { text: 'Ship it' }); // RPC
-ds.on('notification', show); // Server event
+ds.on('notification', ({ data }) => show(data)); // Server event
 ds.emit('typing', { user: 'alice' }); // Client event
 ds.subscribeState('board', setBoard); // Live state
-ds.crdtIncrement('votes', 1); // CRDT
+const store = ds.registerCrdt('node1'); // CRDT
+const counter = store.register('votes', 'pn-counter');
+counter.increment(1);
 ```
 
 No separate connections. No routing config. No pub/sub channels to manage.
@@ -79,13 +88,13 @@ Clients fire chat messages as events. The server broadcasts them to everyone. Se
 
 ```typescript
 // Server
-ds.onClientEvent('chat', (msg, ctx) => {
-  ds.broadcast('chat', { user: ctx.userId, text: msg.text });
+ds.on('chat', ({ data }) => {
+  ds.broadcast('chat', { user: data.user, text: data.text });
 });
 
 // Client
 ds.emit('chat', { text: 'hello' });
-ds.on('chat', (msg) => appendMessage(msg));
+ds.on('chat', ({ data }) => appendMessage(data));
 ```
 
 ### Collaborative editing with voting
@@ -95,18 +104,24 @@ ds.on('chat', (msg) => appendMessage(msg));
 Shared counters for voting (CRDT convergence), a server-owned task board (live state), and RPCs for structured mutations.
 
 ```typescript
+import { PNCounter } from 'datasole/shared';
+
 // Server
-ds.registerCrdt('votes:task-1', 'pn-counter');
+ds.registerCrdt('votes:task-1', new PNCounter('server'));
 ds.rpc('moveTask', async ({ id, column }) => {
   board[id].column = column;
   await ds.setState('board', board);
 });
 
 // Client A
-ds.crdtIncrement('votes:task-1', 1); // vote
+const storeA = ds.registerCrdt('clientA');
+const votesA = storeA.register('votes:task-1', 'pn-counter');
+votesA.increment(1); // vote
 
 // Client B (simultaneously)
-ds.crdtIncrement('votes:task-1', 1); // also votes
+const storeB = ds.registerCrdt('clientB');
+const votesB = storeB.register('votes:task-1', 'pn-counter');
+votesB.increment(1); // also votes
 // Both converge to 2 — no conflicts
 ```
 
@@ -118,10 +133,15 @@ Clients stream analytics events. The server aggregates them into a dashboard sta
 
 ```typescript
 // Server
-ds.createSyncChannel({ key: 'analytics', flush: 'batched', batchSize: 50, maxWaitMs: 1000 });
-ds.onClientEvent('pageview', (data) => {
+ds.createSyncChannel({
+  key: 'analytics',
+  direction: 'server-to-client',
+  mode: 'json-patch',
+  flush: { flushStrategy: 'batched', batchIntervalMs: 1000, maxBatchSize: 50 },
+});
+ds.on('pageview', async ({ data }) => {
   stats.pageviews++;
-  ds.setState('analytics', stats); // routed through sync channel
+  await ds.setState('analytics', stats); // routed through sync channel
 });
 
 // Client

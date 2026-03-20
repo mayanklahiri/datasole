@@ -23,7 +23,7 @@ const snapshot = ds.getMetrics().snapshot();
 //   rpcCalls: 890,
 //   rpcErrors: 3,
 //   statePatches: 456,
-//   uptimeMs: 3600000,
+//   uptime: 3600000,
 // }
 ```
 
@@ -53,23 +53,28 @@ Output:
 
 ```
 datasole_connections 42
-datasole_messages_in_total 1234
-datasole_messages_out_total 5678
-datasole_bytes_in_total 102400
-datasole_bytes_out_total 409600
-datasole_rpc_calls_total 890
-datasole_rpc_errors_total 3
+datasole_messagesIn 1234
+datasole_messagesOut 5678
+datasole_bytesIn 102400
+datasole_bytesOut 409600
+datasole_rpcCalls 890
+datasole_rpcErrors 3
+datasole_statePatches 456
+datasole_uptime 3600000
 ```
 
 ### OpenTelemetryExporter
 
-Bridges to the OpenTelemetry Metrics SDK. Requires `@opentelemetry/api` peer dependency.
+Bridges to the OpenTelemetry Metrics SDK. Requires `@opentelemetry/api` peer dependency. You must call `initialize()` before the first export to load the OpenTelemetry API dynamically.
 
 ```typescript
 import { OpenTelemetryExporter } from 'datasole/server';
 
+const exporter = new OpenTelemetryExporter();
+await exporter.initialize();
+
 const ds = new DatasoleServer({
-  metricsExporter: new OpenTelemetryExporter(),
+  metricsExporter: exporter,
 });
 ```
 
