@@ -34,7 +34,10 @@ function collectBundleSizes(): BundleMetric[] {
         const stat = statSync(full);
         if (stat.isDirectory()) {
           walk(full);
-        } else if (entry.endsWith('.js') && !entry.endsWith('.js.map')) {
+        } else if (
+          (entry.endsWith('.js') || entry.endsWith('.mjs') || entry.endsWith('.cjs')) &&
+          !entry.endsWith('.map')
+        ) {
           const raw = readFileSync(full);
           metrics.push({
             file: full.replace(ROOT + '/', ''),

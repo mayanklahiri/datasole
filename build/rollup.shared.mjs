@@ -6,26 +6,31 @@ import { readFileSync } from 'fs';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
+function suppressThisIsUndefined(warning, warn) {
+  if (warning.code === 'THIS_IS_UNDEFINED' && warning.id?.includes('fast-json-patch')) return;
+  warn(warning);
+}
+
 export default {
   input: 'src/shared/index.ts',
   output: [
     {
-      file: 'dist/shared/index.cjs.js',
+      file: 'dist/shared/index.cjs',
       format: 'cjs',
       sourcemap: true,
     },
     {
-      file: 'dist/shared/index.esm.js',
+      file: 'dist/shared/index.mjs',
       format: 'es',
       sourcemap: true,
     },
   ],
-  external: ['pako', 'fast-json-patch'],
+  onwarn: suppressThisIsUndefined,
   plugins: [
     replace({
       preventAssignment: true,
       values: {
-        '__BUILD_VERSION__': JSON.stringify(pkg.version),
+        __BUILD_VERSION__: JSON.stringify(pkg.version),
       },
     }),
     resolve({

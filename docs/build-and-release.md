@@ -59,11 +59,11 @@ On success, the gate prints a summary:
 | Artifact                                  | Format            | Entry                                   |
 | ----------------------------------------- | ----------------- | --------------------------------------- |
 | `dist/client/datasole.iife.min.js`        | IIFE (script tag) | `src/client/index.ts`                   |
-| `dist/client/datasole.esm.js`             | ESM               | `src/client/index.ts`                   |
-| `dist/client/datasole.cjs.js`             | CJS               | `src/client/index.ts`                   |
+| `dist/client/datasole.mjs`                | ESM               | `src/client/index.ts`                   |
+| `dist/client/datasole.cjs`                | CJS               | `src/client/index.ts`                   |
 | `dist/client/datasole-worker.iife.min.js` | IIFE (worker)     | `src/client/worker/transport-worker.ts` |
-| `dist/server/index.esm.js`                | ESM               | `src/server/index.ts`                   |
-| `dist/server/index.cjs.js`                | CJS               | `src/server/index.ts`                   |
+| `dist/server/index.mjs`                   | ESM               | `src/server/index.ts`                   |
+| `dist/server/index.cjs`                   | CJS               | `src/server/index.ts`                   |
 
 ## Reports
 

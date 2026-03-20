@@ -2,25 +2,25 @@
   "name": "datasole",
   "version": "1.0.0",
   "description": "High-performance, binary-framed, realtime full-stack TypeScript framework with Web Worker transport, JSON Patch state sync, and pluggable backends.",
-  "main": "./dist/shared/index.cjs.js",
-  "module": "./dist/shared/index.esm.js",
+  "main": "./dist/shared/index.cjs",
+  "module": "./dist/shared/index.mjs",
   "types": "./dist/shared/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/shared/index.d.ts",
-      "import": "./dist/shared/index.esm.js",
-      "require": "./dist/shared/index.cjs.js"
+      "import": "./dist/shared/index.mjs",
+      "require": "./dist/shared/index.cjs"
     },
     "./client": {
       "types": "./dist/client/index.d.ts",
-      "import": "./dist/client/datasole.esm.js",
-      "require": "./dist/client/datasole.cjs.js",
-      "browser": "./dist/client/datasole.esm.js"
+      "import": "./dist/client/datasole.mjs",
+      "require": "./dist/client/datasole.cjs",
+      "browser": "./dist/client/datasole.mjs"
     },
     "./server": {
       "types": "./dist/server/index.d.ts",
-      "import": "./dist/server/index.esm.js",
-      "require": "./dist/server/index.cjs.js"
+      "import": "./dist/server/index.mjs",
+      "require": "./dist/server/index.cjs"
     },
     "./client/worker": "./dist/client/datasole-worker.iife.min.js"
   },

@@ -25,12 +25,12 @@ export default {
   input: 'src/server/index.ts',
   output: [
     {
-      file: 'dist/server/index.cjs.js',
+      file: 'dist/server/index.cjs',
       format: 'cjs',
       sourcemap: true,
     },
     {
-      file: 'dist/server/index.esm.js',
+      file: 'dist/server/index.mjs',
       format: 'es',
       sourcemap: true,
     },

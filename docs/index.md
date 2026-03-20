@@ -60,7 +60,7 @@ All bundles include their runtime dependencies (pako, fast-json-patch). Verified
 | --------------------- | ----------------------- | -------: | ----------: |
 | **Client IIFE** (min) | `<script>` tag          |  67.1 KB | **20.9 KB** |
 | **Worker IIFE** (min) | Web Worker              |  46.5 KB | **14.7 KB** |
-| **Shared** (ESM)      | Server or client import |   9.7 KB |      2.3 KB |
+| **Shared** (ESM)      | Server or client import | 261.0 KB |     64.5 KB |
 | **Server** (ESM)      | Node.js `import`        | 430.8 KB |    100.5 KB |
 
 A browser downloads the client IIFE (**20.9 KB** gzip) and the worker (**14.7 KB** gzip) = **35.6 KB** total.

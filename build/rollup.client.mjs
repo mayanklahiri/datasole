@@ -38,12 +38,12 @@ export default [
         plugins: [terser()],
       },
       {
-        file: 'dist/client/datasole.esm.js',
+        file: 'dist/client/datasole.mjs',
         format: 'es',
         sourcemap: true,
       },
       {
-        file: 'dist/client/datasole.cjs.js',
+        file: 'dist/client/datasole.cjs',
         format: 'cjs',
         sourcemap: true,
       },
