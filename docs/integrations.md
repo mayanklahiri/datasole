@@ -168,6 +168,7 @@ export function DatasoleProvider({ children }: { children: ReactNode }) {
   if (!client.current) {
     client.current = new DatasoleClient({
       url: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3000',
+      useWorker: false,
     });
   }
 
@@ -233,6 +234,29 @@ export default function DashboardPage() {
 
 ::: warning
 Do not import `datasole/server` in Next.js client components. The server package uses Node.js APIs (`ws`, `worker_threads`) that are not available in the browser. Server-side datasole code should live in a separate Node.js process, not in Next.js API routes.
+:::
+
+**Required `next.config.ts`:**
+
+```typescript
+// next.config.ts
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  transpilePackages: ['datasole'],
+};
+
+export default nextConfig;
+```
+
+::: warning
+Turbopack (the default bundler in Next.js 15+) does not resolve datasole's `exports` subpaths correctly for local/linked packages. Use the webpack bundler:
+
+```bash
+next dev --webpack
+next build --webpack
+```
+
 :::
 
 ## Backend frameworks
@@ -459,6 +483,51 @@ export default defineConfig({
 });
 ```
 
+### Vanilla JavaScript / jQuery (IIFE)
+
+For non-bundled environments, use the IIFE build via a `<script>` tag. The client is exposed as `window.Datasole`.
+
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="/static/datasole.iife.min.js"></script>
+  </head>
+  <body>
+    <div id="status">Connecting...</div>
+    <div id="data"></div>
+    <button id="rpc-btn">Call RPC</button>
+    <div id="rpc-result"></div>
+
+    <script>
+      var ds = new Datasole.DatasoleClient({
+        url: 'ws://' + window.location.host,
+        useWorker: false,
+      });
+
+      ds.connect();
+      document.getElementById('status').textContent = 'Connected';
+
+      ds.subscribeState('dashboard', function (state) {
+        document.getElementById('data').textContent = JSON.stringify(state);
+      });
+
+      document.getElementById('rpc-btn').addEventListener('click', function () {
+        ds.rpc('getData', { search: 'test' }).then(function (result) {
+          document.getElementById('rpc-result').textContent = JSON.stringify(result);
+        });
+      });
+    </script>
+  </body>
+</html>
+```
+
+Copy the IIFE bundle from `node_modules/datasole/dist/client/datasole.iife.min.js` to your static assets directory. The global namespace is `Datasole` — use `new Datasole.DatasoleClient(opts)`.
+
+::: tip
+With jQuery, the same pattern applies — just use `$('#status').text(...)` instead of `document.getElementById(...)`.
+:::
+
 ## General patterns
 
 ### Sharing types between client and server
@@ -553,6 +622,26 @@ Cross-Origin-Embedder-Policy: require-corp
 
 Without these headers, datasole falls back to `postMessage` with `Transferable` — still fast, just not zero-copy. The client handles this automatically.
 
+### Next.js: separate server process
+
+datasole's server uses `ws`, `worker_threads`, and other Node.js APIs that cannot run in Next.js Edge Runtime or API routes. The datasole server must be a **separate Node.js process** (Express, NestJS, or plain `http.createServer`). The Next.js client connects to it via WebSocket using `NEXT_PUBLIC_WS_URL`.
+
+```bash
+# Terminal 1: datasole server
+node server.mjs          # Express + DatasoleServer on :3000
+
+# Terminal 2: Next.js app
+next dev --webpack        # Next.js on :3001, connects to ws://localhost:3000
+```
+
+### Next.js: Turbopack
+
+Turbopack does not correctly resolve `exports` subpath imports (`datasole/client`) for linked or local packages. Use the webpack bundler with `--webpack` flag for both `next dev` and `next build` until Turbopack supports this.
+
 ### Reconnection
 
 datasole automatically reconnects on disconnect with exponential backoff. No configuration needed for basic reconnection. The client emits `disconnect` and `reconnect` events you can listen to for UI feedback.
+
+### Port conflicts
+
+If a previous datasole server process is still running, starting a new one on the same port fails with `EADDRINUSE`. Kill the old process first or use a different port.

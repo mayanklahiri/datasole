@@ -69,7 +69,7 @@ ds.rpc('getUser', async ({ id }) => {
 });
 
 // client
-const user = await ds.call('getUser', { id: 42 });
+const user = await ds.rpc('getUser', { id: 42 });
 ```
 
 ### Server events — push to all clients

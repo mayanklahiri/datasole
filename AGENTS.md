@@ -150,8 +150,17 @@ server.ready(() => {
 });
 ```
 
-Browser: IIFE bundle via `<script>`; no bundler required for a minimal page.
+Browser: IIFE bundle via `<script>` tag — global is `window.Datasole`, use `new Datasole.DatasoleClient(opts)`.
 
 **Docs:** `docs/integrations.md` — full copy-paste examples per stack; `docs/examples.md` — pattern recipes.
 
-**Pitfalls:** SSR / App Router — client code must run in a client boundary (`"use client"` or equivalent); React Native — `useWorker: false`; default WebSocket path is `/__ds` (configure `path` / proxy if needed).
+**Client API:** The RPC method is `client.rpc(method, params)` (not `call()`). State: `client.subscribeState(key, handler)`. Events: `client.on(event, handler)`, `client.emit(event, data)`.
+
+**Pitfalls:**
+
+- SSR / App Router — client code must run in a client boundary (`"use client"` or equivalent)
+- React Native / Next.js — pass `useWorker: false` to `DatasoleClient`
+- Default WebSocket path is `/__ds` (configure `path` / proxy if needed)
+- Next.js requires `transpilePackages: ['datasole']` in `next.config.ts` and `--webpack` flag (Turbopack doesn't resolve subpath exports for linked packages)
+- NestJS requires `import 'reflect-metadata'` before any NestJS imports
+- `app.getHttpServer()` returns the raw Node `http.Server` — this is what `ds.attach()` expects

@@ -267,10 +267,10 @@ httpServer.listen(3000);
 ### NestJS
 
 ```typescript
-import { DatasoleNestAdapter, DatasoleServer } from 'datasole/server';
+import { DatasoleServer } from 'datasole/server';
 
 const ds = new DatasoleServer();
-app.useWebSocketAdapter(new DatasoleNestAdapter(ds));
+ds.attach(app.getHttpServer());
 ```
 
 ### Native HTTP

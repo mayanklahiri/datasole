@@ -41,7 +41,7 @@ ds.createSyncChannel({ key: 'cursors', flush: 'debounced', debounceMs: 50 }); //
 
 ```typescript
 // Client — all on the same DatasoleClient instance
-await ds.call('addTask', { text: 'Ship it' }); // RPC
+await ds.rpc('addTask', { text: 'Ship it' }); // RPC
 ds.on('notification', show); // Server event
 ds.emit('typing', { user: 'alice' }); // Client event
 ds.subscribeState('board', setBoard); // Live state
@@ -68,7 +68,7 @@ ds.rpc('toggleDone', async ({ id }) => {
 
 // Client
 ds.subscribeState('todos', render);
-button.onclick = () => ds.call('toggleDone', { id: 42 });
+button.onclick = () => ds.rpc('toggleDone', { id: 42 });
 ```
 
 ### Chat room with presence
