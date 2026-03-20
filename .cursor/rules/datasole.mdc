@@ -41,6 +41,10 @@ All ADRs in `docs/decisions.md`. When changing deps, protocol, build, transport,
 
 `src/shared/build-constants.ts` is the single source of truth for version, protocol version, and defaults. Never hardcode these values elsewhere.
 
+## Changelog
+
+Update `CHANGELOG.md` (Keep a Changelog format) when bumping `package.json` version. Group under Added/Changed/Deprecated/Removed/Fixed/Security. Use SemVer: major = breaking, minor = features, patch = fixes.
+
 ## Type Safety
 
 - No `any` in public API surfaces

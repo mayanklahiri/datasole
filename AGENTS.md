@@ -32,6 +32,7 @@ This is the single command that validates everything. It runs, in order:
 9. `gate:summary` — Print pass/fail summary with statistics
 
 **The gate MUST pass before any push.** This is enforced by:
+
 - **pre-commit hook**: `lint-staged` (format + lint staged files)
 - **pre-push hook**: `npm run gate` (full pipeline)
 - **CI**: GitHub Actions runs `npm run gate` on every push/PR to `main` and `develop`
@@ -61,6 +62,7 @@ When adding user-facing features, update `docs/tutorials.md` and/or `docs/exampl
 All architecture decisions MUST be recorded in `docs/decisions.md` before implementation.
 
 When making changes that involve:
+
 - Adding or removing a dependency
 - Changing the wire protocol or frame format
 - Changing the build system or output targets
@@ -71,10 +73,35 @@ When making changes that involve:
 - Changing the quality gate pipeline
 
 You MUST:
+
 1. Check `docs/decisions.md` for an existing relevant ADR
 2. If no relevant ADR exists, add a new one with the next sequential number
 3. If an existing ADR is being superseded, update its status to "Superseded by ADR-XXX"
 4. Include the ADR number in the commit message (e.g. `feat: add Redis backend [ADR-005]`)
+
+## Changelog
+
+**`CHANGELOG.md` MUST be updated for every version bump.** Follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format with sections:
+
+- **Added** — new features
+- **Changed** — changes to existing functionality
+- **Deprecated** — features that will be removed
+- **Removed** — features that were removed
+- **Fixed** — bug fixes
+- **Security** — vulnerability fixes
+
+Version classification (SemVer):
+
+- **Major** (X.0.0) — breaking API changes, protocol changes, minimum Node.js version bumps
+- **Minor** (x.Y.0) — new features, new adapters/backends, new data-flow patterns
+- **Patch** (x.y.Z) — bug fixes, dependency updates, docs improvements, CI changes
+
+When making changes:
+
+1. Check `package.json` for the current version
+2. Add entries under the appropriate `## [version]` heading in `CHANGELOG.md`
+3. Group entries under the correct section (Added/Changed/Fixed/etc.)
+4. Use sub-headings (####) to group related entries within a section when there are many changes
 
 ## Coding Conventions
 
