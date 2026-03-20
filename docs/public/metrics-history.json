@@ -283,5 +283,20 @@
     "serverEsmGzip": 77139,
     "unitTests": 476,
     "e2eTests": 38
+  },
+  {
+    "timestamp": "2026-03-20T08:10:48.085Z",
+    "coverage": {
+      "lines": 90.25,
+      "branches": 79.96,
+      "functions": 88.86,
+      "statements": 89.76
+    },
+    "clientIifeGzip": 22020,
+    "workerIifeGzip": 15382,
+    "sharedEsmGzip": 66340,
+    "serverEsmGzip": 77139,
+    "unitTests": 476,
+    "e2eTests": 38
   }
 ]
