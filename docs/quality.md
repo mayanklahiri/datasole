@@ -100,9 +100,10 @@ function totalClient(entry) {
 
 ### Tests
 
-| Suite     | Count                              |
-| --------- | ---------------------------------- |
-| E2E tests | <span>{{ latest.e2eTests }}</span> |
+| Suite      | Count                                      |
+| ---------- | ------------------------------------------ |
+| Unit tests | <span>{{ latest.unitTests ?? '—' }}</span> |
+| E2E tests  | <span>{{ latest.e2eTests ?? '—' }}</span>  |
 
 <p style="color: var(--vp-c-text-3); font-size: 0.85rem;">Last updated: <span>{{ latest.timestamp }}</span></p>
 
@@ -182,9 +183,9 @@ The gate runs:
 
 | Metric     | Minimum |
 | ---------- | ------- |
-| Lines      | 45%     |
-| Branches   | 40%     |
-| Functions  | 35%     |
-| Statements | 45%     |
+| Lines      | 80%     |
+| Branches   | 70%     |
+| Functions  | 80%     |
+| Statements | 80%     |
 
 These are enforced by Vitest. The gate fails if any threshold is not met.

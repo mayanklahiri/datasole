@@ -162,6 +162,9 @@ function appendToHistory(metrics: BuildMetrics): void {
     metrics.bundles.find((b) => b.file.includes(pattern))?.sizeGzip ?? null;
 
   const e2e = metrics.e2eResults as { stats?: { expected?: number } } | null;
+  const unitResult = readJsonSafe(join(ROOT, 'reports', 'unit-results.json')) as {
+    numTotalTests?: number;
+  } | null;
 
   const entry: HistoryEntry = {
     timestamp: metrics.timestamp,
@@ -177,7 +180,7 @@ function appendToHistory(metrics: BuildMetrics): void {
     workerIifeGzip: findBundle('datasole-worker.iife'),
     sharedEsmGzip: findBundle('shared/index.mjs'),
     serverEsmGzip: findBundle('server/index.mjs'),
-    unitTests: null,
+    unitTests: unitResult?.numTotalTests ?? null,
     e2eTests: e2e?.stats?.expected ?? null,
   };
 
