@@ -46,11 +46,11 @@ Code shared between client and server. Import from `datasole` (root).
 
 Built-in conflict-free replicated data types for bidirectional sync:
 
-| Type | Description | Use Case |
-|---|---|---|
-| `LWWRegister<T>` | Last-writer-wins scalar | Single value (username, status) |
-| `PNCounter` | Positive-negative counter | Votes, likes, online count |
-| `LWWMap<T>` | LWW map of registers | Shared document, form fields |
+| Type             | Description               | Use Case                        |
+| ---------------- | ------------------------- | ------------------------------- |
+| `LWWRegister<T>` | Last-writer-wins scalar   | Single value (username, status) |
+| `PNCounter`      | Positive-negative counter | Votes, likes, online count      |
+| `LWWMap<T>`      | LWW map of registers      | Shared document, form fields    |
 
 All implement the `Crdt<T>` interface:
 
@@ -71,11 +71,11 @@ interface Crdt<T> {
 
 `BUILD_CONSTANTS` in `src/shared/build-constants.ts` is the single source of truth:
 
-| Constant | Value | Description |
-|---|---|---|
-| `PACKAGE_NAME` | `datasole` | npm package name |
-| `VERSION` | (from package.json) | Injected at build time by Rollup |
-| `PROTOCOL_VERSION` | `1` | Wire protocol version |
-| `DEFAULT_WS_PATH` | `/__ds` | Default WebSocket path |
-| `MAX_FRAME_SIZE` | `1048576` | 1MB max frame |
-| `COMPRESSION_THRESHOLD` | `256` | Compress above this size |
+| Constant                | Value               | Description                      |
+| ----------------------- | ------------------- | -------------------------------- |
+| `PACKAGE_NAME`          | `datasole`          | npm package name                 |
+| `VERSION`               | (from package.json) | Injected at build time by Rollup |
+| `PROTOCOL_VERSION`      | `1`                 | Wire protocol version            |
+| `DEFAULT_WS_PATH`       | `/__ds`             | Default WebSocket path           |
+| `MAX_FRAME_SIZE`        | `1048576`           | 1MB max frame                    |
+| `COMPRESSION_THRESHOLD` | `256`               | Compress above this size         |

@@ -5,7 +5,7 @@ titleTemplate: Realtime TypeScript Framework
 hero:
   name: datasole
   text: Realtime TypeScript framework
-  tagline: Binary WebSocket transport in a Web Worker. JSON Patch state sync. Typed RPC. CRDTs. 35.6 KB gzip on the wire. One npm install.
+  tagline: Binary WebSocket transport in a Web Worker. JSON Patch state sync. Typed RPC. CRDTs. 36.2 KB gzip on the wire. One npm install.
   actions:
     - theme: brand
       text: Start the tutorial
@@ -20,7 +20,7 @@ hero:
 features:
   - icon: ⚡
     title: Performance
-    details: WebSocket runs in a Web Worker — no UI jank. Binary frames with pako compression (60–80% smaller than JSON). SharedArrayBuffer zero-copy transfer. Four server concurrency models. Client IIFE 20.9 KB gzip.
+    details: WebSocket runs in a Web Worker — no UI jank. Binary frames with pako compression (60–80% smaller than JSON). SharedArrayBuffer zero-copy transfer. Four server concurrency models. Client IIFE 21.5 KB gzip.
   - icon: ✓
     title: Correctness
     details: 122 unit tests + 38 e2e tests (Playwright, headless Chromium, production bundle — desktop 1280×720 + Pixel 7 mobile). CI matrix on Node 22 LTS and Node 24. Coverage thresholds enforced on every push. Strict TypeScript with .d.ts on every export. Shared types between client and server — no codegen, no drift.
@@ -58,12 +58,12 @@ All bundles include their runtime dependencies (pako, fast-json-patch). Verified
 
 | Bundle                | Loaded by               |      Raw |        Gzip |
 | --------------------- | ----------------------- | -------: | ----------: |
-| **Client IIFE** (min) | `<script>` tag          |  67.1 KB | **20.9 KB** |
+| **Client IIFE** (min) | `<script>` tag          |  67.1 KB | **21.5 KB** |
 | **Worker IIFE** (min) | Web Worker              |  46.5 KB | **14.7 KB** |
 | **Shared** (ESM)      | Server or client import | 261.0 KB |     64.5 KB |
 | **Server** (ESM)      | Node.js `import`        | 430.8 KB |    100.5 KB |
 
-A browser downloads the client IIFE (**20.9 KB** gzip) and the worker (**14.7 KB** gzip) = **35.6 KB** total.
+A browser downloads the client IIFE (**21.5 KB** gzip) and the worker (**14.7 KB** gzip) = **36.2 KB** total.
 
 ## How it compares
 

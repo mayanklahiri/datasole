@@ -87,7 +87,7 @@ npm publish
 
 ## CI Pipeline
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to `main` and `develop`:
+GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to `main`:
 
 1. Matrix: Node.js 22 (LTS), 24 (latest)
 2. `npm ci`
@@ -95,4 +95,4 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to `main` and `devel
 4. `npm run gate` (the full quality pipeline)
 5. Upload `reports/`, `coverage/`, `docs-site/dist/` as artifacts
 6. Print `build-metrics.md` to step summary
-7. Deploy docs site to GitHub Pages (on push to `main`/`develop`, from the Node 24 job)
+7. Deploy docs site to GitHub Pages (on push to `main`, from the Node 24 job)

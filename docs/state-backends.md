@@ -32,7 +32,7 @@ In-memory Map + EventEmitter. Zero dependencies. Suitable for single-process dep
 import { DatasoleServer, MemoryBackend } from 'datasole/server';
 
 const ds = new DatasoleServer({
-  stateBackend: new MemoryBackend(),  // This is the default
+  stateBackend: new MemoryBackend(), // This is the default
 });
 ```
 
@@ -74,8 +74,8 @@ The `SessionManager` sits on top of any state backend to provide per-user state 
 const ds = new DatasoleServer({
   stateBackend: new RedisBackend({ url: 'redis://localhost:6379' }),
   session: {
-    flushThreshold: 10,      // Persist after 10 mutations
-    flushIntervalMs: 5000,   // Or every 5 seconds
+    flushThreshold: 10, // Persist after 10 mutations
+    flushIntervalMs: 5000, // Or every 5 seconds
   },
 });
 
@@ -97,11 +97,21 @@ Implement the `StateBackend` interface and pass to `DatasoleServer`:
 
 ```typescript
 class MyCustomBackend implements StateBackend {
-  async get<T>(key: string): Promise<T | undefined> { /* ... */ }
-  async set<T>(key: string, value: T): Promise<void> { /* ... */ }
-  async delete(key: string): Promise<boolean> { /* ... */ }
-  subscribe(key: string, handler: (key: string, value: unknown) => void): () => void { /* ... */ }
-  async publish(key: string, value: unknown): Promise<void> { /* ... */ }
+  async get<T>(key: string): Promise<T | undefined> {
+    /* ... */
+  }
+  async set<T>(key: string, value: T): Promise<void> {
+    /* ... */
+  }
+  async delete(key: string): Promise<boolean> {
+    /* ... */
+  }
+  subscribe(key: string, handler: (key: string, value: unknown) => void): () => void {
+    /* ... */
+  }
+  async publish(key: string, value: unknown): Promise<void> {
+    /* ... */
+  }
 }
 
 const ds = new DatasoleServer({ stateBackend: new MyCustomBackend() });

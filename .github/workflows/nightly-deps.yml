@@ -10,7 +10,6 @@ env:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   update-deps:
@@ -82,25 +81,14 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Quality gate passed with updated dependencies." >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Create pull request
+      - name: Commit and push to main
         if: steps.ncu.outputs.updates == 'true'
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: chore/nightly-dep-update
-          delete-branch: true
-          title: 'chore(deps): nightly dependency update'
-          body: |
-            Automated nightly dependency update via [`npm-check-updates`](https://github.com/raineorshine/npm-check-updates).
-
-            The full quality gate (`npm run gate`) passed after updating:
-            format · lint · build · unit tests · e2e tests · metrics · docs
-
-            See the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for the full gate output and build metrics.
-          commit-message: 'chore(deps): nightly dependency update'
-          labels: |
-            dependencies
-            automated
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore(deps): nightly dependency update"
+          git push origin main
 
       - name: Upload reports
         if: steps.ncu.outputs.updates == 'true'

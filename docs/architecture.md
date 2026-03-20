@@ -6,7 +6,7 @@ description: High-level system design, data flow, protocol specification, and le
 
 # Architecture
 
-> **New to datasole?** Start with the [Tutorials](tutorials.md) — they'll get you from zero to a running app faster than reading architecture docs. Come back here when you're curious about *why* things work the way they do.
+> **New to datasole?** Start with the [Tutorials](tutorials.md) — they'll get you from zero to a running app faster than reading architecture docs. Come back here when you're curious about _why_ things work the way they do.
 
 ## Learning Path
 
@@ -108,12 +108,12 @@ The most common pattern for real-world apps is **client → server RPC + server 
 
 All communication uses binary frames with the following envelope:
 
-| Byte Offset | Size | Field |
-|---|---|---|
-| 0 | 1 | Opcode (see `src/shared/protocol/opcodes.ts`) |
-| 1 | 4 | Correlation ID (uint32, big-endian) |
-| 5 | 4 | Payload length (uint32, big-endian) |
-| 9 | N | Payload (pako-compressed if above threshold) |
+| Byte Offset | Size | Field                                         |
+| ----------- | ---- | --------------------------------------------- |
+| 0           | 1    | Opcode (see `src/shared/protocol/opcodes.ts`) |
+| 1           | 4    | Correlation ID (uint32, big-endian)           |
+| 5           | 4    | Payload length (uint32, big-endian)           |
+| 9           | N    | Payload (pako-compressed if above threshold)  |
 
 Opcodes cover: RPC request/response, event, state snapshot, state patch, CRDT operation, CRDT state, ping/pong, error.
 
@@ -130,7 +130,7 @@ Opcodes cover: RPC request/response, event, state snapshot, state patch, CRDT op
 
 ## Sync Channel Architecture
 
-Sync channels decouple *what* is synchronized from *when* it's flushed:
+Sync channels decouple _what_ is synchronized from _when_ it's flushed:
 
 ```
 Server state mutation
@@ -169,12 +169,12 @@ All three nodes converge to the same value regardless of operation order.
 
 ## Further Reading
 
-| Topic | Where |
-|---|---|
-| Step-by-step learning | [Tutorials](tutorials.md) |
-| Copy-paste recipes | [Examples](examples.md) |
-| Client methods | [Client API](client.md) |
-| Server methods | [Server API](server.md) |
-| Persistence options | [State Backends](state-backends.md) |
-| Observability | [Metrics](metrics.md) |
-| Why each decision was made | [ADRs](decisions.md) |
+| Topic                      | Where                               |
+| -------------------------- | ----------------------------------- |
+| Step-by-step learning      | [Tutorials](tutorials.md)           |
+| Copy-paste recipes         | [Examples](examples.md)             |
+| Client methods             | [Client API](client.md)             |
+| Server methods             | [Server API](server.md)             |
+| Persistence options        | [State Backends](state-backends.md) |
+| Observability              | [Metrics](metrics.md)               |
+| Why each decision was made | [ADRs](decisions.md)                |

@@ -5,9 +5,15 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](https://www.typescriptlang.org/)
 
-A realtime TypeScript framework for full-stack apps that need binary WebSocket transport, server-to-client state synchronization, typed RPC, and CRDTs — shipped as a single npm package with 35.6 KB on the wire (gzip, client + worker).
+**[Documentation](https://mayanklahiri.github.io/datasole/)**
 
-datasole moves the WebSocket connection into a Web Worker so network I/O never touches your UI thread. Frames are binary envelopes compressed with pako. State diffs use [RFC 6902 JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902). The server side supports four concurrency models (async, thread-per-connection, thread pool, process isolation), pluggable persistence (memory, Redis, Postgres), and rate limiting that operates at the frame level rather than at HTTP. Everything is strictly typed end-to-end — the same TypeScript interfaces flow from server handler to client call site without a code generation step.
+## Why datasole?
+
+Every realtime TypeScript framework makes you choose: simple API or real performance. Socket.IO gives you events and rooms, but text-only JSON, no state primitives, and everything on the main thread. Managed services like Ably or Pusher charge per message and own your infrastructure. Liveblocks gives you CRDTs but locks you into their cloud. PartyKit is Cloudflare-only.
+
+datasole refuses the trade-off. It ships a **36.2 KB** client (gzip, including worker) that runs the WebSocket in a **Web Worker** — your UI thread never touches network I/O. Frames are **binary envelopes compressed with pako** (60-80% smaller than JSON text). The server generates **RFC 6902 JSON Patch** diffs so clients receive only what changed, not full snapshots. When you need bidirectional sync, built-in **CRDTs** (LWW registers, PN counters, LWW maps) converge automatically — no conflict resolution code to write.
+
+It's a single `npm install`, not a platform signup. You own the server. You pick the database. You deploy where you want. And every type flows from server handler to client call site without codegen — just TypeScript generics.
 
 ```bash
 npm install datasole
@@ -142,14 +148,14 @@ All bundles include their runtime dependencies (pako, fast-json-patch). The serv
 
 | Bundle                | Loaded by               |      Raw |        Gzip |
 | --------------------- | ----------------------- | -------: | ----------: |
-| **Client IIFE** (min) | `<script>` tag          |  67.1 KB | **20.9 KB** |
-| **Client ESM**        | `import` from bundler   | 274.4 KB |     67.4 KB |
+| **Client IIFE** (min) | `<script>` tag          |  69.8 KB | **21.5 KB** |
+| **Client ESM**        | `import` from bundler   | 281.0 KB |     69.0 KB |
 | **Worker IIFE** (min) | Web Worker              |  46.5 KB | **14.7 KB** |
-| **Shared** (ESM)      | Server or client import | 261.0 KB |     64.5 KB |
-| **Server** (ESM)      | Node.js `import`        | 430.8 KB |    100.5 KB |
-| **Server** (CJS)      | Node.js `require()`     | 431.6 KB |    100.6 KB |
+| **Shared** (ESM)      | Server or client import | 261.7 KB |     64.8 KB |
+| **Server** (ESM)      | Node.js `import`        | 458.4 KB |    105.4 KB |
+| **Server** (CJS)      | Node.js `require()`     | 459.3 KB |    105.5 KB |
 
-A browser downloads the client IIFE (**20.9 KB** gzip) and the worker (**14.7 KB** gzip) for a total of **35.6 KB** — that includes compression, binary framing, JSON Patch diffing, CRDTs, and the Web Worker transport.
+A browser downloads the client IIFE (**21.5 KB** gzip) and the worker (**14.7 KB** gzip) for a total of **36.2 KB** — that includes compression, binary framing, JSON Patch diffing, CRDTs, and the Web Worker transport.
 
 ## How datasole compares
 
@@ -165,7 +171,7 @@ A browser downloads the client IIFE (**20.9 KB** gzip) and the worker (**14.7 KB
 | Frame-level rate limiting      |      ✓       |       —        |    Managed     |    Managed     |  Managed   |        —        |
 | Sync channels (batch/debounce) |      ✓       |       —        |       —        |       —        |     —      |        —        |
 | Session persistence            |      ✓       |       —        |       —        |       —        |     ✓      |   Via storage   |
-| Client bundle (gzip)           |   35.6 KB    |    11–15 KB    |     ~31 KB     |     ~14 KB     |  ~50 KB+   |     varies      |
+| Client bundle (gzip)           |   36.2 KB    |    11–15 KB    |     ~31 KB     |     ~14 KB     |  ~50 KB+   |     varies      |
 | Strict TypeScript end-to-end   |      ✓       | Types included | Types included | Types included |     ✓      |        ✓        |
 
 datasole is the right choice when you need full infrastructure control, main-thread performance via Web Worker transport, and built-in state synchronization with CRDTs — without vendor lock-in or per-message pricing. For a detailed breakdown, see [the comparison page](https://mayanklahiri.github.io/datasole/comparison).
@@ -174,7 +180,7 @@ datasole is the right choice when you need full infrastructure control, main-thr
 
 The quality gate (`npm run gate`) runs on every push and enforces:
 
-- **122 unit tests** across 26 test files (Vitest, v8 coverage) plus e2e tests across 8 spec files (Playwright, headless Chromium, production IIFE bundle)
+- **203 unit tests** across 42 test files (Vitest, v8 coverage) plus **38 e2e tests** across 8 spec files and 2 viewports (Playwright, headless Chromium, production IIFE bundle)
 - E2e tests cover all tutorial patterns: connection, RPC, server events, state sync, auth, CRDTs, sessions, and the combined task board
 - Coverage thresholds enforced: 45% lines, 40% branches, 35% functions, 45% statements
 - Formatting (Prettier), linting (ESLint flat config + `tsc --noEmit`), bundle builds, `.d.ts` emission, metrics collection, docs site generation (VitePress), and screenshot capture from e2e runs

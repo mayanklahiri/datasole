@@ -159,7 +159,7 @@ function main() {
       <h1>datasole</h1>
       <p class="tagline">Realtime TypeScript framework with binary WebSocket transport,<br>
       JSON Patch state sync, typed RPC, and CRDTs.</p>
-      <p class="hero-sub">35.6 KB gzip on the wire. Web Worker transport. Four server concurrency models.<br>
+      <p class="hero-sub">36.2 KB gzip on the wire. Web Worker transport. Four server concurrency models.<br>
       Strict TypeScript end-to-end. One <code>npm install</code>.</p>
       <nav class="hero-actions">
         <a href="${BASE_PATH}/tutorials/" class="btn-primary">Start the tutorial</a>

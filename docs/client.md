@@ -16,22 +16,23 @@ The main client class. Framework-agnostic — works with React, Vue 3, Svelte, R
 
 ```typescript
 const client = new DatasoleClient({
-  url: 'wss://example.com',    // Server URL (ws:// or wss://)
-  path: '/__ds',                // WebSocket path (default: /__ds)
-  auth: {                       // Optional auth credentials
-    token: 'jwt-token',         //   Sent during upgrade handshake
+  url: 'wss://example.com', // Server URL (ws:// or wss://)
+  path: '/__ds', // WebSocket path (default: /__ds)
+  auth: {
+    // Optional auth credentials
+    token: 'jwt-token', //   Sent during upgrade handshake
     headers: { 'x-api-key': 'abc' },
   },
-  useWorker: true,              // Run WebSocket in Web Worker (default: true)
-  useSharedArrayBuffer: true,   // Zero-copy via SAB when available (default: true)
+  useWorker: true, // Run WebSocket in Web Worker (default: true)
+  useSharedArrayBuffer: true, // Zero-copy via SAB when available (default: true)
 });
 ```
 
 ### Connection
 
 ```typescript
-client.connect();                          // Establish WebSocket connection
-client.disconnect();                       // Close connection
+client.connect(); // Establish WebSocket connection
+client.disconnect(); // Close connection
 const state = client.getConnectionState(); // 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
 ```
 
@@ -116,17 +117,17 @@ client.on('crdt:state', (state) => {
 
 ## Full Method Reference
 
-| Method | Description |
-|---|---|
-| `connect()` | Establish WebSocket connection (in worker) |
-| `disconnect()` | Close connection |
-| `rpc<T>(method, params?, options?)` | Call server RPC method with typed response |
-| `on<T>(event, handler)` | Subscribe to server-pushed events |
-| `off<T>(event, handler)` | Unsubscribe |
-| `emit(event, data?)` | Send event to server |
-| `subscribeState<T>(key, handler)` | Subscribe to state changes (JSON Patch applied) |
-| `getState<T>(key)` | Get current state snapshot |
-| `getConnectionState()` | `'disconnected' \| 'connecting' \| 'connected' \| 'reconnecting'` |
+| Method                              | Description                                                       |
+| ----------------------------------- | ----------------------------------------------------------------- |
+| `connect()`                         | Establish WebSocket connection (in worker)                        |
+| `disconnect()`                      | Close connection                                                  |
+| `rpc<T>(method, params?, options?)` | Call server RPC method with typed response                        |
+| `on<T>(event, handler)`             | Subscribe to server-pushed events                                 |
+| `off<T>(event, handler)`            | Unsubscribe                                                       |
+| `emit(event, data?)`                | Send event to server                                              |
+| `subscribeState<T>(key, handler)`   | Subscribe to state changes (JSON Patch applied)                   |
+| `getState<T>(key)`                  | Get current state snapshot                                        |
+| `getConnectionState()`              | `'disconnected' \| 'connecting' \| 'connected' \| 'reconnecting'` |
 
 ## Framework Integration
 
@@ -174,7 +175,9 @@ const dashboard = ref<Record<string, unknown>>({});
 
 onMounted(() => {
   client.connect();
-  client.subscribeState('dashboard', (s) => { dashboard.value = s; });
+  client.subscribeState('dashboard', (s) => {
+    dashboard.value = s;
+  });
 });
 
 onUnmounted(() => client.disconnect());
@@ -201,7 +204,9 @@ export function useDatasole(url: string) {
 export function useLiveState<T>(client: DatasoleClient, key: string): Ref<T | null> {
   const state = ref<T | null>(null) as Ref<T | null>;
   onMounted(() => {
-    client.subscribeState<T>(key, (s) => { state.value = s; });
+    client.subscribeState<T>(key, (s) => {
+      state.value = s;
+    });
   });
   return state;
 }

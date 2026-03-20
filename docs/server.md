@@ -21,30 +21,31 @@ import {
 } from 'datasole/server';
 
 const ds = new DatasoleServer({
-  path: '/__ds',                // WebSocket path (default: /__ds)
+  path: '/__ds', // WebSocket path (default: /__ds)
 
   authHandler: async (req) => {
     const token = req.headers.authorization?.replace('Bearer ', '');
     return { authenticated: !!token, userId: token };
   },
 
-  stateBackend: new MemoryBackend(),           // or RedisBackend, PostgresBackend
+  stateBackend: new MemoryBackend(), // or RedisBackend, PostgresBackend
   metricsExporter: new PrometheusExporter(),
 
-  concurrency: {                // See "Concurrency Models" below
-    model: 'thread-pool',      // 'async' | 'thread' | 'thread-pool' | 'process'
+  concurrency: {
+    // See "Concurrency Models" below
+    model: 'thread-pool', // 'async' | 'thread' | 'thread-pool' | 'process'
     poolSize: 4,
   },
 
-  rateLimiter: new MemoryRateLimiter(),   // or RedisRateLimiter
+  rateLimiter: new MemoryRateLimiter(), // or RedisRateLimiter
   rateLimit: {
     defaultRule: { windowMs: 60_000, maxRequests: 200 },
     rules: { 'heavy-rpc': { windowMs: 60_000, maxRequests: 10 } },
   },
 
   session: {
-    flushThreshold: 10,         // Persist after N mutations
-    flushIntervalMs: 5000,      // Or every N ms
+    flushThreshold: 10, // Persist after N mutations
+    flushIntervalMs: 5000, // Or every N ms
   },
 });
 ```
@@ -175,12 +176,12 @@ const ds = new DatasoleServer({
 });
 ```
 
-| Model | Description | When to Use |
-|---|---|---|
-| `async` | Single event loop, all connections in-process | I/O-bound: chat, notifications |
-| `thread` | New `worker_threads` per connection | CPU-bound: game logic, computation |
-| `thread-pool` | Fixed pool, least-connections assignment **(default)** | General-purpose, good default |
-| `process` | `child_process` fork per connection, IPC | Multi-tenant isolation, untrusted code |
+| Model         | Description                                            | When to Use                            |
+| ------------- | ------------------------------------------------------ | -------------------------------------- |
+| `async`       | Single event loop, all connections in-process          | I/O-bound: chat, notifications         |
+| `thread`      | New `worker_threads` per connection                    | CPU-bound: game logic, computation     |
+| `thread-pool` | Fixed pool, least-connections assignment **(default)** | General-purpose, good default          |
+| `process`     | `child_process` fork per connection, IPC               | Multi-tenant isolation, untrusted code |
 
 All models are cluster-friendly — no shared mutable state in the main process. Works with `pm2 cluster` out of the box.
 
@@ -204,8 +205,8 @@ const ds = new DatasoleServer({
   rateLimit: {
     defaultRule: { windowMs: 60_000, maxRequests: 100 },
     rules: {
-      'search': { windowMs: 60_000, maxRequests: 30 },
-      'upload': { windowMs: 60_000, maxRequests: 5 },
+      search: { windowMs: 60_000, maxRequests: 30 },
+      upload: { windowMs: 60_000, maxRequests: 5 },
     },
   },
 });
@@ -285,23 +286,23 @@ server.listen(3000);
 
 ## Full Method Reference
 
-| Method | Description |
-|---|---|
-| `attach(httpServer, adapter?)` | Attach to HTTP server |
-| `setState<T>(key, value)` | Set state (diffs and broadcasts patches) |
-| `getState<T>(key)` | Get current state |
-| `createSyncChannel<T>(config)` | Create a sync channel with configurable flush |
-| `getSyncChannel(key)` | Get existing sync channel |
-| `snapshotSession(ctx)` | Snapshot session from persistence |
-| `restoreSession(ctx)` | Restore session on reconnect |
-| `setSessionValue(userId, key, value)` | Set session value (auto-flushes) |
-| `getSessionValue<T>(userId, key)` | Get session value |
-| `onSessionChange(handler)` | Listen for session mutations |
-| `rpc<TReq, TRes>(method, handler)` | Register typed RPC handler |
-| `on<T>(event, handler)` | Listen for client events |
-| `off<T>(event, handler)` | Unsubscribe |
-| `broadcast(event, data)` | Send event to all clients |
-| `getMetrics()` | Access metrics collector |
-| `getRateLimiter()` | Access rate limiter |
-| `getConcurrency()` | Access concurrency strategy |
-| `close()` | Flush sessions, shut down workers, close connections |
+| Method                                | Description                                          |
+| ------------------------------------- | ---------------------------------------------------- |
+| `attach(httpServer, adapter?)`        | Attach to HTTP server                                |
+| `setState<T>(key, value)`             | Set state (diffs and broadcasts patches)             |
+| `getState<T>(key)`                    | Get current state                                    |
+| `createSyncChannel<T>(config)`        | Create a sync channel with configurable flush        |
+| `getSyncChannel(key)`                 | Get existing sync channel                            |
+| `snapshotSession(ctx)`                | Snapshot session from persistence                    |
+| `restoreSession(ctx)`                 | Restore session on reconnect                         |
+| `setSessionValue(userId, key, value)` | Set session value (auto-flushes)                     |
+| `getSessionValue<T>(userId, key)`     | Get session value                                    |
+| `onSessionChange(handler)`            | Listen for session mutations                         |
+| `rpc<TReq, TRes>(method, handler)`    | Register typed RPC handler                           |
+| `on<T>(event, handler)`               | Listen for client events                             |
+| `off<T>(event, handler)`              | Unsubscribe                                          |
+| `broadcast(event, data)`              | Send event to all clients                            |
+| `getMetrics()`                        | Access metrics collector                             |
+| `getRateLimiter()`                    | Access rate limiter                                  |
+| `getConcurrency()`                    | Access concurrency strategy                          |
+| `close()`                             | Flush sessions, shut down workers, close connections |
