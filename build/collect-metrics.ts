@@ -133,6 +133,15 @@ function generateMarkdown(metrics: BuildMetrics): string {
   return lines.join('\n');
 }
 
+interface BenchScenarioSummary {
+  name: string;
+  opsPerSec: number;
+  p50Ms: number;
+  p95Ms: number;
+  p99Ms: number;
+  totalOps: number;
+}
+
 interface HistoryEntry {
   timestamp: string;
   coverage: { lines: number; branches: number; functions: number; statements: number } | null;
@@ -142,6 +151,7 @@ interface HistoryEntry {
   serverEsmGzip: number | null;
   unitTests: number | null;
   e2eTests: number | null;
+  benchmarks: BenchScenarioSummary[] | null;
 }
 
 const HISTORY_FILE = join(ROOT, 'docs', 'public', 'metrics-history.json');
@@ -166,6 +176,21 @@ function appendToHistory(metrics: BuildMetrics): void {
     numTotalTests?: number;
   } | null;
 
+  const benchFile = readJsonSafe(
+    join(ROOT, 'test', 'e2e', 'reports', 'perf', 'benchmark-results.json'),
+  ) as { scenarios?: BenchScenarioSummary[] } | null;
+
+  const benchmarks: BenchScenarioSummary[] | null = benchFile?.scenarios
+    ? benchFile.scenarios.map((s) => ({
+        name: s.name,
+        opsPerSec: s.opsPerSec,
+        p50Ms: s.p50Ms,
+        p95Ms: s.p95Ms,
+        p99Ms: s.p99Ms,
+        totalOps: s.totalOps,
+      }))
+    : null;
+
   const entry: HistoryEntry = {
     timestamp: metrics.timestamp,
     coverage: total
@@ -182,6 +207,7 @@ function appendToHistory(metrics: BuildMetrics): void {
     serverEsmGzip: findBundle('server/index.mjs'),
     unitTests: unitResult?.numTotalTests ?? null,
     e2eTests: e2e?.stats?.expected ?? null,
+    benchmarks,
   };
 
   history.push(entry);

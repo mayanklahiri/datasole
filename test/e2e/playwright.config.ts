@@ -25,6 +25,7 @@ export default defineConfig({
       use: {
         ...devices['Pixel 7'],
       },
+      grepInvert: /@bench/,
     },
   ],
   reporter: [['list'], ['json', { outputFile: './reports/playwright-results.json' }]],

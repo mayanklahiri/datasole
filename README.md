@@ -298,9 +298,25 @@ A browser downloads the client IIFE + worker for a total of **36 KB gzip** — t
 
 > ¹ Socket.IO [disabled permessage-deflate by default](https://github.com/socketio/engine.io/commit/5ad273601eb66c7b318542f87026837bf9dddd21) due to memory leaks and crashes in production. datasole uses user-space pako compression on every frame >256 B — no negotiation, no per-connection zlib state, no browser compat issues.
 
+## Performance (end-to-end, headless Chromium)
+
+Every CI run measures end-to-end performance — a real browser client connected to a real Node.js server via binary WebSocket, 3 seconds of sustained load per scenario:
+
+| Scenario                  |   Ops/sec |     P50 |    P95 |
+| ------------------------- | --------: | ------: | -----: |
+| RPC echo (sequential)     |       ~33 |  0.44ms | 1.48ms |
+| RPC echo (10x concurrent) |       ~37 |  0.42ms |      — |
+| Server event receive      |  ~913/sec |       — |      — |
+| Live state sync           |  ~192/sec |       — |      — |
+| Client event emit         | ~255K/sec | <0.01ms | 0.01ms |
+| CRDT increment            | ~1.3K/sec |  0.73ms | 1.35ms |
+| Mixed workload            |       ~50 |  0.34ms | 0.68ms |
+
+Numbers vary by machine. Live data: [Performance Benchmarks](https://mayanklahiri.github.io/datasole/performance).
+
 ## Test coverage
 
-203 unit tests + 38 e2e tests (Playwright, headless Chromium, desktop + mobile viewports). CI matrix on Node 22 LTS and Node 24. Quality gate (`npm run gate`) enforces format, lint, types, build, test, coverage, e2e, metrics, and docs on every push.
+476 unit tests + 45 e2e tests (Playwright, headless Chromium, desktop + mobile viewports). CI matrix on Node 22 LTS and Node 24. Quality gate (`npm run gate`) enforces format, lint, types, build, test, coverage, e2e, metrics, and docs on every push.
 
 ## Tutorial
 

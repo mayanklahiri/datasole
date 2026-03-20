@@ -162,6 +162,40 @@ export async function startTestServer(): Promise<TestServerResult> {
     return { ok: true };
   });
 
+  // --- Benchmark RPCs ---
+  ds.rpc('startBroadcastFlood', async (params: { durationMs: number; intervalMs?: number }) => {
+    const end = Date.now() + params.durationMs;
+    const interval = params.intervalMs ?? 1;
+    let count = 0;
+    const tick = () => {
+      if (Date.now() >= end) return;
+      ds.broadcast('bench:event', { seq: count++, ts: Date.now() });
+      setTimeout(tick, interval);
+    };
+    tick();
+    log(`Benchmark: broadcasting for ${params.durationMs}ms`);
+    return { ok: true };
+  });
+
+  let benchStateCounter = 0;
+  ds.rpc('startStateMutationFlood', async (params: { durationMs: number; intervalMs?: number }) => {
+    const end = Date.now() + params.durationMs;
+    const interval = params.intervalMs ?? 5;
+    const tick = async () => {
+      if (Date.now() >= end) return;
+      benchStateCounter++;
+      await ds.setState('benchState', {
+        counter: benchStateCounter,
+        ts: Date.now(),
+        payload: `item-${benchStateCounter}`,
+      });
+      setTimeout(tick, interval);
+    };
+    void tick();
+    log(`Benchmark: mutating state for ${params.durationMs}ms`);
+    return { ok: true };
+  });
+
   // --- Events ---
   ds.on('client-ping', (payload) => {
     log(`Event client-ping: ${JSON.stringify(payload.data)}`);
