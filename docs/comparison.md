@@ -24,7 +24,7 @@ This page compares datasole to the most widely used realtime frameworks as of 20
 | **Frame-level rate limiting** |        ✓ (memory + Redis)         |              ✗              |    ✓ (managed)    |    ✓ (managed)    |      ✓ (managed)      |         ✗          |
 | **Session persistence**       |       ✓ (pluggable backend)       |              ✗              |         ✗         |         ✗         |           ✓           |  Via storage API   |
 | **Sync channels**             |   ✓ (immediate/batch/debounce)    |              ✗              |         ✗         |         ✗         |           ✗           |         ✗          |
-| **Client bundle (gzip)**      |      36.2 KB (client+worker)      |          11–15 KB           |       31 KB       |      ~14 KB       |        ~50 KB+        |       varies       |
+| **Client bundle (gzip)**      |       36 KB (client+worker)       |          11–15 KB           |       31 KB       |      ~14 KB       |        ~50 KB+        |       varies       |
 | **TypeScript (strict)**       |          ✓ (end-to-end)           |       Types included        |  Types included   |  Types included   |           ✓           |         ✓          |
 | **Single npm package**        |                 ✓                 | ✓ (client+server separate)  |         ✓         |         ✓         |   Multiple packages   | Multiple packages  |
 | **Pluggable persistence**     |     ✓ (memory/Redis/Postgres)     |         Via adapter         |      Managed      |      Managed      |        Managed        |  Via storage API   |
@@ -64,7 +64,7 @@ Ably is a managed realtime infrastructure service. You don't run your own WebSoc
 - **State sync**: Built-in JSON Patch diffing vs. Ably's pub/sub-only model.
 - **CRDTs**: Built in vs. not available.
 - **Server concurrency**: Four pluggable models vs. N/A (Ably handles this).
-- **Bundle size**: 36.2 KB (client + worker) vs. 31 KB (Ably minimal realtime).
+- **Bundle size**: 36 KB (client + worker) vs. 31 KB (Ably minimal realtime).
 
 **Where Ably is stronger:**
 

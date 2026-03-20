@@ -243,14 +243,21 @@ client.connect();
 
 The WebSocket connection runs in a [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API) by default. This keeps the main thread free for rendering:
 
-```
-Main Thread                 Web Worker
-┌─────────────────┐         ┌──────────────────────┐
-│ DatasoleClient   │◄──────►│ WebSocket (binary)    │
-│ StateStore       │  SAB/  │ pako decompress       │
-│ RPC Client       │  PM    │ Frame encode/decode   │
-│ UI rendering     │        │ Connection management │
-└─────────────────┘         └──────────────────────┘
+```mermaid
+flowchart LR
+    subgraph MT["Main Thread"]
+        DC[DatasoleClient]
+        SS[StateStore]
+        RC[RPC Client]
+        UI[UI rendering]
+    end
+    subgraph WW["Web Worker"]
+        WS["WebSocket (binary)"]
+        PK["pako decompress"]
+        FE["Frame encode/decode"]
+        CM["Connection management"]
+    end
+    MT <-->|"SAB / postMessage"| WW
 ```
 
 - **SharedArrayBuffer (SAB):** Zero-copy ring buffer when `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers are set.

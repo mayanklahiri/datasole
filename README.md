@@ -5,19 +5,32 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](https://www.typescriptlang.org/)
 
-**[Documentation](https://mayanklahiri.github.io/datasole/)**
+**[Documentation](https://mayanklahiri.github.io/datasole/)** · **[Tutorials](https://mayanklahiri.github.io/datasole/tutorials)** · **[API Reference](https://mayanklahiri.github.io/datasole/client)**
+
+> **Production-proven** — datasole powers realtime control-plane infrastructure at a Fortune 50 cloud provider.
 
 ## Why datasole?
 
-Every realtime TypeScript framework makes you choose: simple API or real performance. Socket.IO gives you events and rooms, but text-only JSON, no state primitives, and everything on the main thread. Managed services like Ably or Pusher charge per message and own your infrastructure. Liveblocks gives you CRDTs but locks you into their cloud. PartyKit is Cloudflare-only.
+You're building something realtime. You've evaluated the options. Socket.IO is text-only JSON with no state primitives. The managed services charge per message and own your infra. The CRDT libraries give you sync but no transport. The transport libraries give you WebSockets but no sync. Nothing gives you everything in one package without vendor lock-in.
 
-datasole refuses the trade-off. It ships a **36.2 KB** client (gzip, including worker) that runs the WebSocket in a **Web Worker** — your UI thread never touches network I/O. Frames are **binary envelopes compressed with pako** (60-80% smaller than JSON text). The server generates **RFC 6902 JSON Patch** diffs so clients receive only what changed, not full snapshots. When you need bidirectional sync, built-in **CRDTs** (LWW registers, PN counters, LWW maps) converge automatically — no conflict resolution code to write.
-
-It's a single `npm install`, not a platform signup. You own the server. You pick the database. You deploy where you want. And every type flows from server handler to client call site without codegen — just TypeScript generics.
+**datasole is the missing full-stack realtime primitive for TypeScript.** One `npm install`. No platform signup. No codegen. You own the server, you pick the database, you deploy where you want.
 
 ```bash
 npm install datasole
 ```
+
+### What you get
+
+- **Off-main-thread networking** — WebSocket runs in a Web Worker. Your UI thread never touches I/O.
+- **Binary wire protocol** — Compressed binary frames, not JSON text. 60–80% smaller on the wire.
+- **Automatic state sync** — Server mutates state, clients get diffs. No manual diffing, no full snapshots.
+- **Built-in CRDTs** — Conflict-free bidirectional sync for collaborative features. No resolution code.
+- **Typed RPC** — Multiplexed request/response over the same connection. Types flow end-to-end.
+- **Four concurrency models** — Event loop, thread-per-connection, thread pool, or process isolation.
+- **Pluggable everything** — State backends (memory, Redis, Postgres), rate limiters, metric exporters.
+- **One package** — Client, server, shared types, Web Worker, `.d.ts` declarations. ESM, CJS, and IIFE.
+- **Framework-agnostic** — React, Vue, Svelte, vanilla JS on the client. Express, NestJS, Fastify, `http.createServer()` on the server.
+- **36 KB total** — Client + worker gzip. Includes compression, framing, diffing, CRDTs, and the worker transport.
 
 ## Quick start
 
@@ -30,10 +43,10 @@ import { DatasoleServer } from 'datasole/server';
 const ds = new DatasoleServer();
 const http = createServer();
 ds.attach(http);
-http.listen(3000, () => console.log('listening on :3000'));
+http.listen(3000);
 ```
 
-**Client** — connect from a browser (or import as ESM/CJS in a bundler):
+**Client** — connect from a browser:
 
 ```html
 <script src="https://unpkg.com/datasole/dist/client/datasole.iife.min.js"></script>
@@ -43,11 +56,37 @@ http.listen(3000, () => console.log('listening on :3000'));
 </script>
 ```
 
-This gives you a reconnecting WebSocket over binary frames running in a Web Worker. From here you can add RPC methods, event subscriptions, live state channels, and CRDTs incrementally — the [tutorial](docs/tutorials.md) walks through each pattern in ~10 lines of code per step.
+## Patterns
 
-## The common pattern: server-owned state, client-rendered mirror
+datasole gives you seven composable patterns. Use one, or combine them on a single connection.
 
-The majority of datasole applications follow one shape: the client calls an RPC, the server mutates its model, and all connected clients receive a JSON Patch diff of the change. No client-side state management library is needed.
+### RPC — client asks, server answers
+
+```typescript
+// server
+ds.rpc('getUser', async ({ id }) => {
+  return await db.users.findById(id);
+});
+
+// client
+const user = await ds.call('getUser', { id: 42 });
+```
+
+### Server events — push to all clients
+
+```typescript
+// server
+setInterval(() => {
+  ds.broadcast('price', { AAPL: 187.42, GOOG: 141.8 });
+}, 1000);
+
+// client
+ds.on('price', (data) => updateTicker(data));
+```
+
+### Live state — server owns it, clients mirror it
+
+The most common pattern. The server mutates state, datasole diffs it, and all clients receive only what changed.
 
 ```typescript
 // server
@@ -59,19 +98,14 @@ ds.rpc('addTodo', async ({ text }) => {
 ```
 
 ```tsx
-// client (React)
+// client (React) — no Redux, no Vuex, no manual sync
 function TodoList() {
-  const ds = useRef(new DatasoleClient({ url: 'ws://localhost:3000' }));
   const [todos, setTodos] = useState([]);
-
   useEffect(() => {
-    ds.current.connect();
-    ds.current.subscribeState('todos', setTodos);
-    return () => {
-      ds.current.disconnect();
-    };
+    ds.connect();
+    ds.subscribeState('todos', setTodos);
+    return () => ds.disconnect();
   }, []);
-
   return (
     <ul>
       {todos.map((t) => (
@@ -82,80 +116,107 @@ function TodoList() {
 }
 ```
 
-The server owns the data, diffs it on mutation, and broadcasts patches. The client applies them. No Redux, no Vuex, no manual sync logic. [Tutorial 4](docs/tutorials.md#4-live-state--a-server-synced-dashboard) covers this end to end.
+### Client events — fire and forget
 
-## What datasole provides
+```typescript
+// client
+ds.emit('analytics', { action: 'click', target: 'buy-button' });
 
-**Transport** — The WebSocket runs in a dedicated Web Worker. Frames are 9-byte-header binary envelopes with pako compression (60–80% smaller than raw JSON). On browsers that support it, SharedArrayBuffer enables zero-copy transfer between the worker and main thread. A fallback transport handles environments without Worker support.
+// server
+ds.onClientEvent('analytics', (data, ctx) => {
+  telemetry.track(ctx.connectionId, data);
+});
+```
 
-**State synchronization** — Server-to-client state sync produces RFC 6902 JSON Patch operations, so clients receive only what changed. For bidirectional sync, built-in CRDTs (LWW registers, PN counters, LWW maps) let multiple clients edit the same data structure concurrently with automatic convergence. Sync channels let you tune flush behavior per key — `immediate` for latency-sensitive data, `batched` for throughput, `debounced` for user input.
+### CRDTs — conflict-free bidirectional sync
 
-**RPC and events** — Typed RPC calls are multiplexed over the single WebSocket with correlation IDs, timeouts, and concurrent in-flight support. Events flow in both directions (server broadcast, client-to-server fire-and-forget). TypeScript generics propagate request/response types to the call site without codegen.
+```typescript
+// server
+ds.registerCrdt('votes', 'pn-counter');
 
-**Server concurrency and isolation** — Four pluggable concurrency strategies: in-process async (event loop, lowest overhead), thread-per-connection (`worker_threads`), thread pool (fixed `worker_threads`, the default), and process-per-connection (child processes with serialized packet forwarding). All are cluster-friendly via pm2.
+// client A
+ds.crdtIncrement('votes', 1);
 
-**Persistence and rate limiting** — State backends are pluggable: in-memory (default), Redis, Postgres. Session state persists across disconnections with configurable flush thresholds and change streams for external event systems. Frame-level rate limiting ships with `MemoryRateLimiter` (single process) and `RedisRateLimiter` (distributed), with per-method rules.
+// client B (simultaneously)
+ds.crdtIncrement('votes', 1);
 
-**Observability** — Prometheus and OpenTelemetry metric exporters for connection counts, message rates, latencies, and error rates.
+// both converge to votes: 2, no conflicts
+```
 
-**Compatibility** — Requires **Node.js >= 22** (CI-tested on Node 22 LTS and Node 24). Works with React, Vue 3, Svelte, React Native, and vanilla JS on the frontend. Express, NestJS, Fastify, and native `http.createServer()` on the backend. Published as a single npm package with ESM, CJS, and IIFE bundles, `.d.ts` declarations on every export, and `typesVersions` for older TypeScript.
+### Sync channels — control when diffs flush
+
+```typescript
+ds.createSyncChannel({
+  key: 'cursor-positions',
+  flush: 'debounced',
+  debounceMs: 50,
+});
+
+ds.createSyncChannel({
+  key: 'trade-executions',
+  flush: 'immediate',
+});
+```
+
+### Combinations — all patterns on one connection
+
+Tutorial 10 builds a collaborative task board using RPC (add/move tasks), live state (board sync), client events (chat), and CRDTs (vote counts) — all on a single WebSocket connection.
 
 ## Architecture
 
+```mermaid
+flowchart TB
+  subgraph Browser
+    subgraph MT[Main Thread]
+      DC[DatasoleClient]
+      SS[StateStore]
+      CS[CrdtStore]
+    end
+    subgraph WW[Web Worker]
+      WS[WebSocket]
+      PK[pako compress/decompress]
+      FE[Frame encode/decode]
+    end
+    MT <-->|SAB / postMessage| WW
+  end
+
+  WW <-->|Binary frames| SRV
+
+  subgraph Server[Node.js Server]
+    subgraph DS[DatasoleServer]
+      WSS[WsServer] --- RPC[RPC Dispatch]
+      SM[State Manager] --- EB[EventBus]
+      SE[Sessions] --- MT2[Metrics]
+      RL[Rate Limit] --- SC[SyncChannels]
+      CRDT[CRDT Registry]
+    end
+    subgraph SB[State Backend]
+      MEM[Memory]
+      RED[Redis]
+      PG[Postgres]
+    end
+    DS --- SB
+    subgraph CC[Concurrency]
+      ASYNC[async]
+      THR[thread]
+      POOL[pool]
+      PROC[process]
+    end
+  end
 ```
-┌───────────────────────────────────────────────────────────┐
-│                        Browser                             │
-│  ┌──────────────┐         ┌────────────────────────────┐  │
-│  │  Main Thread  │◄──────►│        Web Worker           │  │
-│  │ DatasoleClient│  SAB/  │  WebSocket (binary)         │  │
-│  │ StateStore    │  PM    │  pako decompress            │  │
-│  │ CrdtStore     │        │  Frame encode/decode        │  │
-│  └──────────────┘         └─────────────┬──────────────┘  │
-└──────────────────────────────────────────┼────────────────┘
-                                           │ Binary frames
-┌──────────────────────────────────────────┼────────────────┐
-│                      Server              │                │
-│  ┌───────────────────────────────────────┴──────────────┐ │
-│  │               DatasoleServer                          │ │
-│  │  WsServer · RPC · EventBus · State · Sessions         │ │
-│  │  SyncChannels · CRDT · Metrics · RateLimit            │ │
-│  │  Concurrency: async | thread | pool | process         │ │
-│  │                   ┌─────────────────────┐             │ │
-│  │                   │    State Backend     │             │ │
-│  │                   │  memory / redis / pg │             │ │
-│  │                   └─────────────────────┘             │ │
-│  └───────────────────────────────────────────────────────┘ │
-└────────────────────────────────────────────────────────────┘
-```
-
-## Data flow patterns
-
-These seven patterns are composable — use one, or layer them:
-
-| Pattern          | Direction                | Mechanism            | Typical use                  |
-| ---------------- | ------------------------ | -------------------- | ---------------------------- |
-| RPC              | client → server → client | Request/response     | Form submit, data lookup     |
-| Server events    | server → clients         | Broadcast            | Stock ticker, notifications  |
-| Client events    | client → server          | Fire-and-forget      | Chat messages, analytics     |
-| Live state (s→c) | server → clients         | JSON Patch auto-sync | Dashboards, leaderboards     |
-| Live state (c→s) | client → server          | JSON Patch           | Form sync, draft saving      |
-| CRDT sync        | client ↔ server          | Merge, conflict-free | Collaborative editing        |
-| Combinations     | any                      | Compose freely       | See Tutorial 10 (Task Board) |
 
 ## Bundle sizes
 
-All bundles include their runtime dependencies (pako, fast-json-patch). The server bundle externalizes `ws` and Node builtins. These numbers are verified by CI on every push.
+The shared and server bundles externalize runtime dependencies (`pako`, `fast-json-patch`, `ws`). Client bundles inline everything for zero-dependency browser usage. Verified by CI on every push.
 
-| Bundle                | Loaded by               |      Raw |        Gzip |
-| --------------------- | ----------------------- | -------: | ----------: |
-| **Client IIFE** (min) | `<script>` tag          |  69.8 KB | **21.5 KB** |
-| **Client ESM**        | `import` from bundler   | 281.0 KB |     69.0 KB |
-| **Worker IIFE** (min) | Web Worker              |  46.5 KB | **14.7 KB** |
-| **Shared** (ESM)      | Server or client import | 261.7 KB |     64.8 KB |
-| **Server** (ESM)      | Node.js `import`        | 458.4 KB |    105.4 KB |
-| **Server** (CJS)      | Node.js `require()`     | 459.3 KB |    105.5 KB |
+| Bundle                | Loaded by             |     Raw |        Gzip |
+| --------------------- | --------------------- | ------: | ----------: |
+| **Client IIFE** (min) | `<script>` tag        | 69.7 KB | **21.4 KB** |
+| **Worker IIFE** (min) | Web Worker            | 47.6 KB | **15.0 KB** |
+| **Shared** (ESM)      | `import` from bundler | 10.3 KB |      2.5 KB |
+| **Server** (ESM)      | Node.js `import`      | 64.0 KB |     12.7 KB |
 
-A browser downloads the client IIFE (**21.5 KB** gzip) and the worker (**14.7 KB** gzip) for a total of **36.2 KB** — that includes compression, binary framing, JSON Patch diffing, CRDTs, and the Web Worker transport.
+A browser downloads the client IIFE + worker for a total of **36 KB gzip** — that includes compression, binary framing, JSON Patch diffing, CRDTs, and the Web Worker transport.
 
 ## How datasole compares
 
@@ -164,30 +225,22 @@ A browser downloads the client IIFE (**21.5 KB** gzip) and the worker (**14.7 KB
 | Self-hosted / open source      | ✓ Apache 2.0 |     ✓ MIT      |    Managed     |    Managed     |  Managed   |   Cloudflare    |
 | Web Worker transport           |      ✓       |       —        |       —        |       —        |     —      |        —        |
 | Binary frames + compression    |   ✓ always   |     Opt-in     |       ✓        |       —        |     —      |        —        |
-| JSON Patch state sync          |  ✓ RFC 6902  |       —        |       —        |       —        |     —      |        —        |
-| Built-in CRDTs                 | ✓ LWW/PN/Map |       —        |       —        |       —        | ✓ LiveMap  |     Via Yjs     |
+| JSON Patch state sync          |      ✓       |       —        |       —        |       —        |     —      |        —        |
+| Built-in CRDTs                 |      ✓       |       —        |       —        |       —        | ✓ LiveMap  |     Via Yjs     |
 | Typed RPC (multiplexed)        |      ✓       |       —        |       —        |       —        |     —      |        —        |
 | Server concurrency models      |      4       |   1 (async)    |      N/A       |      N/A       |    N/A     | Durable Objects |
 | Frame-level rate limiting      |      ✓       |       —        |    Managed     |    Managed     |  Managed   |        —        |
 | Sync channels (batch/debounce) |      ✓       |       —        |       —        |       —        |     —      |        —        |
 | Session persistence            |      ✓       |       —        |       —        |       —        |     ✓      |   Via storage   |
-| Client bundle (gzip)           |   36.2 KB    |    11–15 KB    |     ~31 KB     |     ~14 KB     |  ~50 KB+   |     varies      |
 | Strict TypeScript end-to-end   |      ✓       | Types included | Types included | Types included |     ✓      |        ✓        |
-
-datasole is the right choice when you need full infrastructure control, main-thread performance via Web Worker transport, and built-in state synchronization with CRDTs — without vendor lock-in or per-message pricing. For a detailed breakdown, see [the comparison page](https://mayanklahiri.github.io/datasole/comparison).
 
 ## Test coverage
 
-The quality gate (`npm run gate`) runs on every push and enforces:
-
-- **203 unit tests** across 42 test files (Vitest, v8 coverage) plus **38 e2e tests** across 8 spec files and 2 viewports (Playwright, headless Chromium, production IIFE bundle)
-- E2e tests cover all tutorial patterns: connection, RPC, server events, state sync, auth, CRDTs, sessions, and the combined task board
-- Coverage thresholds enforced: 45% lines, 40% branches, 35% functions, 45% statements
-- Formatting (Prettier), linting (ESLint flat config + `tsc --noEmit`), bundle builds, `.d.ts` emission, metrics collection, docs site generation (VitePress), and screenshot capture from e2e runs
+203 unit tests + 38 e2e tests (Playwright, headless Chromium, desktop + mobile viewports). CI matrix on Node 22 LTS and Node 24. Quality gate (`npm run gate`) enforces format, lint, types, build, test, coverage, e2e, metrics, and docs on every push.
 
 ## Tutorial
 
-The [tutorial](docs/tutorials.md) is structured as a progressive series that builds from a bare connection to a production deployment. Each step adds a single concept in ~10 lines:
+The [tutorial](https://mayanklahiri.github.io/datasole/tutorials) builds from a bare connection to a production deployment in 10 steps:
 
 | #   | Topic         | What you build                         |
 | --- | ------------- | -------------------------------------- |

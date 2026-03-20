@@ -10,29 +10,14 @@ description: High-level system design, data flow, protocol specification, and le
 
 ## Learning Path
 
-```
-Start here
-    │
-    ▼
-Tutorials ──────────── Run your first server + client in 2 minutes
-    │                  Build up to a full real-time app in 10 steps
-    │
-    ▼
-Examples ───────────── Copy-paste recipes organized by pattern
-    │                  (RPC, events, live state, CRDT, combos)
-    │
-    ▼
-Client API / Server API   Comprehensive reference for every method
-    │
-    ▼
-Architecture (you are here)   Why the protocol, worker, and sync
-    │                          model work the way they do
-    │
-    ▼
-State Backends / Metrics      Swap persistence, wire up observability
-    │
-    ▼
-ADRs (decisions.md) ──────── The full rationale for every major choice
+```mermaid
+flowchart TD
+    A["Start here"] --> B["<b>Tutorials</b><br/>Run your first server + client in 2 minutes<br/>Build up to a full real-time app in 10 steps"]
+    B --> C["<b>Examples</b><br/>Copy-paste recipes organized by pattern<br/>(RPC, events, live state, CRDT, combos)"]
+    C --> D["<b>Client API / Server API</b><br/>Comprehensive reference for every method"]
+    D --> E["<b>Architecture</b> — you are here<br/>Why the protocol, worker, and sync<br/>model work the way they do"]
+    E --> F["<b>State Backends / Metrics</b><br/>Swap persistence, wire up observability"]
+    F --> G["<b>ADRs</b> (decisions.md)<br/>The full rationale for every major choice"]
 ```
 
 ## Overview
@@ -43,65 +28,56 @@ Datasole is a full-stack TypeScript framework for realtime applications. It prov
 
 Datasole supports seven composable patterns. Use one, or combine them freely on a single connection:
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                                                                 │
-│  1. RPC              client ──request──► server ──response──►   │
-│                                                                 │
-│  2. Server events    server ────broadcast────► all clients      │
-│                                                                 │
-│  3. Client events    client ────event────► server               │
-│                                                                 │
-│  4. Live state       server ──JSON Patch──► client (auto-sync)  │
-│      (s→c)                                                      │
-│                                                                 │
-│  5. Live state       client ──JSON Patch──► server              │
-│      (c→s)                                                      │
-│                                                                 │
-│  6. CRDT sync        client ◄──merge──► server (conflict-free)  │
-│                                                                 │
-│  7. Combinations     any of the above, simultaneously           │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    C([Client])
+    S([Server])
+
+    C -->|"1 · RPC request"| S
+    S -->|"1 · RPC response"| C
+    S -->|"2 · Server events (broadcast)"| C
+    C -->|"3 · Client events"| S
+    S -->|"4 · Live state s→c (JSON Patch)"| C
+    C -->|"5 · Live state c→s (JSON Patch)"| S
+    C <-->|"6 · CRDT sync (conflict-free)"| S
 ```
 
 The most common pattern for real-world apps is **client → server RPC + server → client live state**: the client sends actions, the server processes them and updates its model, and all clients see a live mirror. See [Tutorial 4](tutorials.md#4-live-state--a-server-synced-dashboard) and [Tutorial 10](tutorials.md#10-putting-it-all-together--a-collaborative-task-board).
 
 ## System Diagram
 
-```
-┌─────────────────────────────────────────────────────┐
-│                    Browser                           │
-│  ┌──────────────┐      ┌──────────────────────────┐ │
-│  │  Main Thread  │◄────►│      Web Worker          │ │
-│  │              │ SAB/  │  ┌────────────────────┐  │ │
-│  │ DatasoleClient│ PM   │  │  WebSocket (binary) │  │ │
-│  │ StateStore   │      │  │  pako decompress    │  │ │
-│  │ CrdtStore    │      │  │  Frame decode       │  │ │
-│  │ RPC Client   │      │  └─────────┬──────────┘  │ │
-│  └──────────────┘      │  └─────────┼─────────────┘ │
-└──────────────────────────────────────┼───────────────┘
-                                       │ Binary frames
-                                       │ (pako compressed)
-┌──────────────────────────────────────┼───────────────┐
-│                   Server              │               │
-│  ┌────────────────────────────────────┴────────────┐ │
-│  │              DatasoleServer                      │ │
-│  │  ┌──────────┐ ┌──────────┐ ┌─────────────────┐ │ │
-│  │  │ WsServer │ │ RPC      │ │ State Manager   │ │ │
-│  │  │ (ws lib) │ │ Dispatch │ │ (JSON Patch)    │ │ │
-│  │  └──────────┘ └──────────┘ └────────┬────────┘ │ │
-│  │  ┌──────────┐ ┌──────────┐          │          │ │
-│  │  │ EventBus │ │ Sessions │  ┌───────┴────────┐ │ │
-│  │  └──────────┘ └──────────┘  │ State Backend  │ │ │
-│  │  ┌──────────┐ ┌──────────┐  │ (memory/redis/ │ │ │
-│  │  │ Metrics  │ │ RateLimit│  │  postgres)     │ │ │
-│  │  └──────────┘ └──────────┘  └────────────────┘ │ │
-│  │  ┌───────────────────────────────────────────┐  │ │
-│  │  │ Concurrency: async|thread|pool|process    │  │ │
-│  │  └───────────────────────────────────────────┘  │ │
-│  └─────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Browser
+        subgraph MT["Main Thread"]
+            DC[DatasoleClient]
+            SS[StateStore]
+            CS[CrdtStore]
+            RC[RPC Client]
+        end
+        subgraph WW["Web Worker"]
+            WS["WebSocket (binary)"]
+            PK["pako decompress"]
+            FD["Frame decode"]
+        end
+        MT <-->|"SAB / postMessage"| WW
+    end
+
+    WS <-->|"Binary frames (pako compressed)"| WSS
+
+    subgraph Server
+        subgraph DS["DatasoleServer"]
+            WSS["WsServer (ws)"]
+            RPCd["RPC Dispatch"]
+            SM["State Manager (JSON Patch)"]
+            EB["EventBus"]
+            Sess["Sessions"]
+            Met["Metrics"]
+            RL["RateLimit"]
+            SM --- SBE["State Backend (memory / redis / postgres)"]
+            Conc["Concurrency: async | thread | pool | process"]
+        end
+    end
 ```
 
 ## Wire Protocol
@@ -132,37 +108,35 @@ Opcodes cover: RPC request/response, event, state snapshot, state patch, CRDT op
 
 Sync channels decouple _what_ is synchronized from _when_ it's flushed:
 
-```
-Server state mutation
-        │
-        ▼
-  SyncChannel.enqueue(patches)
-        │
-        ├── immediate → flush now
-        ├── batched   → flush after N ops or M ms
-        └── debounced → flush after M ms of quiet
-                │
-                ▼
-        Serialize → compress → binary frame → WebSocket → client
+```mermaid
+flowchart TD
+    A["Server state mutation"] --> B["SyncChannel.enqueue(patches)"]
+    B --> C{Flush strategy}
+    C -->|immediate| D["Flush now"]
+    C -->|batched| E["Flush after N ops or M ms"]
+    C -->|debounced| F["Flush after M ms of quiet"]
+    D --> G["Serialize → compress → binary frame → WebSocket → client"]
+    E --> G
+    F --> G
 ```
 
 ## CRDT Merge Flow
 
-```
-Client A                    Server                    Client B
-   │                          │                          │
-   │  op: increment(+1)       │                          │
-   ├─────────────────────────►│  apply(op)               │
-   │                          ├─────────────────────────►│
-   │                          │  broadcast merged state   │
-   │◄─────────────────────────┤                          │
-   │  merge(state)            │◄─────────────────────────┤
-   │                          │  op: increment(+1)       │
-   │                          │  apply(op)               │
-   │◄─────────────────────────┤─────────────────────────►│
-   │  merge(state)            │  broadcast merged state   │
-   │                          │                          │
-   │  counter: 2              │  counter: 2              │  counter: 2
+```mermaid
+sequenceDiagram
+    participant A as Client A
+    participant S as Server
+    participant B as Client B
+
+    A->>S: op: increment(+1)
+    S->>S: apply(op)
+    S->>B: broadcast merged state
+    S->>A: merge(state)
+    B->>S: op: increment(+1)
+    S->>S: apply(op)
+    S->>A: broadcast merged state
+    S->>B: broadcast merged state
+    Note over A,B: All converge → counter: 2
 ```
 
 All three nodes converge to the same value regardless of operation order.

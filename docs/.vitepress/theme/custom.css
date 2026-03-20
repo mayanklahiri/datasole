@@ -18,10 +18,7 @@
   --vp-c-brand-2: #e05050;
   --vp-c-brand-3: #b03030;
   --vp-c-brand-soft: rgba(212, 64, 64, 0.12);
-}
-
-.VPHero .name {
-  font-family: Georgia, 'Times New Roman', serif !important;
+  --vp-home-hero-name-color: #ffffff;
 }
 
 .VPHero .text {
@@ -35,15 +32,6 @@
   line-height: 1.7 !important;
 }
 
-.VPFeature .title {
-  font-family: Georgia, 'Times New Roman', serif;
-}
-
-.vp-doc h1,
-.vp-doc h2 {
-  font-family: Georgia, 'Times New Roman', serif;
-}
-
 .vp-doc table {
   font-variant-numeric: tabular-nums;
 }
@@ -53,4 +41,19 @@
   border-radius: 4px;
   margin: 1rem 0;
   max-width: 100%;
+}
+
+/* Code block improvements */
+div[class*='language-'] {
+  border-radius: 6px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+div[class*='language-'] > pre {
+  padding: 1.25rem 1.5rem !important;
+}
+
+.dark div[class*='language-'] {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }

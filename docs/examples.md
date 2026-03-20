@@ -428,22 +428,18 @@ http.listen(3000);
 
 ## Pattern Decision Tree
 
-```
-What does your app need?
-│
-├── Client asks, server answers? ──────────── RPC
-│
-├── Server pushes to clients?
-│   ├── Same data to all clients? ─────────── Server Event Broadcast
-│   └── Structured data, only diffs? ──────── Server → Client Live State
-│
-├── Client sends data to server?
-│   ├── One-off actions? ──────────────────── Client → Server Events
-│   └── Structured data, synced? ──────────── Client → Server Live State
-│
-├── Both sides modify shared data?
-│   ├── Need conflict resolution? ─────────── Bidirectional CRDT
-│   └── Server is authoritative? ──────────── RPC + Server Live State ← most common
-│
-└── Combine any of the above ─────────────── Just use them together (Tutorial 10)
+```mermaid
+flowchart TD
+    Q{"What does your app need?"}
+    Q -->|"Client asks, server answers?"| RPC[RPC]
+    Q -->|"Server pushes to clients?"| SP{"Push type?"}
+    SP -->|"Same data to all clients?"| SE[Server Event Broadcast]
+    SP -->|"Structured data, only diffs?"| LS["Server → Client Live State"]
+    Q -->|"Client sends data to server?"| CS{"Send type?"}
+    CS -->|"One-off actions?"| CE["Client → Server Events"]
+    CS -->|"Structured data, synced?"| CLS["Client → Server Live State"]
+    Q -->|"Both sides modify shared data?"| BD{"Authority model?"}
+    BD -->|"Need conflict resolution?"| CRDT[Bidirectional CRDT]
+    BD -->|"Server is authoritative?"| COMBO["RPC + Server Live State — most common"]
+    Q -->|"Combine any of the above"| ALL["Just use them together (Tutorial 10)"]
 ```

@@ -15,6 +15,9 @@ const external = [
   '@nestjs/common',
   '@nestjs/websockets',
   '@opentelemetry/api',
+  'fast-json-patch',
+  'pako',
+  'ws',
 ];
 
 function suppressThisIsUndefined(warning, warn) {

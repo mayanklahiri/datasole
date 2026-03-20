@@ -13,6 +13,7 @@ function suppressThisIsUndefined(warning, warn) {
 
 export default {
   input: 'src/shared/index.ts',
+  external: ['fast-json-patch', 'pako'],
   output: [
     {
       file: 'dist/shared/index.cjs',

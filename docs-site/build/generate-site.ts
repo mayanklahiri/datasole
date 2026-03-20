@@ -157,10 +157,8 @@ function main() {
   const indexBody = `
     <div class="hero">
       <h1>datasole</h1>
-      <p class="tagline">Realtime TypeScript framework with binary WebSocket transport,<br>
-      JSON Patch state sync, typed RPC, and CRDTs.</p>
-      <p class="hero-sub">36.2 KB gzip on the wire. Web Worker transport. Four server concurrency models.<br>
-      Strict TypeScript end-to-end. One <code>npm install</code>.</p>
+      <p class="tagline">The full-stack realtime primitive for TypeScript.</p>
+      <p class="hero-sub">Production-proven at Fortune 50 scale. One <code>npm install</code> — you own the server, the data, and the deployment.</p>
       <nav class="hero-actions">
         <a href="${BASE_PATH}/tutorials/" class="btn-primary">Start the tutorial</a>
         <a href="${BASE_PATH}/examples/" class="btn-secondary">See examples</a>
