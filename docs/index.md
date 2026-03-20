@@ -63,6 +63,9 @@ features:
   - icon: ✅
     title: Rigorous quality gate
     details: '203 unit tests + 38 e2e tests (Playwright, desktop + mobile). CI on Node 22 LTS and 24. Strict TypeScript. Format, lint, build, coverage, e2e, metrics, and docs — enforced on every push.'
+  - icon: 🧩
+    title: Fully composable
+    details: 'RPC, events, live state, CRDTs, sync channels, sessions — use one or all seven on the same connection. No mode switches, no channel subscriptions, no routing config. They just work together.'
   - icon: 📖
     title: Progressive tutorial
     details: '10 steps from hello-world to production. Each step adds one concept in ~10 lines of code. Every step has a working example and e2e screenshot.'
@@ -96,6 +99,8 @@ Use one, or combine them freely on a single WebSocket connection:
 | CRDT sync     | client ↔ server          | Conflict-free merge (collaborative editing)    |
 | Sync channels | configurable             | Immediate, batched, or debounced flush per key |
 | Combinations  | any                      | All patterns compose on one connection         |
+
+**No other library gives you all seven as first-class APIs on one connection.** See [Composability](/composability) for examples of combining patterns (dashboard + actions, chat + presence, collab + voting, analytics pipeline).
 
 ## Bundle sizes
 
