@@ -1,0 +1,252 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      publish:
+        description: 'ACTUALLY PUBLISH to npm (leave unchecked for dry run)'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright OS deps (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      # ── Compute the new version ────────────────────────────────────
+      - name: Compute release version
+        id: version
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          case "${{ inputs.bump }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+          NEXT="${MAJOR}.${MINOR}.${PATCH}"
+          echo "next=$NEXT" >> "$GITHUB_OUTPUT"
+          echo "tag=v${NEXT}" >> "$GITHUB_OUTPUT"
+
+          echo "### Release plan" >> "$GITHUB_STEP_SUMMARY"
+          echo "| | |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Bump** | \`${{ inputs.bump }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Current** | \`${CURRENT}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Next** | \`${NEXT}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Tag** | \`v${NEXT}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Publish** | \`${{ inputs.publish }}\` |" >> "$GITHUB_STEP_SUMMARY"
+
+      # ── Verify CHANGELOG has an entry for the new version ──────────
+      - name: Verify CHANGELOG
+        run: |
+          VERSION="${{ steps.version.outputs.next }}"
+          if ! grep -qE "^## \[${VERSION}\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no entry for version ${VERSION}."
+            echo ""
+            echo "Add a section like:"
+            echo "  ## [${VERSION}] — $(date +%Y-%m-%d)"
+            echo "and commit it before running this workflow."
+            exit 1
+          fi
+          echo "✓ CHANGELOG.md contains entry for [${VERSION}]"
+
+      # ── Bump version in package.json (no git tag yet) ─────────────
+      - name: Bump package.json version
+        run: npm version "${{ steps.version.outputs.next }}" --no-git-tag-version
+
+      # ── Full quality gate ──────────────────────────────────────────
+      - name: Run quality gate
+        run: npm run gate
+
+      - name: Print build metrics
+        if: always()
+        run: |
+          if [ -f reports/build-metrics.md ]; then
+            cat reports/build-metrics.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # ── Verify package contents ────────────────────────────────────
+      - name: Pack dry run
+        id: pack
+        run: |
+          TARBALL=$(npm pack --dry-run 2>&1)
+          echo "$TARBALL"
+          echo "$TARBALL" >> "$GITHUB_STEP_SUMMARY"
+
+          SIZE=$(npm pack --dry-run --json 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync(0,'utf8'))[0].size")
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+
+          MAX_BYTES=5242880  # 5 MB
+          if [ "$SIZE" -gt "$MAX_BYTES" ]; then
+            echo "::error::Package tarball is ${SIZE} bytes (>${MAX_BYTES}). Check 'files' in package.json."
+            exit 1
+          fi
+          echo "✓ Package size: ${SIZE} bytes"
+
+      - name: Verify package exports
+        run: |
+          npm pack
+          TARBALL=$(ls datasole-*.tgz)
+          tar tzf "$TARBALL" > /tmp/pkg-files.txt
+
+          REQUIRED_FILES=(
+            "package/dist/shared/index.mjs"
+            "package/dist/shared/index.cjs"
+            "package/dist/shared/index.d.ts"
+            "package/dist/client/datasole.mjs"
+            "package/dist/client/datasole.cjs"
+            "package/dist/client/datasole.iife.min.js"
+            "package/dist/client/datasole-worker.iife.min.js"
+            "package/dist/server/index.mjs"
+            "package/dist/server/index.cjs"
+            "package/dist/client/index.d.ts"
+            "package/dist/server/index.d.ts"
+            "package/README.md"
+          )
+
+          MISSING=0
+          for f in "${REQUIRED_FILES[@]}"; do
+            if ! grep -q "^${f}$" /tmp/pkg-files.txt; then
+              echo "::error::Missing required file in tarball: ${f}"
+              MISSING=1
+            fi
+          done
+
+          if [ "$MISSING" -eq 1 ]; then
+            echo "::error::Package tarball is missing required files. Check build output and 'files' in package.json."
+            exit 1
+          fi
+          echo "✓ All required files present in tarball"
+          rm -f "$TARBALL"
+
+      # ── Upload artifacts ───────────────────────────────────────────
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: release-reports
+          path: reports/
+          if-no-files-found: ignore
+
+      # ── Commit, tag, push ──────────────────────────────────────────
+      - name: Commit version bump
+        if: inputs.publish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "release: v${{ steps.version.outputs.next }}"
+          git tag "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.next }}"
+
+      - name: Push commit and tag
+        if: inputs.publish
+        run: |
+          git push origin main
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      # ── Publish to npm ─────────────────────────────────────────────
+      - name: Publish to npm
+        if: inputs.publish
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # ── Create GitHub Release ──────────────────────────────────────
+      - name: Extract changelog for this version
+        if: inputs.publish
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.next }}"
+          BODY=$(awk "/^## \[${VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md)
+          {
+            echo "body<<CHANGELOG_EOF"
+            echo "$BODY"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "v${{ steps.version.outputs.next }}" \
+            --notes "${{ steps.changelog.outputs.body }}" \
+            --verify-tag
+
+      # ── Summary ────────────────────────────────────────────────────
+      - name: Dry-run summary
+        if: '!inputs.publish'
+        run: |
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "---" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ⏸️ Dry run complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Gate passed. Version **${{ steps.version.outputs.next }}** is ready to publish." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Re-run this workflow with **ACTUALLY PUBLISH** checked to:' >> "$GITHUB_STEP_SUMMARY"
+          echo "1. Commit the version bump to \`main\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "2. Create git tag \`${{ steps.version.outputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "3. Publish to npm with provenance" >> "$GITHUB_STEP_SUMMARY"
+          echo "4. Create a GitHub Release" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish summary
+        if: inputs.publish
+        run: |
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "---" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ✅ Published" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- npm: [datasole@${{ steps.version.outputs.next }}](https://www.npmjs.com/package/datasole/v/${{ steps.version.outputs.next }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tag: [\`${{ steps.version.outputs.tag }}\`](https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }})" >> "$GITHUB_STEP_SUMMARY"
