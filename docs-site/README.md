@@ -1,6 +1,6 @@
 # Datasole Documentation Site
 
-Static site generated from `docs/*.md` + build metrics.
+Static site generated from `docs/*.md` by VitePress, with live quality metrics and interactive diagrams.
 
 ## Build
 
@@ -16,9 +16,6 @@ Output goes to `docs-site/dist/`.
 npm run docs:preview
 ```
 
-Opens on `http://localhost:3000`.
-
 ## Design
 
-Minimal, typographic, Economist-inspired. Single CSS file, no JavaScript, no framework.
-System font stack with Georgia serif headings. Off-white background, deep red accent.
+VitePress with custom theme. Mermaid diagrams via `vitepress-plugin-mermaid`. Live quality metrics charts powered by Chart.js (loaded on demand).

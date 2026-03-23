@@ -40,15 +40,19 @@ On success, the gate prints a summary:
 ║  DATASOLE QUALITY GATE                                     ║
 ╠════════════════════════════════════════════════════════════╣
 ║  📦 Bundles                                                ║
-║  client/datasole.iife.min.js              6.3 KB / 1.8 KB ║
-║  server/index.esm.js                     27.5 KB / 5.8 KB ║
+║  client/datasole-worker.iife.min.js  47.6 KB / 15.0 KB gz ║
+║  client/datasole.iife.min.js         69.8 KB / 21.5 KB gz ║
+║  server/index.cjs                    65.0 KB / 12.9 KB gz ║
 ║  ...                                                       ║
 ╟────────────────────────────────────────────────────────────╢
 ║  📊 Coverage                                               ║
-║  Lines: 85%    Branches: 72%    Funcs: 90%                 ║
+║  Lines: 90%    Branches: 80%    Funcs: 89%                 ║
+╟────────────────────────────────────────────────────────────╢
+║  🌐 E2E Tests                                              ║
+║  Passed: 45  Failed: 0  Total: 45                          ║
 ╟────────────────────────────────────────────────────────────╢
 ║  📖 Documentation Site                                     ║
-║  Pages: 13   Total size: 133.5 KB                          ║
+║  Pages: 22   Total size: 8.7 MB                            ║
 ╟────────────────────────────────────────────────────────────╢
 ║  ✅ GATE PASSED                                             ║
 ╚════════════════════════════════════════════════════════════╝
@@ -64,6 +68,8 @@ On success, the gate prints a summary:
 | `dist/client/datasole-worker.iife.min.js` | IIFE (worker)     | `src/client/worker/transport-worker.ts` |
 | `dist/server/index.mjs`                   | ESM               | `src/server/index.ts`                   |
 | `dist/server/index.cjs`                   | CJS               | `src/server/index.ts`                   |
+| `dist/shared/index.mjs`                   | ESM               | `src/shared/index.ts`                   |
+| `dist/shared/index.cjs`                   | CJS               | `src/shared/index.ts`                   |
 
 ## Reports
 

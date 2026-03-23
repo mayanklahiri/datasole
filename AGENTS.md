@@ -5,9 +5,10 @@
 - `src/shared/` — Code shared between client and server (protocol, codec, diff, types, CRDTs)
 - `src/client/` — Browser client library (Web Worker transport, state store, RPC, events, CRDT store)
 - `src/server/` — Node.js server library (ws transport, auth, state backends, RPC, events, metrics, adapters, concurrency, rate limiting, sync channels, sessions)
-- `build/` — Rollup and TypeScript build configurations, metrics collection, gate summary
+- `build/` — Rollup and TypeScript build configurations, metrics collection, gate summary, build artifact printer
+- `demos/` — Independent demo apps: `vanilla/`, `react-express/`, `vue-nestjs/` (each a self-contained sub-package)
 - `test/unit/` — Vitest unit tests
-- `test/e2e/` — Playwright end-to-end tests
+- `test/e2e/` — Playwright end-to-end tests (core suite + optional `test:e2e:demos` for demo apps)
 - `docs/` — Canonical documentation (Markdown)
 - `docs-site/` — Static documentation site generator
 
@@ -50,6 +51,7 @@ This is the single command that validates everything. It runs, in order:
 **Always consult `docs/` before making structural changes.** Key docs:
 
 - `docs/tutorials.md` — Progressive tutorials (start here for learning)
+- `docs/demos.md` — Full-app demos with Vanilla, React+Express, Vue+NestJS walkthroughs
 - `docs/examples.md` — Copy-paste recipes by pattern
 - `docs/architecture.md` — System design, wire protocol, data flow
 - `docs/decisions.md` — Architecture Decision Records (ADRs)

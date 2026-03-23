@@ -56,18 +56,19 @@ On success, the gate prints a summary with bundle sizes, coverage percentages, d
 
 ### Quick commands for development
 
-| Command                | Description                      |
-| ---------------------- | -------------------------------- |
-| `npm run build`        | Build all targets (no lint/test) |
-| `npm test`             | Run unit tests only              |
-| `npm run test:watch`   | Unit tests in watch mode         |
-| `npm run test:e2e`     | E2E tests only (builds first)    |
-| `npm run lint`         | ESLint + type check only         |
-| `npm run format`       | Auto-format all files            |
-| `npm run format:check` | Check formatting without fixing  |
-| `npm run docs:build`   | Build docs site only             |
-| `npm run docs:preview` | Preview docs site locally        |
-| `npm run gate`         | **Full quality gate**            |
+| Command                  | Description                                |
+| ------------------------ | ------------------------------------------ |
+| `npm run build`          | Build all targets (no lint/test)           |
+| `npm test`               | Run unit tests only                        |
+| `npm run test:watch`     | Unit tests in watch mode                   |
+| `npm run test:e2e`       | E2E tests only (builds first)              |
+| `npm run test:e2e:demos` | Demo e2e tests (builds + runs all 3 demos) |
+| `npm run lint`           | ESLint + type check only                   |
+| `npm run format`         | Auto-format all files                      |
+| `npm run format:check`   | Check formatting without fixing            |
+| `npm run docs:build`     | Build docs site only                       |
+| `npm run docs:preview`   | Preview docs site locally                  |
+| `npm run gate`           | **Full quality gate**                      |
 
 ## Learning the Codebase
 

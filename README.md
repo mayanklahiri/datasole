@@ -264,12 +264,12 @@ The shared and server bundles externalize runtime dependencies (`pako`, `fast-js
 
 | Bundle                | Loaded by             |     Raw |        Gzip |
 | --------------------- | --------------------- | ------: | ----------: |
-| **Client IIFE** (min) | `<script>` tag        | 69.7 KB | **21.4 KB** |
+| **Client IIFE** (min) | `<script>` tag        | 69.8 KB | **21.5 KB** |
 | **Worker IIFE** (min) | Web Worker            | 47.6 KB | **15.0 KB** |
-| **Shared** (ESM)      | `import` from bundler | 10.3 KB |      2.5 KB |
-| **Server** (ESM)      | Node.js `import`      | 64.0 KB |     12.7 KB |
+| **Shared** (CJS)      | `import` from bundler | 10.8 KB |      2.6 KB |
+| **Server** (CJS)      | Node.js `require`     | 65.0 KB |     12.9 KB |
 
-A browser downloads the client IIFE + worker for a total of **36 KB gzip** — that includes compression, binary framing, JSON Patch diffing, CRDTs, and the Web Worker transport.
+A browser downloads the client IIFE + worker for a total of **~36 KB gzip** — that includes compression, binary framing, JSON Patch diffing, CRDTs, and the Web Worker transport.
 
 ## How datasole compares
 
@@ -340,6 +340,7 @@ The [tutorial](https://mayanklahiri.github.io/datasole/tutorials) builds from a 
 | Document                                 | Contents                                        |
 | ---------------------------------------- | ----------------------------------------------- |
 | **[Tutorials](docs/tutorials.md)**       | Progressive 10-step guide with e2e screenshots  |
+| **[Demos](docs/demos.md)**               | Vanilla, React+Express, Vue+NestJS full apps    |
 | **[Examples](docs/examples.md)**         | Copy-paste recipes organized by pattern         |
 | **[Integrations](docs/integrations.md)** | React, Vue, Next.js, Express, NestJS, AdonisJS  |
 | **[Comparison](docs/comparison.md)**     | Feature matrix vs Socket.IO, Ably, Pusher, etc. |

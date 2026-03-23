@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+#### Demos
+
+- Three independent demo apps: Vanilla JS, React + Express, Vue 3 + NestJS — each implements live server metrics, global chat room, and RPC random number generator
+- Demo e2e test suite (`npm run test:e2e:demos`) with Playwright: installs, builds, starts in production mode, validates real-time features, and generates screenshots
+- `docs/demos.md` documentation page with architectural diagrams, code walkthroughs, and auto-generated screenshots
+
+#### Build
+
+- Colored build artifact summary (`build/print-build-summary.ts`) printed after every build, showing categorized bundle sizes with gzip
+- Demo build artifacts (Vanilla `public/`, React + Express `dist/client/`, Vue + NestJS `dist/client/`) included in build summary when present
+- ANSI-aware column alignment in build summary output
+
+### Changed
+
+- Replaced `demos/kitchen_sink/` single demo with three framework-specific demos in `demos/`
+- Main Playwright config (`playwright.config.ts`) now excludes `demos/` specs (run separately via `test:e2e:demos`)
+
+---
+
 ## [1.0.0] — 2026-03-20
 
 Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping tool;
