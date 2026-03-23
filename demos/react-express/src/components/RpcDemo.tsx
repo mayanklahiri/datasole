@@ -42,6 +42,10 @@ export function RpcDemo({ ds }: { ds: DatasoleClient | null }) {
     <div className="panel">
       <div className="panel-header">RPC &mdash; Random Number</div>
       <div className="panel-body">
+        <div className="panel-help">
+          Call <code>ds.rpc()</code> to invoke a server function and receive a typed response.
+          Latency includes the full round trip.
+        </div>
         <div className="rpc-section">
           <div className="rpc-controls">
             <div className="rpc-row">

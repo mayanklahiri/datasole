@@ -3,6 +3,7 @@ import { randomInt, randomUUID } from 'crypto';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
+import os from 'os';
 import express from 'express';
 import { DatasoleServer } from 'datasole/server';
 
@@ -66,6 +67,7 @@ ds.rpc('randomNumber', async ({ min, max }: { min: number; max: number }) => {
 // ─── System metrics broadcast ──────────────────────────────────────
 setInterval(() => {
   const snap = ds.getMetrics().snapshot();
+  const now = new Date();
   ds.broadcast('system-metrics', {
     uptime: snap.uptime,
     connections: snap.connections,
@@ -73,6 +75,10 @@ setInterval(() => {
     messagesOut: snap.messagesOut,
     cpuUsage: Math.round(process.cpuUsage().user / 1000),
     memoryMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    cpuCount: os.cpus().length,
+    totalMemoryGB: +(os.totalmem() / 1024 / 1024 / 1024).toFixed(1),
+    serverTime: now.toLocaleTimeString(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     timestamp: Date.now(),
   });
 }, 2000);

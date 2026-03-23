@@ -72,6 +72,7 @@ function send() {
 <template>
   <div class="panel chat-panel">
     <div class="panel-header">Chat</div>
+    <div class="panel-help">Global chatroom: messages are broadcast to all connected clients in real time. Open a second browser tab to try it.</div>
     <div class="chat-messages">
       <div v-if="messages.length === 0" class="chat-empty">No messages yet</div>
       <div v-for="msg in messages" :key="msg.id" class="chat-msg">
@@ -111,6 +112,12 @@ function send() {
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   flex-shrink: 0;
+}
+.panel-help {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  padding: 8px 20px 0;
 }
 .chat-messages {
   flex: 1;

@@ -11,6 +11,7 @@ defineProps<{
     <header>
       <h1>datasole</h1>
       <span class="subtitle">Vue 3 + NestJS Demo</span>
+      <a class="gh-link" href="https://github.com/mayanklahiri/datasole" target="_blank" rel="noopener">GitHub</a>
       <div class="conn-badge">
         <span :class="['conn-dot', { connected: connectionState === 'connected' }]" />
         <span>{{ connectionState }}</span>
@@ -47,6 +48,16 @@ header h1 {
   font-size: 0.78rem;
   color: var(--text-dim);
 }
+.gh-link {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: color 0.2s, border-color 0.2s;
+}
+.gh-link:hover { color: var(--accent); border-color: var(--accent); }
 .conn-badge {
   margin-left: auto;
   display: flex;

@@ -51,6 +51,29 @@ header .subtitle {
   font-size: 0.78rem;
   color: var(--text-dim);
 }
+.gh-link {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: color 0.2s, border-color 0.2s;
+}
+.gh-link:hover { color: var(--accent); border-color: var(--accent); }
+.panel-help {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  padding-bottom: 10px;
+}
+.panel-help code {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  background: var(--surface-hover);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
 .conn-badge {
   margin-left: auto;
   display: flex;
@@ -115,6 +138,7 @@ main {
   transition: border-color 0.2s;
 }
 .metric-card:hover { border-color: var(--accent); }
+.metric-card.span-2 { grid-column: span 2; }
 .metric-label {
   font-size: 0.72rem;
   font-weight: 500;

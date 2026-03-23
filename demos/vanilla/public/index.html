@@ -14,6 +14,7 @@
   <header>
     <h1>datasole</h1>
     <span class="subtitle">Vanilla JS Demo</span>
+    <a class="gh-link" href="https://github.com/mayanklahiri/datasole" target="_blank" rel="noopener">GitHub</a>
     <div class="conn-badge">
       <span class="conn-dot" id="conn-dot"></span>
       <span id="conn-label">disconnected</span>
@@ -25,6 +26,7 @@
     <div class="panel">
       <div class="panel-header">Server Metrics</div>
       <div class="panel-body">
+        <div class="panel-help">Live server stats pushed every 2 s via <code>ds.broadcast()</code>. Updates arrive automatically&mdash;no polling.</div>
         <div id="metrics-content" class="metrics-waiting">Waiting for metrics&hellip;</div>
       </div>
     </div>
@@ -32,6 +34,7 @@
     <!-- Chat Panel -->
     <div class="panel" style="display:flex;flex-direction:column;">
       <div class="panel-header">Chat</div>
+      <div class="panel-help" style="padding:8px 20px 0;">Global chatroom: messages are broadcast to all connected clients in real time. Open a second browser tab to try it.</div>
       <div class="chat-messages" id="chat-messages">
         <div class="chat-empty" id="chat-empty">No messages yet</div>
       </div>
@@ -45,6 +48,7 @@
     <div class="panel">
       <div class="panel-header">RPC &mdash; Random Number</div>
       <div class="panel-body">
+        <div class="panel-help">Call <code>ds.rpc()</code> to invoke a server function and receive a typed response. Latency includes the full round trip.</div>
         <div class="rpc-section">
           <div class="rpc-controls">
             <div class="rpc-row">

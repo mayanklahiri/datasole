@@ -12,6 +12,14 @@ export function Layout({ connectionState, children }: LayoutProps) {
       <header>
         <h1>datasole</h1>
         <span className="subtitle">React + Express Demo</span>
+        <a
+          className="gh-link"
+          href="https://github.com/mayanklahiri/datasole"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          GitHub
+        </a>
         <div className="conn-badge">
           <span className={`conn-dot${connectionState === 'connected' ? ' connected' : ''}`} />
           <span>{connectionState}</span>

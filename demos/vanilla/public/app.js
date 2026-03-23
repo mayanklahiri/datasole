@@ -53,12 +53,24 @@
         '<div class="metric-value">' + d.memoryMB + '<span class="metric-unit">MB</span></div>' +
       '</div>' +
       '<div class="metric-card">' +
+        '<div class="metric-label">CPUs</div>' +
+        '<div class="metric-value">' + d.cpuCount + '</div>' +
+      '</div>' +
+      '<div class="metric-card">' +
+        '<div class="metric-label">Total RAM</div>' +
+        '<div class="metric-value">' + d.totalMemoryGB + '<span class="metric-unit">GB</span></div>' +
+      '</div>' +
+      '<div class="metric-card">' +
         '<div class="metric-label">Messages In</div>' +
         '<div class="metric-value">' + d.messagesIn + '</div>' +
       '</div>' +
       '<div class="metric-card">' +
         '<div class="metric-label">Messages Out</div>' +
         '<div class="metric-value">' + d.messagesOut + '</div>' +
+      '</div>' +
+      '<div class="metric-card span-2">' +
+        '<div class="metric-label">Server Time</div>' +
+        '<div class="metric-value">' + d.serverTime + '<span class="metric-unit">' + d.timezone + '</span></div>' +
       '</div>';
   });
 

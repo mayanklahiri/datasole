@@ -45,6 +45,7 @@ async function generate() {
   <div class="panel">
     <div class="panel-header">RPC &mdash; Random Number</div>
     <div class="panel-body">
+      <div class="panel-help">Call <code>ds.rpc()</code> to invoke a server function and receive a typed response. Latency includes the full round trip.</div>
       <div class="rpc-section">
         <div class="rpc-controls">
           <div class="rpc-row">
@@ -104,6 +105,19 @@ async function generate() {
   flex: 1;
   overflow-y: auto;
   padding: 16px 20px;
+}
+.panel-help {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  padding-bottom: 10px;
+}
+.panel-help code {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  background: var(--surface-hover);
+  padding: 1px 5px;
+  border-radius: 4px;
 }
 .rpc-section {
   display: flex;

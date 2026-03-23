@@ -3,6 +3,7 @@ import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
 import { randomInt, randomUUID } from 'crypto';
+import os from 'os';
 import { DatasoleServer } from 'datasole/server';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -44,6 +45,7 @@ ds.rpc('randomNumber', async ({ min, max }) => {
 // ─── System metrics broadcast ──────────────────────────────────────
 setInterval(() => {
   const snap = ds.getMetrics().snapshot();
+  const now = new Date();
   ds.broadcast('system-metrics', {
     uptime: snap.uptime,
     connections: snap.connections,
@@ -51,6 +53,10 @@ setInterval(() => {
     messagesOut: snap.messagesOut,
     cpuUsage: Math.round(process.cpuUsage().user / 1000),
     memoryMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    cpuCount: os.cpus().length,
+    totalMemoryGB: +(os.totalmem() / 1024 / 1024 / 1024).toFixed(1),
+    serverTime: now.toLocaleTimeString(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     timestamp: Date.now(),
   });
 }, 2000);

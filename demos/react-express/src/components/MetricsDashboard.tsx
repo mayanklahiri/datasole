@@ -6,6 +6,10 @@ interface Metrics {
   connections: number;
   cpuUsage: number;
   memoryMB: number;
+  cpuCount: number;
+  totalMemoryGB: number;
+  serverTime: string;
+  timezone: string;
   messagesIn: number;
   messagesOut: number;
   timestamp: number;
@@ -33,6 +37,10 @@ export function MetricsDashboard({ ds }: { ds: DatasoleClient | null }) {
     <div className="panel">
       <div className="panel-header">Server Metrics</div>
       <div className="panel-body">
+        <div className="panel-help">
+          Live server stats pushed every 2 s via <code>ds.broadcast()</code>. Updates arrive
+          automatically&mdash;no polling.
+        </div>
         {!metrics ? (
           <div className="metrics-waiting">Waiting for metrics&hellip;</div>
         ) : (
@@ -58,12 +66,28 @@ export function MetricsDashboard({ ds }: { ds: DatasoleClient | null }) {
               </div>
             </div>
             <div className="metric-card">
+              <div className="metric-label">CPUs</div>
+              <div className="metric-value">{metrics.cpuCount}</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-label">Total RAM</div>
+              <div className="metric-value">
+                {metrics.totalMemoryGB}<span className="metric-unit">GB</span>
+              </div>
+            </div>
+            <div className="metric-card">
               <div className="metric-label">Messages In</div>
               <div className="metric-value">{metrics.messagesIn}</div>
             </div>
             <div className="metric-card">
               <div className="metric-label">Messages Out</div>
               <div className="metric-value">{metrics.messagesOut}</div>
+            </div>
+            <div className="metric-card span-2">
+              <div className="metric-label">Server Time</div>
+              <div className="metric-value">
+                {metrics.serverTime}<span className="metric-unit">{metrics.timezone}</span>
+              </div>
             </div>
           </div>
         )}

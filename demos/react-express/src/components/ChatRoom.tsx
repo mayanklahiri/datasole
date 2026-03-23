@@ -61,6 +61,10 @@ export function ChatRoom({ ds }: { ds: DatasoleClient | null }) {
   return (
     <div className="panel" style={{ display: 'flex', flexDirection: 'column' }}>
       <div className="panel-header">Chat</div>
+      <div className="panel-help" style={{ padding: '8px 20px 0' }}>
+        Global chatroom: messages are broadcast to all connected clients in real time. Open a second
+        browser tab to try it.
+      </div>
       <div className="chat-messages">
         {messages.length === 0 && <div className="chat-empty">No messages yet</div>}
         {messages.map((msg) => (

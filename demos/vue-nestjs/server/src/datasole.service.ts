@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { randomInt, randomUUID } from 'crypto';
+import os from 'os';
 import { DatasoleServer } from 'datasole/server';
 
 interface ChatMessage {
@@ -34,6 +35,7 @@ export class DatasoleService implements OnModuleDestroy {
 
     this.metricsInterval = setInterval(() => {
       const snap = this.ds.getMetrics().snapshot();
+      const now = new Date();
       this.ds.broadcast('system-metrics', {
         uptime: snap.uptime,
         connections: snap.connections,
@@ -41,6 +43,10 @@ export class DatasoleService implements OnModuleDestroy {
         messagesOut: snap.messagesOut,
         cpuUsage: Math.round(process.cpuUsage().user / 1000),
         memoryMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        cpuCount: os.cpus().length,
+        totalMemoryGB: +(os.totalmem() / 1024 / 1024 / 1024).toFixed(1),
+        serverTime: now.toLocaleTimeString(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         timestamp: Date.now(),
       });
     }, 2000);

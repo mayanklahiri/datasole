@@ -9,6 +9,10 @@ interface Metrics {
   connections: number;
   cpuUsage: number;
   memoryMB: number;
+  cpuCount: number;
+  totalMemoryGB: number;
+  serverTime: string;
+  timezone: string;
   messagesIn: number;
   messagesOut: number;
   timestamp: number;
@@ -46,6 +50,7 @@ onUnmounted(() => cleanup?.());
   <div class="panel">
     <div class="panel-header">Server Metrics</div>
     <div class="panel-body">
+      <div class="panel-help">Live server stats pushed every 2 s via <code>ds.broadcast()</code>. Updates arrive automatically&mdash;no polling.</div>
       <div v-if="!metrics" class="metrics-waiting">Waiting for metrics&hellip;</div>
       <div v-else class="metrics-grid">
         <div class="metric-card">
@@ -65,12 +70,24 @@ onUnmounted(() => cleanup?.());
           <div class="metric-value">{{ metrics.memoryMB }}<span class="metric-unit">MB</span></div>
         </div>
         <div class="metric-card">
+          <div class="metric-label">CPUs</div>
+          <div class="metric-value">{{ metrics.cpuCount }}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Total RAM</div>
+          <div class="metric-value">{{ metrics.totalMemoryGB }}<span class="metric-unit">GB</span></div>
+        </div>
+        <div class="metric-card">
           <div class="metric-label">Messages In</div>
           <div class="metric-value">{{ metrics.messagesIn }}</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">Messages Out</div>
           <div class="metric-value">{{ metrics.messagesOut }}</div>
+        </div>
+        <div class="metric-card span-2">
+          <div class="metric-label">Server Time</div>
+          <div class="metric-value">{{ metrics.serverTime }}<span class="metric-unit">{{ metrics.timezone }}</span></div>
         </div>
       </div>
     </div>
@@ -113,6 +130,20 @@ onUnmounted(() => cleanup?.());
   transition: border-color 0.2s;
 }
 .metric-card:hover { border-color: var(--accent); }
+.metric-card.span-2 { grid-column: span 2; }
+.panel-help {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  padding-bottom: 10px;
+}
+.panel-help code {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  background: var(--surface-hover);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
 .metric-label {
   font-size: 0.72rem;
   font-weight: 500;
