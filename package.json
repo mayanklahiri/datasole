@@ -43,7 +43,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "rollup -c rollup.config.mjs && npm run build:types",
+    "build": "rollup -c rollup.config.mjs && npm run build:types && tsx build/print-build-summary.ts",
     "build:types": "tsc -p build/tsconfig.declarations.json",
     "build:client": "rollup -c build/rollup.client.mjs",
     "build:server": "rollup -c build/rollup.server.mjs",
