@@ -102,6 +102,8 @@
 
   ds.subscribeState('chat:messages', function (messages) {
     if (!messages) return;
+    seenIds.clear();
+    chatMessages.innerHTML = '';
     messages.forEach(function (msg) { appendMessage(msg); });
   });
 

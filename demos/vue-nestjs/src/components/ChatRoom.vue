@@ -44,7 +44,11 @@ watch(
     ds.on('chat:message', onBroadcast);
 
     const unsub = ds.subscribeState('chat:messages', (msgs: ChatMessage[]) => {
-      if (msgs) msgs.forEach(addMessage);
+      if (!msgs) return;
+      seenIds.clear();
+      msgs.forEach((m) => seenIds.add(m.id));
+      messages.value = msgs;
+      nextTick(() => bottomEl.value?.scrollIntoView({ behavior: 'smooth' }));
     });
 
     cleanup = () => {

@@ -2,8 +2,7 @@
  * Web Worker entry point: opens WebSocket, sends/receives binary frames, dispatches to main thread.
  */
 
-import { decompress } from '../../shared/codec';
-import { COMPRESSION_THRESHOLD } from '../../shared/constants';
+import { decompress, isCompressed } from '../../shared/codec';
 import { decodeFrame, encodeFrame } from '../../shared/protocol';
 
 import { WorkerSharedBuffer } from './shared-buffer';
@@ -47,7 +46,7 @@ function connect(url: string, protocols?: string[]) {
 
   ws.onmessage = (event) => {
     const raw = new Uint8Array(event.data as ArrayBuffer);
-    const data = raw.length > COMPRESSION_THRESHOLD ? decompress(raw) : raw;
+    const data = isCompressed(raw) ? decompress(raw) : raw;
     const frame = decodeFrame(data);
 
     if (sharedBuffer.isAvailable()) {

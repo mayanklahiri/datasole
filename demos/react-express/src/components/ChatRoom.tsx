@@ -36,7 +36,9 @@ export function ChatRoom({ ds }: { ds: DatasoleClient | null }) {
     ds.on('chat:message', onBroadcast);
 
     const unsub = ds.subscribeState('chat:messages', (msgs: ChatMessage[]) => {
-      if (msgs) msgs.forEach(addMessage);
+      if (!msgs) return;
+      seenRef.current = new Set(msgs.map((m) => m.id));
+      setMessages(msgs);
     });
 
     return () => {

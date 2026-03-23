@@ -7,7 +7,7 @@ import { createServer, type Server } from 'http';
 
 import WebSocket from 'ws';
 
-import { compress, decompress, deserialize, serialize } from '../../src/shared/codec';
+import { compress, decompress, isCompressed, deserialize, serialize } from '../../src/shared/codec';
 import { COMPRESSION_THRESHOLD } from '../../src/shared/constants';
 import { decodeFrame, encodeFrame, Opcode } from '../../src/shared/protocol';
 import type { Frame } from '../../src/shared/protocol';
@@ -109,7 +109,7 @@ export function receiveFrame(
             ? raw
             : raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength),
         );
-        if (bytes.length > COMPRESSION_THRESHOLD) {
+        if (isCompressed(bytes)) {
           bytes = decompress(bytes);
         }
         const frame = decodeFrame(bytes);
@@ -147,7 +147,7 @@ export function collectFrames(
             ? raw
             : raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength),
         );
-        if (bytes.length > COMPRESSION_THRESHOLD) {
+        if (isCompressed(bytes)) {
           bytes = decompress(bytes);
         }
         const frame = decodeFrame(bytes);

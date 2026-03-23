@@ -2,7 +2,7 @@
  * Fallback WebSocket transport for environments where Web Workers are unavailable.
  */
 
-import { compress, decompress } from '../../shared/codec';
+import { compress, decompress, isCompressed } from '../../shared/codec';
 import { COMPRESSION_THRESHOLD } from '../../shared/constants';
 import { decodeFrame, encodeFrame } from '../../shared/protocol';
 import type { Frame } from '../../shared/protocol';
@@ -54,7 +54,7 @@ export class FallbackTransport {
       this.ws.onmessage = (event) => {
         try {
           const raw = new Uint8Array(event.data as ArrayBuffer);
-          const decompressed = raw.length > COMPRESSION_THRESHOLD ? decompress(raw) : raw;
+          const decompressed = isCompressed(raw) ? decompress(raw) : raw;
           const frame = decodeFrame(decompressed);
           this.onMessageHandler?.(frame);
         } catch {

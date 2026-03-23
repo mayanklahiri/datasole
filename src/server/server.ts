@@ -3,7 +3,7 @@
  */
 import type { Server as HttpServer } from 'http';
 
-import { compress, decompress, deserialize, serialize } from '../shared/codec';
+import { compress, decompress, isCompressed, deserialize, serialize } from '../shared/codec';
 import { COMPRESSION_THRESHOLD, DEFAULT_WS_PATH } from '../shared/constants';
 import type { Crdt, CrdtOperation, CrdtState } from '../shared/crdt';
 import { LWWMap, LWWRegister, PNCounter } from '../shared/crdt';
@@ -151,7 +151,7 @@ export class DatasoleServer {
 
   private async handleIncomingFrame(conn: Connection, raw: Uint8Array): Promise<void> {
     try {
-      const data = raw.length > COMPRESSION_THRESHOLD ? decompress(raw) : raw;
+      const data = isCompressed(raw) ? decompress(raw) : raw;
       const frame = decodeFrame(data);
       this.metrics.increment('messagesIn');
 
