@@ -1,1 +1,27 @@
+#!/bin/bash
+
+ORIGINAL_HEAD=$(git rev-parse HEAD)
+
 npm run gate
+
+# Auto-commit gate artifacts if the gate dirtied tracked files
+if ! git diff --quiet -- docs/public/metrics-history.json docs/public/screenshots/; then
+  git add docs/public/metrics-history.json docs/public/screenshots/
+  git commit -m "chore: update e2e screenshots and metrics from gate run"
+fi
+
+# If HEAD moved (artifact commit was created), the original push refs are stale.
+# Re-push with --no-verify to include the new commit, then cancel the stale push.
+if [ "$(git rev-parse HEAD)" != "$ORIGINAL_HEAD" ]; then
+  REMOTE="${1:-origin}"
+  BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+  echo ""
+  echo "Gate artifacts auto-committed. Re-pushing to include them..."
+  git push --no-verify "$REMOTE" "$BRANCH"
+  RESULT=$?
+  if [ $RESULT -eq 0 ]; then
+    echo "Push successful (including gate artifacts)."
+    echo "Note: ignore the 'failed to push' message below — it is the stale push being canceled."
+  fi
+  exit 1
+fi
