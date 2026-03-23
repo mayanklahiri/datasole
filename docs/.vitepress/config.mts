@@ -34,6 +34,7 @@ export default withMermaid(
       ],
     ],
     cleanUrls: true,
+    ignoreDeadLinks: [/localhost/],
     themeConfig: {
       siteTitle: 'datasole',
       logo: '/datasole-logo.png',
@@ -51,6 +52,7 @@ export default withMermaid(
           text: 'Getting Started',
           items: [
             { text: 'Tutorials', link: '/tutorials' },
+            { text: 'Demos', link: '/demos' },
             { text: 'Examples', link: '/examples' },
             { text: 'Integrations', link: '/integrations' },
           ],

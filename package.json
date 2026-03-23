@@ -53,6 +53,7 @@
     "test:watch": "vitest watch",
     "test:e2e": "npm run build && npx playwright test --config test/e2e/playwright.config.ts",
     "test:e2e:debug": "npm run build && npx playwright test --config test/e2e/playwright.config.ts --headed --debug",
+    "test:e2e:demos": "npm run build && npx playwright test --config test/e2e/playwright.demos.config.ts",
     "test:bench": "npm run build && npx playwright test --config test/e2e/playwright.config.ts --grep @bench --project desktop",
     "lint": "eslint 'src/**/*.ts' 'test/unit/**/*.ts' && tsc --noEmit",
     "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts' '*.json' '*.mjs'",

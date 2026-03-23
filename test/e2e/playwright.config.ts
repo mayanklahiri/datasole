@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './specs',
   testMatch: '**/*.e2e.ts',
+  testIgnore: '**/demos/**',
   timeout: 30000,
   retries: 1,
   workers: 1,

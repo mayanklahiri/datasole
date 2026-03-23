@@ -1,0 +1,102 @@
+import { createServer } from 'http';
+import { readFileSync, existsSync } from 'fs';
+import { resolve, dirname, extname } from 'path';
+import { fileURLToPath } from 'url';
+import { randomInt, randomUUID } from 'crypto';
+import { DatasoleServer } from 'datasole/server';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PORT = parseInt(process.env.PORT || '4000', 10);
+
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.mjs': 'application/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
+};
+
+// ─── Datasole ──────────────────────────────────────────────────────
+const ds = new DatasoleServer();
+
+// ─── Chat ──────────────────────────────────────────────────────────
+const chatHistory = [];
+
+ds.on('chat:send', (payload) => {
+  const { text, username } = payload.data;
+  const msg = { id: randomUUID(), text, username, ts: Date.now() };
+  chatHistory.push(msg);
+  if (chatHistory.length > 50) chatHistory.shift();
+  ds.setState('chat:messages', [...chatHistory]);
+  ds.broadcast('chat:message', msg);
+});
+
+await ds.setState('chat:messages', chatHistory);
+
+// ─── RPC ───────────────────────────────────────────────────────────
+ds.rpc('randomNumber', async ({ min, max }) => {
+  return { value: randomInt(Math.floor(min), Math.floor(max) + 1), generatedAt: Date.now() };
+});
+
+// ─── System metrics broadcast ──────────────────────────────────────
+setInterval(() => {
+  const snap = ds.getMetrics().snapshot();
+  ds.broadcast('system-metrics', {
+    uptime: snap.uptime,
+    connections: snap.connections,
+    messagesIn: snap.messagesIn,
+    messagesOut: snap.messagesOut,
+    cpuUsage: Math.round(process.cpuUsage().user / 1000),
+    memoryMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    timestamp: Date.now(),
+  });
+}, 2000);
+
+// ─── Static file serving ───────────────────────────────────────────
+const iifePath = resolve(__dirname, 'node_modules/datasole/dist/client/datasole.iife.min.js');
+const workerPath = resolve(
+  __dirname,
+  'node_modules/datasole/dist/client/datasole-worker.iife.min.js',
+);
+
+function serveStatic(req, res) {
+  const url = req.url.split('?')[0];
+
+  if (url === '/datasole.iife.min.js') {
+    res.writeHead(200, { 'Content-Type': 'application/javascript' });
+    res.end(readFileSync(iifePath));
+    return;
+  }
+  if (url === '/datasole-worker.iife.min.js') {
+    res.writeHead(200, { 'Content-Type': 'application/javascript' });
+    res.end(readFileSync(workerPath));
+    return;
+  }
+
+  const filePath = resolve(__dirname, 'public', url === '/' ? 'index.html' : url.slice(1));
+  if (!filePath.startsWith(resolve(__dirname, 'public'))) {
+    res.writeHead(403);
+    res.end('Forbidden');
+    return;
+  }
+
+  if (!existsSync(filePath)) {
+    res.writeHead(404);
+    res.end('Not found');
+    return;
+  }
+
+  const mime = MIME[extname(filePath)] || 'application/octet-stream';
+  res.writeHead(200, { 'Content-Type': mime });
+  res.end(readFileSync(filePath));
+}
+
+const httpServer = createServer(serveStatic);
+ds.attach(httpServer);
+
+httpServer.listen(PORT, () => {
+  console.log(`\n  Vanilla demo running at http://localhost:${PORT}\n`);
+});

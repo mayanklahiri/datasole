@@ -1,0 +1,14 @@
+{
+  "name": "datasole-demo-vanilla",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch server.mjs",
+    "start": "node server.mjs",
+    "clean": "rm -rf node_modules"
+  },
+  "dependencies": {
+    "datasole": "file:../.."
+  }
+}

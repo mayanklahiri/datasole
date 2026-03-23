@@ -1,0 +1,16 @@
+{
+  "extends": "../../build/tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "rootDir": ".",
+    "noEmit": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "exactOptionalPropertyTypes": false
+  },
+  "include": ["server/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

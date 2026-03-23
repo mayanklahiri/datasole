@@ -1,39 +1,49 @@
 # datasole demos
 
-Self-contained demos that showcase datasole features using vanilla Node.js and browser JavaScript.
+Three independent demo apps showcasing datasole with different framework stacks. Each implements the same realtime application: live server metrics dashboard, global chat room, and RPC random number generator.
 
 ## Prerequisites
 
-From the repo root, build the library first:
+From the repo root, build datasole first:
 
 ```bash
 npm run build
 ```
 
-## Kitchen Sink
+## Demos
 
-**`demos/kitchen_sink/`** — A single-page app demonstrating multiple datasole features simultaneously:
+| Demo                             | Client            | Server         | Dev Port | Prod Port |
+| -------------------------------- | ----------------- | -------------- | -------- | --------- |
+| [vanilla/](vanilla/)             | Vanilla JS (IIFE) | Node.js `http` | 4000     | 4000      |
+| [react-express/](react-express/) | React 19 + Vite   | Express 5      | 5173     | 4001      |
+| [vue-nestjs/](vue-nestjs/)       | Vue 3 SFC + Vite  | NestJS 11      | 5174     | 4002      |
 
-| Feature                | How it's used                                                        |
-| ---------------------- | -------------------------------------------------------------------- |
-| **Server events**      | System metrics (uptime, connections, CPU, memory) broadcast every 2s |
-| **Live state**         | Synchronized list of items — server mutates, all clients see diffs   |
-| **RPC**                | `echo`, `getMetrics`, `getItems`, `addItem`, `removeItem`            |
-| **Client events**      | "Send Ping" fires a client→server event                              |
-| **CRDTs**              | Shared PN counter (likes) — conflict-free across all clients         |
-| **Randomized updates** | Server randomly mutates item values/statuses every 3s                |
-
-### Run
+## Quick Start
 
 ```bash
-# from repo root
-node demos/kitchen_sink/server.mjs
+# Vanilla
+cd demos/vanilla && npm install && npm run dev
+
+# React + Express
+cd demos/react-express && npm install && npm run dev
+
+# Vue 3 + NestJS
+cd demos/vue-nestjs && npm install && npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser. Open multiple tabs to see state sync and CRDT convergence across clients.
+## What Each Demo Shows
 
-### Stack
+| Feature               | datasole API                                                                    |
+| --------------------- | ------------------------------------------------------------------------------- |
+| **Server Metrics**    | `ds.broadcast('system-metrics', data)` → `ds.on('system-metrics', handler)`     |
+| **Chat Room**         | `ds.emit('chat:send', msg)` → `ds.on(...)` → `ds.setState()` + `ds.broadcast()` |
+| **RPC Random Number** | `ds.rpc('randomNumber', handler)` → `await ds.rpc('randomNumber', params)`      |
 
-- **Server**: `http.createServer()` + `DatasoleServer` (zero dependencies beyond datasole)
-- **Client**: jQuery 3.7 from CDN + datasole IIFE bundle served by the demo server
-- **Fonts**: Inter + JetBrains Mono from Google Fonts
+## Scripts (each demo)
+
+| Script          | Description                             |
+| --------------- | --------------------------------------- |
+| `npm run dev`   | Start in development mode (auto-reload) |
+| `npm run build` | Build for production                    |
+| `npm start`     | Serve production build                  |
+| `npm run clean` | Remove dist/ and node_modules/          |
