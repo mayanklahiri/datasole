@@ -28,6 +28,10 @@ export async function startTestServer(): Promise<TestServerResult> {
   });
 
   app.use('/static', express.static(path.resolve(__dirname, '../../../../dist/client')));
+  // Serve worker IIFE at root so useWorker: true works with default workerUrl
+  app.get('/datasole-worker.iife.min.js', (_req, res) => {
+    res.sendFile(path.resolve(__dirname, '../../../../dist/client/datasole-worker.iife.min.js'));
+  });
   app.use(express.static(path.resolve(__dirname, '../client')));
 
   const httpServer = createServer(app);

@@ -140,7 +140,8 @@ The client loads the IIFE bundle via `<script>` tag, giving a `window.Datasole` 
 // public/app.js — key parts
 const ds = new Datasole.DatasoleClient({
   url: 'ws://' + location.host,
-  useWorker: false, // IIFE bundle, no Web Worker
+  // useWorker: true (default) — WebSocket runs in a Web Worker
+  // workerUrl: '/datasole-worker.iife.min.js' (default)
 });
 ds.connect();
 
@@ -159,9 +160,14 @@ ds.on('chat:message', function (ev) {
 ds.emit('chat:send', { text, username });
 
 // RPC
-const res = await ds.rpc('randomNumber', { min: 1, max: 100 });
-// res.result.value, res.result.generatedAt
+const data = await ds.rpc('randomNumber', { min: 1, max: 100 });
+// data.value, data.generatedAt
 ```
+
+The server must serve two datasole files from `node_modules/datasole/dist/client/`:
+
+- `/datasole.iife.min.js` — the client bundle (loaded via `<script>` tag)
+- `/datasole-worker.iife.min.js` — the worker script (loaded by `DatasoleClient` automatically)
 
 ### Screenshots
 
@@ -210,7 +216,7 @@ flowchart TB
   vite -->|"proxy /__ds"| httpCreate
 ```
 
-In development, Vite proxies `/__ds` WebSocket traffic to Express. In production, Express serves the Vite-built static files directly.
+In development, Vite proxies `/__ds` WebSocket traffic and `/datasole-worker.iife.min.js` to Express. In production, Express serves the Vite-built static files and the worker IIFE directly.
 
 ### Server Walkthrough
 
@@ -221,6 +227,15 @@ import { createServer } from 'http';
 import { DatasoleServer } from 'datasole/server';
 
 const app = express();
+
+// Serve datasole worker IIFE for web worker transport (before catch-all)
+const dsWorkerPath = resolve(
+  __dirname,
+  '../node_modules/datasole/dist/client/datasole-worker.iife.min.js',
+);
+app.get('/datasole-worker.iife.min.js', (_req, res) => {
+  res.sendFile(dsWorkerPath);
+});
 
 // Serve Vite build in production
 const clientDist = resolve(__dirname, '../dist/client');
@@ -233,11 +248,22 @@ if (existsSync(clientDist)) {
 
 const httpServer = createServer(app);
 const ds = new DatasoleServer();
+// Default: thread-pool concurrency (4 Node.js worker_threads)
 ds.attach(httpServer);
 
 // Register chat, RPC, metrics (see shared logic above)
 
 httpServer.listen(4001);
+```
+
+### Vite Dev Proxy
+
+```typescript
+// vite.config.ts — proxy both WebSocket and worker file to Express
+proxy: {
+  '/__ds': { target: 'http://localhost:4001', ws: true },
+  '/datasole-worker.iife.min.js': { target: 'http://localhost:4001' },
+}
 ```
 
 ### Client Walkthrough — `useDatasole` Hook
@@ -286,25 +312,6 @@ useEffect(() => {
     ds.off('system-metrics', handler);
   };
 }, [ds]);
-```
-
-### Vite Proxy Config
-
-```typescript
-// vite.config.ts
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    port: 5173,
-    proxy: {
-      '/__ds': {
-        target: 'http://localhost:4001',
-        ws: true, // proxy WebSocket upgrades
-      },
-    },
-  },
-  build: { outDir: 'dist/client' },
-});
 ```
 
 ### Screenshots
@@ -384,7 +391,7 @@ export class DatasoleService implements OnModuleDestroy {
 }
 ```
 
-Bootstrap attaches to the raw Node HTTP server:
+Bootstrap attaches to the raw Node HTTP server and registers a route for the worker file:
 
 ```typescript
 // server/src/main.ts
@@ -394,6 +401,13 @@ import { AppModule } from './app.module.js';
 import { DatasoleService } from './datasole.service.js';
 
 const app = await NestFactory.create(AppModule);
+
+// Serve datasole worker IIFE for web worker transport
+const expressApp = app.getHttpAdapter().getInstance();
+expressApp.get('/datasole-worker.iife.min.js', (_req, res) => {
+  res.sendFile(workerPath);
+});
+
 const datasoleService = app.get(DatasoleService);
 await datasoleService.init();
 datasoleService.ds.attach(app.getHttpServer());
@@ -464,12 +478,23 @@ onUnmounted(() => cleanup?.());
 </script>
 ```
 
+### Vite Dev Proxy
+
+```typescript
+// vite.config.ts — proxy both WebSocket and worker file to NestJS
+proxy: {
+  '/__ds': { target: 'http://localhost:4002', ws: true },
+  '/datasole-worker.iife.min.js': { target: 'http://localhost:4002' },
+}
+```
+
 ### NestJS-Specific Notes
 
 - `reflect-metadata` must be imported **before** any NestJS import — it's the first line of `main.ts`
 - `tsconfig.server.json` enables `experimentalDecorators` and `emitDecoratorMetadata` (the base tsconfig doesn't include these)
 - Production static serving uses `@nestjs/serve-static` with `ServeStaticModule.forRoot()`
 - Datasole attaches directly to `app.getHttpServer()` — no NestJS WebSocket gateway is needed
+- Worker file route is registered via `app.getHttpAdapter().getInstance()` before NestJS handles requests
 
 ### Screenshots
 

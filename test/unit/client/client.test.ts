@@ -39,10 +39,10 @@ describe('DatasoleClient — constructor defaults', () => {
     expect(opts.auth).toEqual({});
   });
 
-  it('sets default useWorker to false', () => {
+  it('sets default useWorker to true', () => {
     const client = new DatasoleClient({ url: 'http://localhost:3000' });
     const opts = (client as unknown as { options: Record<string, unknown> }).options;
-    expect(opts.useWorker).toBe(false);
+    expect(opts.useWorker).toBe(true);
   });
 
   it('sets default useSharedArrayBuffer to false', () => {

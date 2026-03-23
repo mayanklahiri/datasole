@@ -502,7 +502,7 @@ For non-bundled environments, use the IIFE build via a `<script>` tag. The clien
     <script>
       var ds = new Datasole.DatasoleClient({
         url: 'ws://' + window.location.host,
-        useWorker: false,
+        // useWorker: true (default) — server must serve /datasole-worker.iife.min.js
       });
 
       ds.connect();

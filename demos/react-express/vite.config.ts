@@ -10,6 +10,9 @@ export default defineConfig({
         target: 'http://localhost:4001',
         ws: true,
       },
+      '/datasole-worker.iife.min.js': {
+        target: 'http://localhost:4001',
+      },
     },
   },
   build: {

@@ -21,7 +21,8 @@ const client = new DatasoleClient({
   auth: {
     token: 'jwt-token', // Sent as ?token= query parameter on the WebSocket URL
   },
-  useWorker: false, // Run WebSocket in Web Worker (default: false)
+  useWorker: true, // Run WebSocket in Web Worker (default: true)
+  workerUrl: '/datasole-worker.iife.min.js', // Worker script URL (default: /datasole-worker.iife.min.js)
   useSharedArrayBuffer: false, // Zero-copy via SAB when available (default: false)
   reconnect: true, // Auto-reconnect on disconnect (default: true)
   reconnectInterval: 1000, // Base delay in ms between attempts (default: 1000)
@@ -246,7 +247,9 @@ client.connect();
 
 ## Worker Architecture
 
-When `useWorker: true`, the WebSocket connection runs in a [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API), keeping the main thread free for rendering. The default is `useWorker: false` (direct connection on the main thread).
+When `useWorker: true` (the default), the WebSocket connection runs in a [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API), keeping the main thread free for rendering. The worker script is loaded from `workerUrl` (default: `/datasole-worker.iife.min.js`). The server must serve this file — see the [Demos](demos.md) for framework-specific examples.
+
+Set `useWorker: false` for environments without Web Workers (React Native, SSR, Node.js).
 
 ```mermaid
 flowchart LR
@@ -267,4 +270,4 @@ flowchart LR
 
 - **SharedArrayBuffer (SAB):** Zero-copy ring buffer when `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers are set.
 - **postMessage with Transferable:** Fallback when SAB is unavailable. ArrayBuffers are transferred (not copied).
-- **No worker:** Set `useWorker: false` for environments without Workers (React Native, SSR).
+- **No worker:** Set `useWorker: false` for environments without Workers (React Native, SSR, Node.js test runners).

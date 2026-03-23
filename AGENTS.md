@@ -183,7 +183,8 @@ Browser: IIFE bundle via `<script>` tag — global is `window.Datasole`, use `ne
 **Pitfalls:**
 
 - SSR / App Router — client code must run in a client boundary (`"use client"` or equivalent)
-- React Native / Next.js — pass `useWorker: false` to `DatasoleClient`
+- React Native / SSR — pass `useWorker: false` to `DatasoleClient` (no Web Worker in those environments)
+- Browser apps must serve `/datasole-worker.iife.min.js` (the worker IIFE) — `useWorker: true` is now the default
 - Default WebSocket path is `/__ds` (configure `path` / proxy if needed)
 - Next.js requires `transpilePackages: ['datasole']` in `next.config.ts` and `--webpack` flag (Turbopack doesn't resolve subpath exports for linked packages)
 - NestJS requires `import 'reflect-metadata'` before any NestJS imports

@@ -21,8 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Demo build artifacts (Vanilla `public/`, React + Express `dist/client/`, Vue + NestJS `dist/client/`) included in build summary when present
 - ANSI-aware column alignment in build summary output
 
+#### Client
+
+- `workerUrl` option on `DatasoleClientOptions` — configurable path for the Web Worker script (default: `/datasole-worker.iife.min.js`)
+
 ### Changed
 
+- **BREAKING**: `DatasoleClient` now defaults to `useWorker: true` (was `false`) — WebSocket runs in a Web Worker by default; set `useWorker: false` for environments without Workers (React Native, SSR, Node.js)
+- All demos, e2e tests, and integration examples updated to use Web Worker transport by default
 - Replaced `demos/kitchen_sink/` single demo with three framework-specific demos in `demos/`
 - Main Playwright config (`playwright.config.ts`) now excludes `demos/` specs (run separately via `test:e2e:demos`)
 

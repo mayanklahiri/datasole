@@ -11,6 +11,17 @@ const PORT = parseInt(process.env.PORT || '4001', 10);
 
 const app = express();
 
+// Serve datasole worker IIFE for web worker transport (before static/catch-all)
+const dsWorkerPath = resolve(
+  __dirname,
+  '../node_modules/datasole/dist/client/datasole-worker.iife.min.js',
+);
+if (existsSync(dsWorkerPath)) {
+  app.get('/datasole-worker.iife.min.js', (_req, res) => {
+    res.sendFile(dsWorkerPath);
+  });
+}
+
 // In production, serve the Vite-built client
 const clientDist = resolve(__dirname, '../dist/client');
 if (existsSync(clientDist)) {

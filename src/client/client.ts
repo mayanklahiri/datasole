@@ -34,6 +34,7 @@ export interface DatasoleClientOptions {
   path?: string;
   auth?: AuthCredentials;
   useWorker?: boolean;
+  workerUrl?: string;
   useSharedArrayBuffer?: boolean;
   reconnect?: boolean;
   reconnectInterval?: number;
@@ -57,7 +58,8 @@ export class DatasoleClient {
     this.options = {
       path: DEFAULT_WS_PATH,
       auth: {},
-      useWorker: false,
+      useWorker: true,
+      workerUrl: '/datasole-worker.iife.min.js',
       useSharedArrayBuffer: false,
       reconnect: true,
       reconnectInterval: 1000,
@@ -259,6 +261,7 @@ export class DatasoleClient {
 
     const wsUrl = this.buildWsUrl();
     await this.workerProxy.connect(wsUrl, {
+      workerUrl: this.options.workerUrl,
       useSharedArrayBuffer: this.options.useSharedArrayBuffer,
     });
 

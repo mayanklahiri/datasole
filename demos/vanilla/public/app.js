@@ -6,7 +6,6 @@
   // ─── Datasole client ──────────────────────────────────────────────
   const ds = new Datasole.DatasoleClient({
     url: 'ws://' + location.host,
-    useWorker: false,
   });
   ds.connect();
 
