@@ -66,6 +66,7 @@
     "docs:build": "vitepress build docs",
     "docs:dev": "vitepress dev docs",
     "docs:preview": "vitepress preview docs",
+    "upgrade-all": "ncu -u && npm install && for d in demos/vanilla demos/react-express demos/vue-nestjs; do echo \"--- $d ---\" && (cd $d && ncu -u --reject datasole && npm install); done",
     "prepublishOnly": "npm run gate",
     "prepare": "husky && npx playwright install chromium || true"
   },
