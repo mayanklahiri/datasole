@@ -186,6 +186,131 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
     expect(result.totalOps).toBeGreaterThan(0);
   });
 
+  test('binary frame streaming (1 KB frames)', async ({ page }) => {
+    await setupPage(page);
+
+    const result = await runReceiveBench(
+      page,
+      'binary-frame-1kb',
+      BENCH_DURATION_SEC,
+      `
+      window.__benchBinaryCount = 0;
+      window.__benchBinaryBytes = 0;
+      window.__client.on('bench:binary-frame', function(ev) {
+        window.__benchBinaryCount++;
+        window.__benchBinaryBytes += ev.data.size;
+      });
+      await window.__rpc('startBinaryFrameFlood', { durationMs: ${BENCH_DURATION_SEC * 1000}, frameSizeBytes: 1024 });
+      `,
+      'window.__benchBinaryCount',
+    );
+
+    results.push(result);
+    expect(result.totalOps).toBeGreaterThan(0);
+  });
+
+  test('RPC small payload (under compression threshold)', async ({ page }) => {
+    await setupPage(page);
+
+    const result = await runBench(
+      page,
+      'rpc-small-payload',
+      BENCH_DURATION_SEC,
+      '',
+      `
+      var latencies = [];
+      var errors = 0;
+      while (performance.now() < deadline) {
+        var t0 = performance.now();
+        try {
+          await window.__rpc('echo', { x: 42, y: 'hi' });
+          latencies.push(performance.now() - t0);
+        } catch { errors++; }
+      }
+      return { latencies: latencies, errors: errors };
+      `,
+    );
+
+    results.push(result);
+    expect(result.totalOps).toBeGreaterThan(0);
+  });
+
+  test('RPC large JSON payload (over compression threshold)', async ({ page }) => {
+    await setupPage(page);
+
+    const result = await runBench(
+      page,
+      'rpc-large-json',
+      BENCH_DURATION_SEC,
+      '',
+      `
+      var latencies = [];
+      var errors = 0;
+      function makePayload() {
+        var items = [];
+        for (var i = 0; i < 20; i++) {
+          items.push({
+            id: 'item-' + Math.random().toString(36).slice(2),
+            value: Math.random() * 1000,
+            tags: ['alpha', 'beta', 'gamma'].slice(0, 1 + (Math.random() * 3 | 0)),
+            ts: Date.now(),
+            nested: { a: Math.random(), b: Math.random().toString(36) }
+          });
+        }
+        return { items: items, meta: { page: 1, total: 100 } };
+      }
+      while (performance.now() < deadline) {
+        var t0 = performance.now();
+        try {
+          await window.__rpc('echoLargeJson', { payload: makePayload() });
+          latencies.push(performance.now() - t0);
+        } catch { errors++; }
+      }
+      return { latencies: latencies, errors: errors };
+      `,
+    );
+
+    results.push(result);
+    expect(result.totalOps).toBeGreaterThan(0);
+  });
+
+  test('two-way low-latency emit (game tick / trade confirm)', async ({ page }) => {
+    await setupPage(page);
+
+    const result = await runBench(
+      page,
+      'two-way-latency',
+      BENCH_DURATION_SEC,
+      `
+      window.__benchAckCount = 0;
+      window.__client.on('bench:game-state', function() { window.__benchAckCount++; });
+      `,
+      `
+      var latencies = [];
+      var errors = 0;
+      var seq = 0;
+      while (performance.now() < deadline) {
+        var t0 = performance.now();
+        try {
+          var ackBefore = window.__benchAckCount;
+          window.__client.emit('bench:game-tick', { seq: seq++, ts: Date.now(), dx: 1, dy: -1 });
+          // Wait for server ack (poll with microtask yield)
+          var waited = 0;
+          while (window.__benchAckCount === ackBefore && waited < 100) {
+            await new Promise(function(r) { setTimeout(r, 0); });
+            waited++;
+          }
+          latencies.push(performance.now() - t0);
+        } catch { errors++; }
+      }
+      return { latencies: latencies, errors: errors };
+      `,
+    );
+
+    results.push(result);
+    expect(result.totalOps).toBeGreaterThan(0);
+  });
+
   test('mixed workload', async ({ page }) => {
     await setupPage(page);
 

@@ -39,7 +39,7 @@ features:
   - icon:
       src: /features/binary-protocol.jpg
     title: Binary wire protocol
-    details: '9-byte binary frame headers with pako compression. 60–80% smaller than JSON text on the wire. The entire client + worker is 36 KB gzip.'
+    details: '9-byte binary frame headers with pako compression. 60–80% smaller than JSON text on the wire. The entire client + worker is 37 KB gzip.'
   - icon:
       src: /features/battle-tested.jpg
     title: Battle-tested in production
@@ -110,16 +110,37 @@ Use one, or combine them freely on a single WebSocket connection:
 
 **No other library gives you all seven as first-class APIs on one connection.** See [Composability](/composability) for examples of combining patterns (dashboard + actions, chat + presence, collab + voting, analytics pipeline).
 
+## Performance benchmarks
+
+Measured end-to-end with headless Chromium against a live Node.js server — not synthetic microbenchmarks. Every gate run re-measures. Web Worker transport and pako compression enabled (defaults).
+
+| What                       |              Result | What it means                                                                    |
+| -------------------------- | ------------------: | -------------------------------------------------------------------------------- |
+| **RPC round-trip**         |    **p50 < 0.5 ms** | Call a server function and get a typed response back in under half a millisecond |
+| **RPC small payload**      |    **p50 < 0.4 ms** | Tiny JSON body under compression threshold — minimal overhead                    |
+| **RPC large JSON**         |      **p50 ~18 ms** | Randomized ~1 KB JSON payload, pako-compressed on the wire                       |
+| **Binary frame streaming** | **~6,900 frames/s** | Server pushes 1 KB binary-like frames (audio/video metadata) at max rate         |
+| **Two-way game tick**      |       **p50 ~4 ms** | Client emit → server echo → client ack — full round-trip at emit speed           |
+| **Server event broadcast** |   **~920 events/s** | Push live updates to connected clients at nearly 1,000 events per second         |
+| **Client fire-and-forget** |  **~235K events/s** | Client → server emit throughput: 235,000+ events per second                      |
+| **CRDT sync**              |    **~1,300 ops/s** | Conflict-free counter increments with full round-trip sync                       |
+| **Mixed workload**         |    **p50 < 0.4 ms** | RPC + events + state combined — sub-millisecond median under mixed load          |
+
+<p style="font-size: 0.82rem; color: var(--vp-c-text-3); margin-top: -0.5rem;">
+3 s sustained load per scenario, single Node.js process, Chromium browser.
+<a href="/datasole/performance">Full benchmark results, historical trends, and charts →</a>
+</p>
+
 ## Bundle sizes
 
-Shared and server bundles externalize runtime deps. Client bundles inline everything for zero-dependency browser use.
+Client bundles inline everything for zero-dependency browser use. Server and shared bundles externalize runtime deps.
 
 | Bundle                | Loaded by             |     Raw |        Gzip |
 | --------------------- | --------------------- | ------: | ----------: |
-| **Client IIFE** (min) | `<script>` tag        | 69.7 KB | **21.4 KB** |
-| **Worker IIFE** (min) | Web Worker            | 47.6 KB | **15.0 KB** |
-| **Shared** (ESM)      | `import` from bundler | 10.3 KB |      2.5 KB |
-| **Server** (ESM)      | Node.js `import`      | 64.0 KB |     12.7 KB |
+| **Client IIFE** (min) | `<script>` tag        | 69.9 KB | **21.5 KB** |
+| **Worker IIFE** (min) | Web Worker            | 47.7 KB | **15.0 KB** |
+| **Shared** (CJS)      | `import` from bundler | 11.2 KB |      2.8 KB |
+| **Server** (CJS)      | Node.js `require`     | 65.3 KB |     13.0 KB |
 
 ## Use cases
 

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import type { DatasoleClient } from 'datasole/client';
+import { useEffect, useRef, useState } from 'react';
+import { useDatasoleState, useDatasoleClient } from '../hooks/useDatasole';
 
 interface ChatMessage {
   id: string;
@@ -17,35 +17,11 @@ function formatTime(ts: number): string {
 
 const username = 'user-' + Math.random().toString(36).slice(2, 7);
 
-export function ChatRoom({ ds }: { ds: DatasoleClient | null }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+export function ChatRoom() {
+  const messages = useDatasoleState<ChatMessage[]>('chat:messages');
+  const ds = useDatasoleClient();
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
-  const seenRef = useRef(new Set<string>());
-
-  const addMessage = useCallback((msg: ChatMessage) => {
-    if (seenRef.current.has(msg.id)) return;
-    seenRef.current.add(msg.id);
-    setMessages((prev) => [...prev, msg]);
-  }, []);
-
-  useEffect(() => {
-    if (!ds) return;
-
-    const onBroadcast = (ev: { data: ChatMessage }) => addMessage(ev.data);
-    ds.on('chat:message', onBroadcast);
-
-    const unsub = ds.subscribeState('chat:messages', (msgs: ChatMessage[]) => {
-      if (!msgs) return;
-      seenRef.current = new Set(msgs.map((m) => m.id));
-      setMessages(msgs);
-    });
-
-    return () => {
-      ds.off('chat:message', onBroadcast);
-      unsub();
-    };
-  }, [ds, addMessage]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -62,12 +38,14 @@ export function ChatRoom({ ds }: { ds: DatasoleClient | null }) {
     <div className="panel" style={{ display: 'flex', flexDirection: 'column' }}>
       <div className="panel-header">Chat</div>
       <div className="panel-help" style={{ padding: '8px 20px 0' }}>
-        Global chatroom: messages are broadcast to all connected clients in real time. Open a second
-        browser tab to try it.
+        <code>useDatasoleState('chat:messages')</code> &mdash; the server IS the store. No dedup, no
+        manual subscribe. Open a second tab to try.
       </div>
       <div className="chat-messages">
-        {messages.length === 0 && <div className="chat-empty">No messages yet</div>}
-        {messages.map((msg) => (
+        {(!messages || messages.length === 0) && (
+          <div className="chat-empty">No messages yet</div>
+        )}
+        {(messages ?? []).map((msg) => (
           <div key={msg.id} className="chat-msg">
             <div className="author">
               {msg.username}

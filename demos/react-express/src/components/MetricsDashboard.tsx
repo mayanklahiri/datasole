@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import type { DatasoleClient } from 'datasole/client';
+import { useDatasoleEvent } from '../hooks/useDatasole';
 
 interface Metrics {
   uptime: number;
@@ -23,23 +22,16 @@ function formatUptime(ms: number): string {
   return (h > 0 ? `${h}h ` : '') + `${m}m ${sec}s`;
 }
 
-export function MetricsDashboard({ ds }: { ds: DatasoleClient | null }) {
-  const [metrics, setMetrics] = useState<Metrics | null>(null);
-
-  useEffect(() => {
-    if (!ds) return;
-    const handler = (ev: { data: Metrics }) => setMetrics(ev.data);
-    ds.on('system-metrics', handler);
-    return () => { ds.off('system-metrics', handler); };
-  }, [ds]);
+export function MetricsDashboard() {
+  const metrics = useDatasoleEvent<Metrics>('system-metrics');
 
   return (
     <div className="panel">
       <div className="panel-header">Server Metrics</div>
       <div className="panel-body">
         <div className="panel-help">
-          Live server stats pushed every 2 s via <code>ds.broadcast()</code>. Updates arrive
-          automatically&mdash;no polling.
+          <code>useDatasoleEvent('system-metrics')</code> &mdash; one line, no Redux, no{' '}
+          <code>useEffect</code>. Data arrives reactively from the Web Worker.
         </div>
         {!metrics ? (
           <div className="metrics-waiting">Waiting for metrics&hellip;</div>

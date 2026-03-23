@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { DatasoleClient } from 'datasole/client';
+import { useDatasoleClient } from '../composables/useDatasole';
 
-const props = defineProps<{ ds: DatasoleClient | null }>();
+const ds = useDatasoleClient();
 
 interface RpcResult {
   value: number;
@@ -19,14 +19,14 @@ const loading = ref(false);
 const error = ref<string | null>(null);
 
 async function generate() {
-  if (!props.ds) return;
+  if (!ds.value) return;
   loading.value = true;
   error.value = null;
   const lo = Math.min(min.value, max.value);
   const hi = Math.max(min.value, max.value);
   const start = performance.now();
   try {
-    const data = (await props.ds.rpc('randomNumber', { min: lo, max: hi })) as {
+    const data = (await ds.value.rpc('randomNumber', { min: lo, max: hi })) as {
       value: number;
       generatedAt: number;
     };
@@ -45,7 +45,7 @@ async function generate() {
   <div class="panel">
     <div class="panel-header">RPC &mdash; Random Number</div>
     <div class="panel-body">
-      <div class="panel-help">Call <code>ds.rpc()</code> to invoke a server function and receive a typed response. Latency includes the full round trip.</div>
+      <div class="panel-help"><code>useDatasoleClient()</code> for imperative calls. <code>ds.rpc()</code> returns a typed response; latency includes the full round trip.</div>
       <div class="rpc-section">
         <div class="rpc-controls">
           <div class="rpc-row">

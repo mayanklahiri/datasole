@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import type { ConnectionState } from 'datasole/client';
+import { useConnectionState } from '../composables/useDatasole';
 
-defineProps<{
-  connectionState: ConnectionState;
-}>();
+const connectionState = useConnectionState();
 </script>
 
 <template>

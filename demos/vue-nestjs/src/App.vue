@@ -5,14 +5,14 @@ import MetricsDashboard from './components/MetricsDashboard.vue';
 import ChatRoom from './components/ChatRoom.vue';
 import RpcDemo from './components/RpcDemo.vue';
 
-const { ds, connectionState } = useDatasole();
+useDatasole();
 </script>
 
 <template>
-  <AppLayout :connection-state="connectionState">
-    <MetricsDashboard :ds="ds" />
-    <ChatRoom :ds="ds" />
-    <RpcDemo :ds="ds" />
+  <AppLayout>
+    <MetricsDashboard />
+    <ChatRoom />
+    <RpcDemo />
   </AppLayout>
 </template>
 

@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue';
-import type { DatasoleClient } from 'datasole/client';
-
-const props = defineProps<{ ds: DatasoleClient | null }>();
+import { useDatasoleEvent } from '../composables/useDatasole';
 
 interface Metrics {
   uptime: number;
@@ -18,7 +15,7 @@ interface Metrics {
   timestamp: number;
 }
 
-const metrics = ref<Metrics | null>(null);
+const metrics = useDatasoleEvent<Metrics>('system-metrics');
 
 function formatUptime(ms: number): string {
   const s = Math.floor(ms / 1000);
@@ -27,30 +24,13 @@ function formatUptime(ms: number): string {
   const sec = s % 60;
   return (h > 0 ? `${h}h ` : '') + `${m}m ${sec}s`;
 }
-
-let cleanup: (() => void) | null = null;
-
-watch(
-  () => props.ds,
-  (ds) => {
-    cleanup?.();
-    cleanup = null;
-    if (!ds) return;
-    const handler = (ev: { data: Metrics }) => { metrics.value = ev.data; };
-    ds.on('system-metrics', handler);
-    cleanup = () => ds.off('system-metrics', handler);
-  },
-  { immediate: true },
-);
-
-onUnmounted(() => cleanup?.());
 </script>
 
 <template>
   <div class="panel">
     <div class="panel-header">Server Metrics</div>
     <div class="panel-body">
-      <div class="panel-help">Live server stats pushed every 2 s via <code>ds.broadcast()</code>. Updates arrive automatically&mdash;no polling.</div>
+      <div class="panel-help"><code>useDatasoleEvent('system-metrics')</code> &mdash; one line, no Pinia/Vuex, no <code>watch()</code>. Data arrives reactively from the Web Worker.</div>
       <div v-if="!metrics" class="metrics-waiting">Waiting for metrics&hellip;</div>
       <div v-else class="metrics-grid">
         <div class="metric-card">

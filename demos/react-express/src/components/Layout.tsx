@@ -1,12 +1,9 @@
 import type { ReactNode } from 'react';
-import type { ConnectionState } from 'datasole/client';
+import { useConnectionState } from '../hooks/useDatasole';
 
-interface LayoutProps {
-  connectionState: ConnectionState;
-  children: ReactNode;
-}
+export function Layout({ children }: { children: ReactNode }) {
+  const connectionState = useConnectionState();
 
-export function Layout({ connectionState, children }: LayoutProps) {
   return (
     <div className="app">
       <header>

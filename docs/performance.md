@@ -6,7 +6,7 @@ description: End-to-end performance benchmarks measured with Playwright against 
 
 # Performance Benchmarks
 
-Every gate run measures end-to-end performance using Playwright (headless Chromium) against a live Node.js server on a random port. Each scenario runs for 3 seconds of sustained load.
+Every gate run measures end-to-end performance using Playwright (headless Chromium) against a live Node.js server on a random port. Each scenario runs for 3 seconds of sustained load. Web Worker transport and pako compression are enabled (defaults).
 
 ## Latest results
 
@@ -16,7 +16,9 @@ import { ref, onMounted, computed, watch, nextTick } from 'vue'
 const history = ref([])
 const loaded = ref(false)
 const throughputCanvas = ref(null)
+const latencyCanvas = ref(null)
 let throughputChart = null
+let latencyChart = null
 
 onMounted(async () => {
   try {
@@ -62,8 +64,8 @@ function fmtOps(n) {
 
 function fmtMs(n) {
   if (n == null || n === 0) return '—'
-  if (n < 0.01) return '<0.01ms'
-  return n.toFixed(2) + 'ms'
+  if (n < 0.01) return '<0.01 ms'
+  return n.toFixed(2) + ' ms'
 }
 
 function fmtDate(ts) {
@@ -72,7 +74,11 @@ function fmtDate(ts) {
 
 const scenarioLabels = {
   'rpc-echo': 'RPC echo (sequential)',
-  'rpc-concurrent': 'RPC echo (10x concurrent)',
+  'rpc-concurrent': 'RPC echo (10× concurrent)',
+  'rpc-small-payload': 'RPC small payload (<256 B)',
+  'rpc-large-json': 'RPC large JSON (>256 B, compressed)',
+  'binary-frame-1kb': 'Binary frame streaming (1 KB)',
+  'two-way-latency': 'Two-way emit (game tick / trade)',
   'server-event-receive': 'Server event receive',
   'state-sync-receive': 'Live state sync receive',
   'client-event-emit': 'Client event emit',
@@ -101,57 +107,107 @@ watch([loaded, history], async () => {
   if (withBench.length < 2) return
   await nextTick()
   const Chart = await loadChartJs()
-  if (!Chart || !throughputCanvas.value) return
+  if (!Chart) return
 
   const labels = withBench.map(e => fmtDate(e.timestamp))
-  const colors = ['#e8842c', '#3b82f6', '#22c55e', '#8b5cf6', '#6b7280', '#ef4444', '#eab308']
+  const colors = ['#e8842c', '#3b82f6', '#22c55e', '#8b5cf6', '#6b7280', '#ef4444', '#eab308', '#14b8a6', '#f97316', '#a855f7', '#ec4899']
 
-  const keyScenarios = ['rpc-echo', 'server-event-receive', 'state-sync-receive', 'client-event-emit', 'crdt-increment']
-  const datasets = keyScenarios.map((name, i) => ({
-    label: scenarioLabels[name] || name,
-    data: withBench.map(e => {
-      const s = e.benchmarks.find(b => b.name === name)
-      return s ? s.opsPerSec : null
-    }),
-    borderColor: colors[i % colors.length],
-    fill: false,
-    tension: 0.3,
-  }))
+  // Throughput chart
+  if (throughputCanvas.value) {
+    const throughputScenarios = [
+      'rpc-echo', 'rpc-small-payload', 'rpc-large-json', 'binary-frame-1kb',
+      'server-event-receive', 'state-sync-receive', 'client-event-emit', 'crdt-increment', 'two-way-latency'
+    ]
+    const datasets = throughputScenarios.map((name, i) => ({
+      label: scenarioLabels[name] || name,
+      data: withBench.map(e => {
+        const s = (e.benchmarks || []).find(b => b.name === name)
+        return s ? s.opsPerSec : null
+      }),
+      borderColor: colors[i % colors.length],
+      fill: false,
+      tension: 0.3,
+    })).filter(ds => ds.data.some(v => v != null))
 
-  if (throughputChart) throughputChart.destroy()
-  throughputChart = new Chart(throughputCanvas.value, {
-    type: 'line',
-    data: { labels, datasets },
-    options: {
-      responsive: true,
-      interaction: { mode: 'index', intersect: false },
-      scales: {
-        y: {
-          type: 'logarithmic',
-          min: 1,
-          ticks: { callback: v => fmtOps(v) },
+    if (throughputChart) throughputChart.destroy()
+    throughputChart = new Chart(throughputCanvas.value, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: {
+            title: { display: true, text: 'Date', font: { weight: 'bold' } },
+          },
+          y: {
+            type: 'logarithmic',
+            min: 1,
+            title: { display: true, text: 'Throughput (ops/sec)', font: { weight: 'bold' } },
+            ticks: { callback: v => fmtOps(v) },
+          },
+        },
+        plugins: {
+          tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmtOps(ctx.parsed.y) + ' ops/sec' } },
         },
       },
-      plugins: {
-        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmtOps(ctx.parsed.y) + ' ops/sec' } },
+    })
+  }
+
+  // Latency chart
+  if (latencyCanvas.value) {
+    const latencyScenarios = ['rpc-echo', 'rpc-small-payload', 'rpc-large-json', 'two-way-latency', 'crdt-increment', 'mixed-workload']
+    const latencyDatasets = latencyScenarios.map((name, i) => ({
+      label: scenarioLabels[name] || name,
+      data: withBench.map(e => {
+        const s = (e.benchmarks || []).find(b => b.name === name)
+        return s && s.p50Ms > 0 ? s.p50Ms : null
+      }),
+      borderColor: colors[i % colors.length],
+      fill: false,
+      tension: 0.3,
+    })).filter(ds => ds.data.some(v => v != null))
+
+    if (latencyChart) latencyChart.destroy()
+    latencyChart = new Chart(latencyCanvas.value, {
+      type: 'line',
+      data: { labels, datasets: latencyDatasets },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: {
+            title: { display: true, text: 'Date', font: { weight: 'bold' } },
+          },
+          y: {
+            title: { display: true, text: 'Median latency — P50 (ms)', font: { weight: 'bold' } },
+            ticks: { callback: v => v + ' ms' },
+          },
+        },
+        plugins: {
+          tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y != null ? ctx.parsed.y.toFixed(2) : '—') + ' ms' } },
+        },
       },
-    },
-  })
+    })
+  }
 }, { immediate: true })
 </script>
 
 <div v-if="loaded && benchmarks.length > 0">
 
-| Scenario | Ops/sec | P50 | P95 | P99 | Total ops |
-| -------- | ------: | --: | --: | --: | --------: |
+<div class="bench-table">
+
+| Scenario | Throughput | P50 latency | P95 latency | P99 latency | Total ops |
+| :------- | ---------: | ----------: | ----------: | ----------: | --------: |
 
 <template v-for="b in benchmarks" :key="b.name">
-
-| <span>{{ label(b.name) }}</span> | <strong><span>{{ fmtOps(b.opsPerSec) }}</span></strong> | <span>{{ fmtMs(b.p50Ms) }}</span> | <span>{{ fmtMs(b.p95Ms) }}</span> | <span>{{ fmtMs(b.p99Ms) }}</span> | <span>{{ fmtOps(b.totalOps) }}</span> |
+| {{ label(b.name) }} | **{{ fmtOps(b.opsPerSec) }} ops/s** | {{ fmtMs(b.p50Ms) }} | {{ fmtMs(b.p95Ms) }} | {{ fmtMs(b.p99Ms) }} | {{ fmtOps(b.totalOps) }} |
 </template>
 
+</div>
+
 <p style="color: var(--vp-c-text-3); font-size: 0.85rem; margin-top: 1rem;">
-Measured: <span>{{ latest.timestamp }}</span> — 3s sustained load per scenario, headless Chromium, single Node.js process.
+Measured: {{ new Date(latest.timestamp).toLocaleString() }} — 3 s sustained load per scenario, headless Chromium, single Node.js process, Web Worker + pako compression enabled.
 </p>
 
 </div>
@@ -173,7 +229,25 @@ Measured: <span>{{ latest.timestamp }}</span> — 3s sustained load per scenario
 </div>
 
 <p style="color: var(--vp-c-text-3); font-size: 0.8rem;">
-Logarithmic Y axis. "Client event emit" throughput is much higher than RPC because emit is fire-and-forget (no round-trip).
+Logarithmic Y axis (ops/sec). "Client event emit" throughput is much higher than RPC because emit is fire-and-forget (no round-trip).
+</p>
+
+</div>
+
+<div v-else-if="loaded">
+<p>Not enough data points for trends yet.</p>
+</div>
+
+## Median latency over time
+
+<div v-if="loaded && history.filter(e => e.benchmarks && e.benchmarks.length > 0).length > 1">
+
+<div style="max-width: 800px; margin: 1rem 0;">
+<canvas ref="latencyCanvas"></canvas>
+</div>
+
+<p style="color: var(--vp-c-text-3); font-size: 0.8rem;">
+P50 (median) latency in milliseconds for round-trip scenarios. Lower is better.
 </p>
 
 </div>
@@ -186,14 +260,52 @@ Logarithmic Y axis. "Client event emit" throughput is much higher than RPC becau
 
 Each benchmark connects a real browser client (datasole IIFE bundle in headless Chromium) to a live Node.js server via WebSocket and runs sustained load for 3 seconds:
 
-| Scenario                 | Description                                                                |
-| ------------------------ | -------------------------------------------------------------------------- |
-| **RPC echo**             | Sequential `ds.rpc('echo', payload)` — measures full round-trip latency    |
-| **RPC concurrent**       | 10 concurrent `ds.rpc()` calls per batch — measures multiplexed throughput |
-| **Server event receive** | Server broadcasts at max rate, client counts received events               |
-| **Live state sync**      | Server mutates state rapidly, client receives JSON Patch diffs             |
-| **Client event emit**    | Client fires `ds.emit()` in a tight loop — fire-and-forget throughput      |
-| **CRDT increment**       | Client increments a PN counter rapidly — measures CRDT op throughput       |
-| **Mixed workload**       | Alternating RPC, emit, and add — combined throughput under mixed load      |
+| Scenario                     | Description                                                                                       |
+| :--------------------------- | :------------------------------------------------------------------------------------------------ |
+| **RPC echo**                 | Sequential `ds.rpc('echo', payload)` — full round-trip latency                                    |
+| **RPC concurrent**           | 10 concurrent `ds.rpc()` calls per batch — multiplexed throughput                                 |
+| **RPC small payload**        | `ds.rpc()` with a tiny JSON body (<256 B, below compression threshold)                            |
+| **RPC large JSON**           | `ds.rpc()` with randomized JSON (~1 KB, above compression threshold) — exercises pako             |
+| **Binary frame streaming**   | Server pushes 1 KB binary-like frames at max rate — simulates audio/video metadata streaming      |
+| **Two-way low-latency emit** | Client emits, server echoes — measures full round-trip at emit speed (game ticks, trade confirms) |
+| **Server event receive**     | Server broadcasts at max rate, client counts received events                                      |
+| **Live state sync**          | Server mutates state rapidly, client receives JSON Patch diffs                                    |
+| **Client event emit**        | Client fires `ds.emit()` in a tight loop — fire-and-forget throughput                             |
+| **CRDT increment**           | Client increments a PN counter rapidly — CRDT op throughput                                       |
+| **Mixed workload**           | Alternating RPC, emit, and add — combined throughput under mixed load                             |
 
 All benchmarks run as part of the CI gate on every push to `main`.
+
+<style>
+.bench-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.bench-table th,
+.bench-table td {
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+.bench-table th {
+  text-align: right;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.bench-table th:first-child {
+  text-align: left;
+}
+.bench-table td:first-child {
+  text-align: left;
+  font-weight: 500;
+}
+.bench-table td {
+  text-align: right;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.85rem;
+}
+.bench-table tr:hover td {
+  background: var(--vp-c-bg-soft);
+}
+</style>

@@ -264,10 +264,10 @@ The shared and server bundles externalize runtime dependencies (`pako`, `fast-js
 
 | Bundle                | Loaded by             |     Raw |        Gzip |
 | --------------------- | --------------------- | ------: | ----------: |
-| **Client IIFE** (min) | `<script>` tag        | 69.8 KB | **21.5 KB** |
-| **Worker IIFE** (min) | Web Worker            | 47.6 KB | **15.0 KB** |
-| **Shared** (CJS)      | `import` from bundler | 10.8 KB |      2.6 KB |
-| **Server** (CJS)      | Node.js `require`     | 65.0 KB |     12.9 KB |
+| **Client IIFE** (min) | `<script>` tag        | 69.9 KB | **21.5 KB** |
+| **Worker IIFE** (min) | Web Worker            | 47.7 KB | **15.0 KB** |
+| **Shared** (CJS)      | `import` from bundler | 11.2 KB |      2.8 KB |
+| **Server** (CJS)      | Node.js `require`     | 65.3 KB |     13.0 KB |
 
 A browser downloads the client IIFE + worker for a total of **~36 KB gzip** — that includes compression, binary framing, JSON Patch diffing, CRDTs, and the Web Worker transport.
 

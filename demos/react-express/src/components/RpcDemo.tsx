@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { DatasoleClient } from 'datasole/client';
+import { useDatasoleClient } from '../hooks/useDatasole';
 
 interface RpcResult {
   value: number;
@@ -8,7 +8,8 @@ interface RpcResult {
   ms: string;
 }
 
-export function RpcDemo({ ds }: { ds: DatasoleClient | null }) {
+export function RpcDemo() {
+  const ds = useDatasoleClient();
   const [min, setMin] = useState(1);
   const [max, setMax] = useState(100);
   const [result, setResult] = useState<RpcResult | null>(null);
@@ -43,8 +44,8 @@ export function RpcDemo({ ds }: { ds: DatasoleClient | null }) {
       <div className="panel-header">RPC &mdash; Random Number</div>
       <div className="panel-body">
         <div className="panel-help">
-          Call <code>ds.rpc()</code> to invoke a server function and receive a typed response.
-          Latency includes the full round trip.
+          <code>useDatasoleClient()</code> for imperative calls. <code>ds.rpc()</code> returns a
+          typed response; latency includes the full round trip.
         </div>
         <div className="rpc-section">
           <div className="rpc-controls">

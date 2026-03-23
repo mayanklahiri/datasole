@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onUnmounted } from 'vue';
-import type { DatasoleClient } from 'datasole/client';
-
-const props = defineProps<{ ds: DatasoleClient | null }>();
+import { ref, watch, nextTick } from 'vue';
+import { useDatasoleState, useDatasoleClient } from '../composables/useDatasole';
 
 interface ChatMessage {
   id: string;
@@ -11,10 +9,10 @@ interface ChatMessage {
   ts: number;
 }
 
-const messages = ref<ChatMessage[]>([]);
+const messages = useDatasoleState<ChatMessage[]>('chat:messages');
+const ds = useDatasoleClient();
 const input = ref('');
 const bottomEl = ref<HTMLDivElement | null>(null);
-const seenIds = new Set<string>();
 const username = 'user-' + Math.random().toString(36).slice(2, 7);
 
 function formatTime(ts: number): string {
@@ -24,47 +22,14 @@ function formatTime(ts: number): string {
     .join(':');
 }
 
-function addMessage(msg: ChatMessage) {
-  if (seenIds.has(msg.id)) return;
-  seenIds.add(msg.id);
-  messages.value = [...messages.value, msg];
+watch(messages, () => {
   nextTick(() => bottomEl.value?.scrollIntoView({ behavior: 'smooth' }));
-}
-
-let cleanup: (() => void) | null = null;
-
-watch(
-  () => props.ds,
-  (ds) => {
-    cleanup?.();
-    cleanup = null;
-    if (!ds) return;
-
-    const onBroadcast = (ev: { data: ChatMessage }) => addMessage(ev.data);
-    ds.on('chat:message', onBroadcast);
-
-    const unsub = ds.subscribeState('chat:messages', (msgs: ChatMessage[]) => {
-      if (!msgs) return;
-      seenIds.clear();
-      msgs.forEach((m) => seenIds.add(m.id));
-      messages.value = msgs;
-      nextTick(() => bottomEl.value?.scrollIntoView({ behavior: 'smooth' }));
-    });
-
-    cleanup = () => {
-      ds.off('chat:message', onBroadcast);
-      unsub();
-    };
-  },
-  { immediate: true },
-);
-
-onUnmounted(() => cleanup?.());
+});
 
 function send() {
   const text = input.value.trim();
-  if (!text || !props.ds) return;
-  props.ds.emit('chat:send', { text, username });
+  if (!text || !ds.value) return;
+  ds.value.emit('chat:send', { text, username });
   input.value = '';
 }
 </script>
@@ -72,10 +37,10 @@ function send() {
 <template>
   <div class="panel chat-panel">
     <div class="panel-header">Chat</div>
-    <div class="panel-help">Global chatroom: messages are broadcast to all connected clients in real time. Open a second browser tab to try it.</div>
+    <div class="panel-help"><code>useDatasoleState('chat:messages')</code> &mdash; the server IS the store. No dedup, no manual subscribe. Open a second tab to try.</div>
     <div class="chat-messages">
-      <div v-if="messages.length === 0" class="chat-empty">No messages yet</div>
-      <div v-for="msg in messages" :key="msg.id" class="chat-msg">
+      <div v-if="!messages || messages.length === 0" class="chat-empty">No messages yet</div>
+      <div v-for="msg in messages ?? []" :key="msg.id" class="chat-msg">
         <div class="author">
           {{ msg.username }}
           <span class="time">{{ formatTime(msg.ts) }}</span>

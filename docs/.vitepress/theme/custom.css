@@ -55,6 +55,33 @@
   max-width: 100%;
 }
 
+/* ── Image lightbox (click to enlarge) ── */
+.vp-doc img {
+  cursor: zoom-in;
+  transition: opacity 0.2s;
+}
+.vp-doc img:hover {
+  opacity: 0.85;
+}
+.ds-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  cursor: zoom-out;
+  padding: 2rem;
+}
+.ds-lightbox img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  cursor: zoom-out;
+}
+
 /* ── Comparison table cell highlighting ── */
 .vp-doc td.cell-yes {
   background: var(--ds-color-success-soft);

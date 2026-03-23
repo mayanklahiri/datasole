@@ -200,6 +200,47 @@ export async function startTestServer(): Promise<TestServerResult> {
     return { ok: true };
   });
 
+  // --- Binary frame streaming benchmark ---
+  ds.rpc(
+    'startBinaryFrameFlood',
+    async (params: { durationMs: number; frameSizeBytes: number }) => {
+      const end = Date.now() + params.durationMs;
+      let count = 0;
+      const frameData = Buffer.alloc(params.frameSizeBytes);
+      // Fill with pseudo-random data to prevent trivial compression
+      for (let i = 0; i < frameData.length; i++) frameData[i] = (i * 37 + 17) & 0xff;
+      const tick = () => {
+        if (Date.now() >= end) return;
+        // Overwrite first 8 bytes with sequence + timestamp for realism
+        frameData.writeUInt32BE(count, 0);
+        frameData.writeUInt32BE(Date.now() & 0xffffffff, 4);
+        ds.broadcast('bench:binary-frame', {
+          seq: count++,
+          frame: Array.from(frameData.subarray(0, Math.min(params.frameSizeBytes, 256))),
+          size: params.frameSizeBytes,
+        });
+        setImmediate(tick);
+      };
+      tick();
+      log(`Benchmark: binary frame flood ${params.frameSizeBytes}B for ${params.durationMs}ms`);
+      return { ok: true };
+    },
+  );
+
+  // --- RPC with large JSON payload benchmark ---
+  ds.rpc('echoLargeJson', async (params: { payload: unknown }) => {
+    return params;
+  });
+
+  // --- Two-way low-latency echo (game tick / trade confirm) ---
+  ds.on('bench:game-tick', (payload) => {
+    ds.broadcast('bench:game-state', {
+      seq: payload.data.seq,
+      ack: true,
+      ts: Date.now(),
+    });
+  });
+
   // --- Events ---
   ds.on('client-ping', (payload) => {
     log(`Event client-ping: ${JSON.stringify(payload.data)}`);
