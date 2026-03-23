@@ -1146,5 +1146,78 @@
         "totalOps": 150
       }
     ]
+  },
+  {
+    "timestamp": "2026-03-23T22:36:41.374Z",
+    "coverage": {
+      "lines": 90.25,
+      "branches": 79.96,
+      "functions": 88.86,
+      "statements": 89.76
+    },
+    "clientIifeGzip": 22020,
+    "workerIifeGzip": 15382,
+    "sharedEsmGzip": 66340,
+    "serverEsmGzip": 77139,
+    "unitTests": 476,
+    "e2eTests": 45,
+    "benchmarks": [
+      {
+        "name": "rpc-echo",
+        "opsPerSec": 33,
+        "p50Ms": 0.39,
+        "p95Ms": 1.07,
+        "p99Ms": 4.71,
+        "totalOps": 100
+      },
+      {
+        "name": "rpc-concurrent",
+        "opsPerSec": 37,
+        "p50Ms": 0.41,
+        "p95Ms": 3000.83,
+        "p99Ms": 3000.83,
+        "totalOps": 110
+      },
+      {
+        "name": "server-event-receive",
+        "opsPerSec": 927,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 2782
+      },
+      {
+        "name": "state-sync-receive",
+        "opsPerSec": 194,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 582
+      },
+      {
+        "name": "client-event-emit",
+        "opsPerSec": 265038,
+        "p50Ms": 0,
+        "p95Ms": 0.01,
+        "p99Ms": 0.01,
+        "totalOps": 795115
+      },
+      {
+        "name": "crdt-increment",
+        "opsPerSec": 1305,
+        "p50Ms": 0.73,
+        "p95Ms": 1.38,
+        "p99Ms": 2.48,
+        "totalOps": 3914
+      },
+      {
+        "name": "mixed-workload",
+        "opsPerSec": 50,
+        "p50Ms": 0.29,
+        "p95Ms": 0.75,
+        "p99Ms": 4.47,
+        "totalOps": 150
+      }
+    ]
   }
 ]
