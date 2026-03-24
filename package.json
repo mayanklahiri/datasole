@@ -68,7 +68,7 @@
     "install:demos": "npm --prefix demos/vanilla ci && npm --prefix demos/react-express ci && npm --prefix demos/vue-nestjs ci",
     "install:all": "npm ci && npm run install:demos",
     "verify:nonperf": "npm run clean && npm run format:check && npm run lint && npm run build:all && npm run test -- --coverage && npm run test:e2e:run && npm run test:e2e:demos:run",
-    "verify:full": "npm run verify:nonperf && npm run test:bench:run && npm run docs:build && npm run collect-metrics",
+    "verify:full": "DATASOLE_WRITE_DOCS_SCREENSHOTS=1 npm run verify:nonperf && npm run test:bench:run && npm run docs:build && npm run collect-metrics",
     "gate": "npm run verify:nonperf && npm run gate:summary",
     "gate:full": "npm run verify:full && npm run gate:summary",
     "gate:bench": "npx playwright test --config test/e2e/playwright.bench.config.ts",
