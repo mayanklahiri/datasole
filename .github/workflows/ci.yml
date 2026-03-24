@@ -86,8 +86,10 @@ jobs:
             'the repository, screenshots, and metrics stay aligned with the exact code that' \
             'just passed the full build, demo, end-to-end, and performance pipeline.' \
             > /tmp/ci-artifact-commit.txt
-          git commit -F /tmp/ci-artifact-commit.txt
-          git push origin HEAD:main
+          # Skip hooks: pre-commit and pre-push run `npm run gate` which `clean`s
+          # docs-site/dist and would leave nothing for the docs-site artifact upload below.
+          git commit --no-verify -F /tmp/ci-artifact-commit.txt
+          git push --no-verify origin HEAD:main
 
       - name: Print build metrics
         if: always()
