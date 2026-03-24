@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import os from 'os';
 import { DatasoleServer } from 'datasole/server';
-import { createSeededRandom } from '../../../seeded-random.js';
+import { createSeededRandom } from '../../../seeded-random.mjs';
 import { AppContract, RpcMethod, Event, StateKey, ChatMessage } from '../../shared/contract';
 
 @Injectable()

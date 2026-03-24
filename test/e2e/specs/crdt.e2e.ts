@@ -4,13 +4,14 @@ import { snap } from '../helpers/screenshots';
 import { ServerHarness } from '../helpers/server-harness';
 
 test.describe('CRDT', () => {
-  const harness = new ServerHarness();
+  let harness: ServerHarness;
 
-  test.beforeAll(async () => {
+  test.beforeEach(async () => {
+    harness = new ServerHarness();
     await harness.start();
   });
 
-  test.afterAll(async () => {
+  test.afterEach(async () => {
     await harness.stop();
   });
 
@@ -56,8 +57,21 @@ test.describe('CRDT', () => {
     await page.evaluate(() => window.__initCrdt('e2e-client-2'));
 
     await page.evaluate(() => window.__crdtIncrement());
+    await page.waitForFunction(() => window.__crdtGetValue() === 1, null, {
+      timeout: 5000,
+    });
+
     await page.evaluate(() => window.__crdtIncrement());
-    const afterDec = await page.evaluate(() => window.__crdtDecrement());
+    await page.waitForFunction(() => window.__crdtGetValue() === 2, null, {
+      timeout: 5000,
+    });
+
+    await page.evaluate(() => window.__crdtDecrement());
+    await page.waitForFunction(() => window.__crdtGetValue() === 1, null, {
+      timeout: 5000,
+    });
+
+    const afterDec = await page.evaluate(() => window.__crdtGetValue());
     expect(afterDec).toBe(1);
 
     await snap(page, testInfo, 'crdt-decrement');
