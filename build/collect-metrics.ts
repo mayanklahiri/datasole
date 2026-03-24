@@ -115,7 +115,14 @@ function generateMarkdown(metrics: BuildMetrics): string {
   }
 
   if (metrics.e2eResults) {
-    lines.push('', '## E2E Results', '', '```json', JSON.stringify(metrics.e2eResults, null, 2), '```');
+    lines.push(
+      '',
+      '## E2E Results',
+      '',
+      '```json',
+      JSON.stringify(metrics.e2eResults, null, 2),
+      '```',
+    );
   }
 
   if (metrics.docs) {
@@ -223,7 +230,13 @@ function appendToHistory(metrics: BuildMetrics): void {
     benchmarks,
   };
 
-  history.push(entry);
+  const todayDate = metrics.timestamp.slice(0, 10); // YYYY-MM-DD
+  const existingIdx = history.findIndex((h) => h.timestamp.slice(0, 10) === todayDate);
+  if (existingIdx !== -1) {
+    history[existingIdx] = entry;
+  } else {
+    history.push(entry);
+  }
   if (history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY);
 
   mkdirSync(join(ROOT, 'docs', 'public'), { recursive: true });

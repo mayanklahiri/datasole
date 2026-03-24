@@ -20,6 +20,7 @@ export default defineConfig({
         isMobile: false,
         hasTouch: false,
       },
+      grepInvert: /@bench/,
     },
     {
       name: 'mobile',
