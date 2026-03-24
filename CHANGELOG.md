@@ -170,6 +170,7 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 - **`DatasoleClient.connect()`**: disposes any existing worker/WebSocket transport before opening a new one (reconnect no longer orphans the previous Worker, which could strand the session in `reconnecting` and break demo e2e on slow CI runners)
 - **Client `StateStore`**: subscribers receive the current snapshot immediately on subscribe; incoming `STATE_PATCH` / `STATE_SNAPSHOT` frames create the per-key store if none exists yet (avoids dropped patches before the first subscriber)
 - **Demo chat servers**: initial `setState('chat:messages', chatHistory)` now passes `[...chatHistory]` — `MemoryBackend` retains the array by reference; pushing into the same array and then `setState([...chatHistory])` previously produced an empty diff and no broadcast
+- **CI `deploy-docs` job**: `actions/deploy-pages@v5` / `upload-pages-artifact@v5` are not published — pin to `deploy-pages@v4` and `upload-pages-artifact@v3` (v3 retains `.nojekyll`; v4 of upload-pages-artifact omits dotfiles)
 
 ### Removed
 

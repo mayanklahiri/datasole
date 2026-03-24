@@ -153,11 +153,12 @@ jobs:
       - name: Add .nojekyll
         run: touch _site/.nojekyll
 
+      # v4 of upload-pages-artifact omits dotfiles (e.g. `.nojekyll`); keep v3 so `_site/.nojekyll` deploys.
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@v3
         with:
           path: _site/
 
       - name: Deploy to GitHub Pages
         id: deploy
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@v4
