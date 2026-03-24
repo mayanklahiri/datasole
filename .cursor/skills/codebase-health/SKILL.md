@@ -70,7 +70,7 @@ Key files to cross-reference:
 - `docs/integrations.md` ↔ actual API
 - `docs/composability.md` ↔ actual API
 - `docs/metrics.md` ↔ `src/server/metrics/`
-- `docs/state-backends.md` ↔ `src/server/state/backends/`
+- `docs/state-backends.md` ↔ `src/server/backends/`
 - `docs/comparison.md` ↔ actual bundle sizes, features
 
 ### Phase 4 — README alignment

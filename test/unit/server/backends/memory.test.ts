@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import { MemoryBackend } from '../../../../src/server/state/backends';
+import { MemoryBackend } from '../../../../src/server/backends';
 
 describe('MemoryBackend', () => {
   it('get returns undefined for missing key', async () => {

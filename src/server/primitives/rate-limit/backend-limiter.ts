@@ -1,0 +1,71 @@
+/**
+ * Unified rate limiter backed by StateBackend.
+ * With MemoryBackend: works like a local sliding-window limiter.
+ * With RedisBackend: automatically distributed across instances.
+ */
+import type { StateBackend } from '../../backends/types';
+import type { RealtimePrimitive } from '../types';
+
+import type { RateLimiter, RateLimitResult, RateLimitRule } from './types';
+
+interface WindowEntry {
+  count: number;
+  resetAt: number;
+}
+
+export class BackendRateLimiter implements RateLimiter, RealtimePrimitive {
+  private cleanupInterval: ReturnType<typeof setInterval> | null = null;
+
+  constructor(private readonly backend: StateBackend) {
+    this.cleanupInterval = setInterval(() => void this.cleanup(), 60_000);
+  }
+
+  async check(key: string, rule: RateLimitRule): Promise<RateLimitResult> {
+    const entry = await this.getOrCreate(key, rule);
+    return {
+      allowed: entry.count < rule.maxRequests,
+      remaining: Math.max(0, rule.maxRequests - entry.count),
+      resetAt: entry.resetAt,
+    };
+  }
+
+  async consume(key: string, rule: RateLimitRule, cost = 1): Promise<RateLimitResult> {
+    const entry = await this.getOrCreate(key, rule);
+    entry.count += cost;
+    await this.backend.set(`rl:${key}`, entry);
+    const allowed = entry.count <= rule.maxRequests;
+    return {
+      allowed,
+      remaining: Math.max(0, rule.maxRequests - entry.count),
+      resetAt: entry.resetAt,
+      ...(allowed ? {} : { retryAfter: entry.resetAt - Date.now() }),
+    };
+  }
+
+  async reset(key: string): Promise<void> {
+    await this.backend.delete(`rl:${key}`);
+  }
+
+  async destroy(): Promise<void> {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+  }
+
+  private async getOrCreate(key: string, rule: RateLimitRule): Promise<WindowEntry> {
+    const now = Date.now();
+    const entry = await this.backend.get<WindowEntry>(`rl:${key}`);
+    if (!entry || now >= entry.resetAt) {
+      const fresh = { count: 0, resetAt: now + rule.windowMs };
+      await this.backend.set(`rl:${key}`, fresh);
+      return fresh;
+    }
+    return entry;
+  }
+
+  private async cleanup(): Promise<void> {
+    // For MemoryBackend, stale windows are cleaned up naturally when getOrCreate
+    // sees an expired entry. For Redis/Postgres, TTL-based cleanup is preferred.
+  }
+}

@@ -3,41 +3,38 @@ import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import os from 'os';
 import { DatasoleServer } from 'datasole/server';
 import { createSeededRandom } from '../../../seeded-random.js';
-
-interface ChatMessage {
-  id: string;
-  text: string;
-  username: string;
-  ts: number;
-}
+import { AppContract, RpcMethod, Event, StateKey, ChatMessage } from '../../shared/contract';
 
 @Injectable()
 export class DatasoleService implements OnModuleDestroy {
-  readonly ds = new DatasoleServer();
+  readonly ds = new DatasoleServer<AppContract>();
   private readonly rng = createSeededRandom();
   private metricsInterval: ReturnType<typeof setInterval> | null = null;
   private readonly chatHistory: ChatMessage[] = [];
 
   async init(): Promise<void> {
-    await this.ds.setState('chat:messages', this.chatHistory);
+    await this.ds.setState(StateKey.ChatMessages, this.chatHistory);
 
-    this.ds.on('chat:send', (payload: { data: { text: string; username: string } }) => {
+    this.ds.events.on(Event.ChatSend, (payload: { data: { text: string; username: string } }) => {
       const { text, username } = payload.data;
       const msg: ChatMessage = { id: this.rng.uuid(), text, username, ts: Date.now() };
       this.chatHistory.push(msg);
       if (this.chatHistory.length > 50) this.chatHistory.shift();
-      this.ds.setState('chat:messages', [...this.chatHistory]);
-      this.ds.broadcast('chat:message', msg);
+      this.ds.setState(StateKey.ChatMessages, [...this.chatHistory]);
+      this.ds.broadcast(Event.ChatMessage, msg);
     });
 
-    this.ds.rpc('randomNumber', async ({ min, max }: { min: number; max: number }) => {
-      return { value: this.rng.int(Math.floor(min), Math.floor(max)), generatedAt: Date.now() };
-    });
+    this.ds.rpc.register(
+      RpcMethod.RandomNumber,
+      async ({ min, max }: { min: number; max: number }) => {
+        return { value: this.rng.int(Math.floor(min), Math.floor(max)), generatedAt: Date.now() };
+      },
+    );
 
     this.metricsInterval = setInterval(() => {
-      const snap = this.ds.getMetrics().snapshot();
+      const snap = this.ds.metrics.snapshot();
       const now = new Date();
-      this.ds.broadcast('system-metrics', {
+      this.ds.broadcast(Event.SystemMetrics, {
         uptime: snap.uptime,
         connections: snap.connections,
         messagesIn: snap.messagesIn,

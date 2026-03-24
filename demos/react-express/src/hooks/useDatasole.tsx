@@ -1,11 +1,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { DatasoleClient } from 'datasole/client';
 import type { ConnectionState } from 'datasole/client';
+import type { EventPayload } from 'datasole';
+import type { AppContract } from '../../shared/contract';
 
 // ── Context ──────────────────────────────────────────────────────────
 
 interface DatasoleContextValue {
-  client: DatasoleClient | null;
+  client: DatasoleClient<AppContract> | null;
   connectionState: ConnectionState;
 }
 
@@ -19,11 +21,11 @@ const DatasoleContext = createContext<DatasoleContextValue>({
  * and makes the client available to all descendants via hooks.
  */
 export function DatasoleProvider({ children }: { children: ReactNode }) {
-  const [client, setClient] = useState<DatasoleClient | null>(null);
+  const [client, setClient] = useState<DatasoleClient<AppContract> | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
 
   useEffect(() => {
-    const c = new DatasoleClient({ url: `ws://${window.location.host}` });
+    const c = new DatasoleClient<AppContract>({ url: `ws://${window.location.host}` });
     setClient(c);
     c.connect();
     const interval = setInterval(() => setConnectionState(c.getConnectionState()), 500);
@@ -49,13 +51,15 @@ export function DatasoleProvider({ children }: { children: ReactNode }) {
  *   const metrics = useDatasoleEvent<Metrics>('system-metrics');
  *   // metrics updates automatically — no Redux, no Zustand
  */
-export function useDatasoleEvent<T>(eventName: string): T | null {
+export function useDatasoleEvent<K extends keyof AppContract['events'] & string>(
+  eventName: K,
+): AppContract['events'][K] | null {
   const { client } = useContext(DatasoleContext);
-  const [data, setData] = useState<T | null>(null);
+  const [data, setData] = useState<AppContract['events'][K] | null>(null);
 
   useEffect(() => {
     if (!client) return;
-    const handler = (ev: { data: T }) => setData(ev.data);
+    const handler = (ev: EventPayload<AppContract['events'][K]>) => setData(ev.data);
     client.on(eventName, handler);
     return () => {
       client.off(eventName, handler);
@@ -72,13 +76,15 @@ export function useDatasoleEvent<T>(eventName: string): T | null {
  *   const messages = useDatasoleState<ChatMessage[]>('chat:messages');
  *   // messages auto-replaces on every server state change — the server IS the store
  */
-export function useDatasoleState<T>(key: string): T | null {
+export function useDatasoleState<K extends keyof AppContract['state'] & string>(
+  key: K,
+): AppContract['state'][K] | null {
   const { client } = useContext(DatasoleContext);
-  const [data, setData] = useState<T | null>(null);
+  const [data, setData] = useState<AppContract['state'][K] | null>(null);
 
   useEffect(() => {
     if (!client) return;
-    const sub = client.subscribeState(key, (val: T) => setData(val));
+    const sub = client.subscribeState(key, (val) => setData(val));
     return () => sub.unsubscribe();
   }, [client, key]);
 
@@ -86,7 +92,7 @@ export function useDatasoleState<T>(key: string): T | null {
 }
 
 /** Raw client for imperative operations (emit, rpc). */
-export function useDatasoleClient(): DatasoleClient | null {
+export function useDatasoleClient(): DatasoleClient<AppContract> | null {
   return useContext(DatasoleContext).client;
 }
 

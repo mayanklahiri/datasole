@@ -26,8 +26,8 @@ Every demo is a full-screen, dark-themed, responsive three-panel layout:
 flowchart LR
   subgraph server [Server]
     metrics["setInterval 2s"]
-    chatHandler["ds.on('chat:send')"]
-    rpcHandler["ds.rpc('randomNumber')"]
+    chatHandler["ds.events.on('chat:send')"]
+    rpcHandler["ds.rpc.register('randomNumber')"]
   end
   subgraph client [Client]
     metricsDash[Metrics Dashboard]
@@ -49,7 +49,7 @@ All three demos implement identical business logic — the only difference is ho
 ```typescript
 // Metrics broadcast every 2s
 setInterval(() => {
-  const snap = ds.getMetrics().snapshot();
+  const snap = ds.metrics.snapshot();
   ds.broadcast('system-metrics', {
     uptime: snap.uptime,
     connections: snap.connections,
@@ -62,7 +62,7 @@ setInterval(() => {
 }, 2000);
 
 // Chat — receive, store, broadcast
-ds.on('chat:send', ({ text, username }) => {
+ds.events.on('chat:send', ({ text, username }) => {
   const msg = { id: crypto.randomUUID(), text, username, ts: Date.now() };
   chatHistory.push(msg);
   if (chatHistory.length > 50) chatHistory.shift();
@@ -71,7 +71,7 @@ ds.on('chat:send', ({ text, username }) => {
 });
 
 // RPC — random number
-ds.rpc('randomNumber', async ({ min, max }) => {
+ds.rpc.register('randomNumber', async ({ min, max }) => {
   return {
     value: crypto.randomInt(Math.floor(min), Math.floor(max) + 1),
     generatedAt: Date.now(),
@@ -123,7 +123,7 @@ The server is a single `server.mjs` file. It creates a plain `http.Server`, serv
 import { createServer } from 'http';
 import { DatasoleServer } from 'datasole/server';
 
-const ds = new DatasoleServer();
+const ds = new DatasoleServer<AppContract>();
 
 // Register chat handler, RPC, metrics broadcast (see shared logic above)
 
@@ -138,11 +138,14 @@ The client loads the IIFE bundle via `<script>` tag, giving a `window.Datasole` 
 
 ```javascript
 // public/app.js — key parts
-const ds = new Datasole.DatasoleClient({
-  url: 'ws://' + location.host,
-  // useWorker: true (default) — WebSocket runs in a Web Worker
-  // workerUrl: '/datasole-worker.iife.min.js' (default)
-});
+const ds =
+  new Datasole.DatasoleClient() <
+  AppContract >
+  {
+    url: 'ws://' + location.host,
+    // useWorker: true (default) — WebSocket runs in a Web Worker
+    // workerUrl: '/datasole-worker.iife.min.js' (default)
+  };
 ds.connect();
 
 // Live metrics via broadcast events
@@ -247,8 +250,8 @@ if (existsSync(clientDist)) {
 }
 
 const httpServer = createServer(app);
-const ds = new DatasoleServer();
-// Default: thread-pool concurrency (4 Node.js worker_threads)
+const ds = new DatasoleServer<AppContract>();
+// Default: thread-pool executor (4 Node.js worker_threads)
 ds.attach(httpServer);
 
 // Register chat, RPC, metrics (see shared logic above)
@@ -391,13 +394,13 @@ import { DatasoleServer } from 'datasole/server';
 
 @Injectable()
 export class DatasoleService implements OnModuleDestroy {
-  readonly ds = new DatasoleServer();
+  readonly ds = new DatasoleServer<AppContract>();
   private metricsInterval: ReturnType<typeof setInterval> | null = null;
 
   async init(): Promise<void> {
     // Register chat, RPC, metrics (see shared logic above)
-    this.ds.on('chat:send', handler);
-    this.ds.rpc('randomNumber', handler);
+    this.ds.events.on('chat:send', handler);
+    this.ds.rpc.register('randomNumber', handler);
     this.metricsInterval = setInterval(broadcastMetrics, 2000);
   }
 

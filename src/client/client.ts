@@ -4,15 +4,15 @@
 
 import { compress, serialize } from '../shared/codec';
 import { COMPRESSION_THRESHOLD, DEFAULT_WS_PATH } from '../shared/constants';
+import type { DatasoleContract, EventData, StateValue } from '../shared/contract';
 import type { CrdtState } from '../shared/crdt';
 import { decodeFrame, encodeFrame, Opcode } from '../shared/protocol';
 import type { Frame } from '../shared/protocol';
 import type {
   AuthCredentials,
-  EventHandler,
+  EventPayload,
   RpcCallOptions,
   RpcResponse,
-  RpcResult,
   StatePatch,
   StateSubscription,
 } from '../shared/types';
@@ -41,7 +41,7 @@ export interface DatasoleClientOptions {
   maxReconnectAttempts?: number;
 }
 
-export class DatasoleClient {
+export class DatasoleClient<T extends DatasoleContract> {
   private state: ConnectionState = 'disconnected';
   private readonly options: Required<DatasoleClientOptions>;
   private transport: FallbackTransport | null = null;
@@ -103,23 +103,29 @@ export class DatasoleClient {
     return this.state;
   }
 
-  async rpc<TResult = unknown>(
-    method: string,
-    params?: unknown,
+  async rpc<K extends keyof T['rpc'] & string>(
+    method: K,
+    params?: T['rpc'][K]['params'],
     options?: RpcCallOptions,
-  ): Promise<RpcResult<TResult>> {
-    return this.rpcClient.call<TResult>(method, params, options);
+  ): Promise<T['rpc'][K]['result']> {
+    return this.rpcClient.call<T['rpc'][K]['result']>(method, params, options);
   }
 
-  on<T = unknown>(event: string, handler: EventHandler<T>): void {
-    this.eventEmitter.on(event, handler);
+  on<K extends keyof T['events'] & string>(
+    event: K,
+    handler: (payload: EventPayload<EventData<T, K>>) => void,
+  ): void {
+    this.eventEmitter.on(event, handler as (payload: EventPayload) => void);
   }
 
-  off<T = unknown>(event: string, handler: EventHandler<T>): void {
-    this.eventEmitter.off(event, handler);
+  off<K extends keyof T['events'] & string>(
+    event: K,
+    handler: (payload: EventPayload<EventData<T, K>>) => void,
+  ): void {
+    this.eventEmitter.off(event, handler as (payload: EventPayload) => void);
   }
 
-  emit(event: string, data?: unknown): void {
+  emit<K extends keyof T['events'] & string>(event: K, data?: EventData<T, K>): void {
     const payload = serialize({ event, data });
 
     if (this.transport) {
@@ -133,7 +139,10 @@ export class DatasoleClient {
     }
   }
 
-  subscribeState<T = unknown>(key: string, handler: (state: T) => void): StateSubscription {
+  subscribeState<K extends keyof T['state'] & string>(
+    key: K,
+    handler: (state: StateValue<T, K>) => void,
+  ): StateSubscription {
     if (!this.stateStores.has(key)) {
       this.stateStores.set(key, new StateStore<unknown>(undefined));
     }
@@ -141,9 +150,9 @@ export class DatasoleClient {
     return store.subscribe(handler as (state: unknown) => void);
   }
 
-  getState<T = unknown>(key: string): T | undefined {
+  getState<K extends keyof T['state'] & string>(key: K): StateValue<T, K> | undefined {
     const store = this.stateStores.get(key);
-    return store?.getState() as T | undefined;
+    return store?.getState() as StateValue<T, K> | undefined;
   }
 
   registerCrdt(nodeId: string): CrdtStore {

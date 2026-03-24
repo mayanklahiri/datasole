@@ -64,7 +64,7 @@ import { DatasoleServer } from 'datasole/server';
 const ds = new DatasoleServer();
 
 // Register a handler: client sends two numbers, server returns the sum
-ds.rpc<{ a: number; b: number }, { sum: number }>('add', async (params) => {
+ds.rpc.register<{ a: number; b: number }, { sum: number }>('add', async (params) => {
   return { sum: params.a + params.b };
 });
 
@@ -340,7 +340,7 @@ const http = createServer(app);
 ds.attach(http);
 
 // Listen for chat messages from clients
-ds.on<{ text: string }>('chat:message', ({ data }) => {
+ds.events.on<{ text: string }>('chat:message', ({ data }) => {
   // ctx.connection gives you the sender's identity
   // Broadcast to all connected clients
   ds.broadcast('chat:message', {
@@ -464,13 +464,13 @@ http.listen(3000);
 const counter = new PNCounter('server');
 
 // When a client sends a CRDT operation, apply it and broadcast the merged state
-ds.on('crdt:op', ({ data: op }) => {
+ds.events.on('crdt:op', ({ data: op }) => {
   counter.apply(op);
   ds.broadcast('crdt:state', counter.state());
 });
 
 // Expose current state so new clients can fetch it on connect
-ds.rpc('crdt:getState', async () => counter.state());
+ds.rpc.register('crdt:getState', async () => counter.state());
 ```
 
 ### Client — increment from anywhere, state converges
@@ -626,21 +626,24 @@ const http = createServer(app);
 ds.attach(http);
 
 // RPC: save user progress (stored in session, auto-flushed to backend)
-ds.rpc<{ level: number; score: number }, { ok: boolean }>('saveProgress', async (params, ctx) => {
-  ds.setSessionValue(ctx.connection.userId!, 'level', params.level);
-  ds.setSessionValue(ctx.connection.userId!, 'score', params.score);
-  return { ok: true };
-});
+ds.rpc.register<{ level: number; score: number }, { ok: boolean }>(
+  'saveProgress',
+  async (params, ctx) => {
+    ds.sessions.set(ctx.connection.userId!, 'level', params.level);
+    ds.sessions.set(ctx.connection.userId!, 'score', params.score);
+    return { ok: true };
+  },
+);
 
 // RPC: get user progress (restored from persistence on reconnect)
-ds.rpc<void, { level: number; score: number }>('getProgress', async (_params, ctx) => {
-  const level = ds.getSessionValue<number>(ctx.connection.userId!, 'level') ?? 1;
-  const score = ds.getSessionValue<number>(ctx.connection.userId!, 'score') ?? 0;
+ds.rpc.register<void, { level: number; score: number }>('getProgress', async (_params, ctx) => {
+  const level = ds.sessions.get<number>(ctx.connection.userId!, 'level') ?? 1;
+  const score = ds.sessions.get<number>(ctx.connection.userId!, 'score') ?? 0;
   return { level, score };
 });
 
 // Listen for session changes (e.g., for a leaderboard)
-ds.onSessionChange((userId, key, value, version) => {
+ds.sessions.onChange((userId, key, value, version) => {
   console.log(`${userId} changed ${key} to ${value} (v${version})`);
 });
 
@@ -717,7 +720,7 @@ import { createServer } from 'http';
 import {
   DatasoleServer,
   RedisBackend,
-  MemoryRateLimiter,
+  BackendRateLimiter,
   PrometheusExporter,
 } from 'datasole/server';
 
@@ -735,14 +738,14 @@ const ds = new DatasoleServer({
     return { authenticated: true, userId: token, roles: ['user'] };
   },
 
-  // Thread-pool concurrency: 4 worker threads handle connection logic
-  concurrency: { model: 'thread-pool', poolSize: 4 },
+  // Thread-pool executor: 4 worker threads handle connection logic
+  executor: { model: 'thread-pool', poolSize: 4 },
 
   // Redis for state persistence (enables multi-process pub/sub)
   stateBackend: redisBackend,
 
   // Rate limiting: 200 requests/minute per connection
-  rateLimiter: new MemoryRateLimiter(),
+  rateLimiter: new BackendRateLimiter(redisBackend),
   rateLimit: {
     defaultRule: { windowMs: 60_000, maxRequests: 200 },
     rules: {
@@ -763,12 +766,12 @@ ds.attach(http);
 // Expose Prometheus metrics endpoint
 app.get('/metrics', async (_req, res) => {
   const exporter = new PrometheusExporter('datasole');
-  const text = await exporter.export(ds.getMetrics().snapshot());
+  const text = await exporter.export(ds.metrics.snapshot());
   res.type('text/plain').send(text);
 });
 
 // Register your RPC handlers, state, events...
-ds.rpc('ping', async () => ({ pong: Date.now() }));
+ds.rpc.register('ping', async () => ({ pong: Date.now() }));
 
 http.listen(3000);
 console.log('Production datasole server on :3000');
@@ -848,7 +851,7 @@ const ds = new DatasoleServer({
       ? { authenticated: true, userId: name, metadata: { displayName: name } }
       : { authenticated: false };
   },
-  concurrency: { model: 'thread-pool', poolSize: 2 },
+  executor: { model: 'thread-pool', poolSize: 2 },
   session: { flushThreshold: 3, flushIntervalMs: 2000 },
 });
 
@@ -879,7 +882,7 @@ async function syncBoard() {
 syncBoard();
 
 // ------ RPC: add task ------
-ds.rpc<{ title: string }, { id: string }>('addTask', async (params) => {
+ds.rpc.register<{ title: string }, { id: string }>('addTask', async (params) => {
   const id = `task-${Date.now()}`;
   board.tasks.push({ id, title: params.title, column: 'todo' });
   await syncBoard();
@@ -887,7 +890,7 @@ ds.rpc<{ title: string }, { id: string }>('addTask', async (params) => {
 });
 
 // ------ RPC: move task ------
-ds.rpc<{ taskId: string; column: string }, { ok: boolean }>('moveTask', async (params) => {
+ds.rpc.register<{ taskId: string; column: string }, { ok: boolean }>('moveTask', async (params) => {
   const task = board.tasks.find((t) => t.id === params.taskId);
   if (task) task.column = params.column;
   await syncBoard();
@@ -897,18 +900,18 @@ ds.rpc<{ taskId: string; column: string }, { ok: boolean }>('moveTask', async (p
 // ------ CRDT: online user count ------
 const onlineCounter = new PNCounter('server');
 
-ds.on('user:join', () => {
+ds.events.on('user:join', () => {
   onlineCounter.increment();
   ds.broadcast('presence', onlineCounter.state());
 });
 
-ds.on('user:leave', () => {
+ds.events.on('user:leave', () => {
   onlineCounter.decrement();
   ds.broadcast('presence', onlineCounter.state());
 });
 
 // ------ Events: chat ------
-ds.on<{ text: string }>('chat', ({ data }) => {
+ds.events.on<{ text: string }>('chat', ({ data }) => {
   ds.broadcast('chat', { text: data.text, timestamp: Date.now() });
 });
 

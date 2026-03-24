@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import { SyncChannel } from '../../../../src/server/sync';
+import { SyncChannel } from '../../../../src/server/primitives/sync';
 
 describe('SyncChannel', () => {
-  it('flushes immediately with immediate strategy', () => {
+  it('flushes immediately with immediate strategy', async () => {
     const channel = new SyncChannel({
       key: 'test',
       direction: 'server-to-client',
@@ -15,7 +15,7 @@ describe('SyncChannel', () => {
     channel.enqueue([{ op: 'replace', path: '/count', value: 1 }]);
     expect(handler).toHaveBeenCalledTimes(1);
     expect(handler).toHaveBeenCalledWith([{ op: 'replace', path: '/count', value: 1 }]);
-    channel.destroy();
+    await channel.destroy();
   });
 
   it('accumulates with batched strategy', async () => {
@@ -36,10 +36,10 @@ describe('SyncChannel', () => {
       { op: 'replace', path: '/a', value: 1 },
       { op: 'replace', path: '/b', value: 2 },
     ]);
-    channel.destroy();
+    await channel.destroy();
   });
 
-  it('immediate strategy flushes each enqueue independently', () => {
+  it('immediate strategy flushes each enqueue independently', async () => {
     const channel = new SyncChannel({
       key: 'test',
       direction: 'server-to-client',
@@ -51,7 +51,7 @@ describe('SyncChannel', () => {
     channel.enqueue([{ op: 'replace', path: '/a', value: 1 }]);
     channel.enqueue([{ op: 'replace', path: '/b', value: 2 }]);
     expect(handler).toHaveBeenCalledTimes(2);
-    channel.destroy();
+    await channel.destroy();
   });
 
   it('destroy drains pending patches then clears listeners', async () => {
@@ -64,7 +64,7 @@ describe('SyncChannel', () => {
     const handler = vi.fn();
     channel.onFlush(handler);
     channel.enqueue([{ op: 'replace', path: '/a', value: 1 }]);
-    channel.destroy();
+    await channel.destroy();
     expect(handler).toHaveBeenCalledOnce();
     expect(handler).toHaveBeenCalledWith([{ op: 'replace', path: '/a', value: 1 }]);
 
@@ -75,7 +75,7 @@ describe('SyncChannel', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it('enqueue with empty patch array does not flush', () => {
+  it('enqueue with empty patch array does not flush', async () => {
     const channel = new SyncChannel({
       key: 'test',
       direction: 'server-to-client',
@@ -86,10 +86,10 @@ describe('SyncChannel', () => {
     channel.onFlush(handler);
     channel.enqueue([]);
     expect(handler).not.toHaveBeenCalled();
-    channel.destroy();
+    await channel.destroy();
   });
 
-  it('works without a flush handler registered', () => {
+  it('works without a flush handler registered', async () => {
     const channel = new SyncChannel({
       key: 'test',
       direction: 'server-to-client',
@@ -97,6 +97,6 @@ describe('SyncChannel', () => {
       flush: { flushStrategy: 'immediate' },
     });
     expect(() => channel.enqueue([{ op: 'add', path: '/x', value: 1 }])).not.toThrow();
-    channel.destroy();
+    await channel.destroy();
   });
 });

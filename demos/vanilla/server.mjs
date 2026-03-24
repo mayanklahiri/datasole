@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import os from 'os';
 import { DatasoleServer } from 'datasole/server';
 import { createSeededRandom } from '../seeded-random.mjs';
+import { RpcMethod, Event, StateKey } from './shared/contract.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '4000', 10);
@@ -27,27 +28,27 @@ const rng = createSeededRandom();
 // ─── Chat ──────────────────────────────────────────────────────────
 const chatHistory = [];
 
-ds.on('chat:send', (payload) => {
+ds.events.on(Event.ChatSend, (payload) => {
   const { text, username } = payload.data;
   const msg = { id: rng.uuid(), text, username, ts: Date.now() };
   chatHistory.push(msg);
   if (chatHistory.length > 50) chatHistory.shift();
-  ds.setState('chat:messages', [...chatHistory]);
-  ds.broadcast('chat:message', msg);
+  ds.setState(StateKey.ChatMessages, [...chatHistory]);
+  ds.broadcast(Event.ChatMessage, msg);
 });
 
-await ds.setState('chat:messages', chatHistory);
+await ds.setState(StateKey.ChatMessages, chatHistory);
 
 // ─── RPC ───────────────────────────────────────────────────────────
-ds.rpc('randomNumber', async ({ min, max }) => {
+ds.rpc.register(RpcMethod.RandomNumber, async ({ min, max }) => {
   return { value: rng.int(Math.floor(min), Math.floor(max)), generatedAt: Date.now() };
 });
 
 // ─── System metrics broadcast ──────────────────────────────────────
 setInterval(() => {
-  const snap = ds.getMetrics().snapshot();
+  const snap = ds.metrics.snapshot();
   const now = new Date();
-  ds.broadcast('system-metrics', {
+  ds.broadcast(Event.SystemMetrics, {
     uptime: snap.uptime,
     connections: snap.connections,
     messagesIn: snap.messagesIn,

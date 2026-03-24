@@ -29,11 +29,11 @@ const ds = new DatasoleServer();
 const http = createServer();
 ds.attach(http);
 
-ds.rpc<{ email: string }, { valid: boolean }>('validateEmail', async ({ email }) => {
+ds.rpc.register<{ email: string }, { valid: boolean }>('validateEmail', async ({ email }) => {
   return { valid: /^[^@]+@[^@]+\.[^@]+$/.test(email) };
 });
 
-ds.rpc<{ query: string }, { results: string[] }>('search', async ({ query }) => {
+ds.rpc.register<{ query: string }, { results: string[] }>('search', async ({ query }) => {
   // Imagine a database query here
   return { results: [`Result for "${query}"`] };
 });
@@ -215,7 +215,7 @@ http.listen(3000);
 // Shared document: each field is a LWW register
 const doc = new LWWMap<string>('server');
 
-ds.on('doc:op', ({ data }) => {
+ds.events.on('doc:op', ({ data }) => {
   doc.apply(data);
   ds.broadcast('doc:state', doc.state());
 });
@@ -271,21 +271,21 @@ async function syncTodos() {
   await ds.setState('todos', todos);
 }
 
-ds.rpc<{ text: string }, { id: string }>('addTodo', async ({ text }) => {
+ds.rpc.register<{ text: string }, { id: string }>('addTodo', async ({ text }) => {
   const id = `t-${Date.now()}`;
   todos.push({ id, text, done: false });
   await syncTodos();
   return { id };
 });
 
-ds.rpc<{ id: string }, { ok: boolean }>('toggleTodo', async ({ id }) => {
+ds.rpc.register<{ id: string }, { ok: boolean }>('toggleTodo', async ({ id }) => {
   const todo = todos.find((t) => t.id === id);
   if (todo) todo.done = !todo.done;
   await syncTodos();
   return { ok: !!todo };
 });
 
-ds.rpc<{ id: string }, { ok: boolean }>('deleteTodo', async ({ id }) => {
+ds.rpc.register<{ id: string }, { ok: boolean }>('deleteTodo', async ({ id }) => {
   const idx = todos.findIndex((t) => t.id === id);
   if (idx >= 0) todos.splice(idx, 1);
   await syncTodos();
@@ -411,7 +411,7 @@ import { DatasoleServer } from 'datasole/server';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const ds = new DatasoleServer();
-  ds.rpc('ping', async () => ({ pong: Date.now() }));
+  ds.rpc.register('ping', async () => ({ pong: Date.now() }));
   ds.attach(app.getHttpServer());
   await app.listen(3000);
 }

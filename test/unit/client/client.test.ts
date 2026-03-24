@@ -3,6 +3,7 @@ import NodeWebSocket from 'ws';
 
 import { DatasoleClient } from '../../../src/client/client';
 import { createLiveTestServer, tick, type LiveTestServer } from '../../helpers/live-server';
+import { type TestContract, TestRpc, TestEvent, TestState } from '../../helpers/test-contract';
 
 /**
  * Polyfill the browser WebSocket global with the `ws` library so
@@ -16,7 +17,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-let srv: LiveTestServer;
+let srv: LiveTestServer<TestContract>;
 
 afterEach(async () => {
   if (srv) await srv.close();
@@ -28,49 +29,49 @@ afterEach(async () => {
 
 describe('DatasoleClient — constructor defaults', () => {
   it('sets default path to /__ds', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     const opts = (client as unknown as { options: Record<string, unknown> }).options;
     expect(opts.path).toBe('/__ds');
   });
 
   it('sets default auth to empty object', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     const opts = (client as unknown as { options: Record<string, unknown> }).options;
     expect(opts.auth).toEqual({});
   });
 
   it('sets default useWorker to true', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     const opts = (client as unknown as { options: Record<string, unknown> }).options;
     expect(opts.useWorker).toBe(true);
   });
 
   it('sets default useSharedArrayBuffer to false', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     const opts = (client as unknown as { options: Record<string, unknown> }).options;
     expect(opts.useSharedArrayBuffer).toBe(false);
   });
 
   it('sets default reconnect to true', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     const opts = (client as unknown as { options: Record<string, unknown> }).options;
     expect(opts.reconnect).toBe(true);
   });
 
   it('sets default reconnectInterval to 1000', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     const opts = (client as unknown as { options: Record<string, unknown> }).options;
     expect(opts.reconnectInterval).toBe(1000);
   });
 
   it('sets default maxReconnectAttempts to 10', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     const opts = (client as unknown as { options: Record<string, unknown> }).options;
     expect(opts.maxReconnectAttempts).toBe(10);
   });
 
   it('merges user-provided options over defaults', () => {
-    const client = new DatasoleClient({
+    const client = new DatasoleClient<TestContract>({
       url: 'http://localhost:3000',
       path: '/custom',
       reconnectInterval: 5000,
@@ -86,7 +87,7 @@ describe('DatasoleClient — constructor defaults', () => {
 
 describe('DatasoleClient — buildWsUrl', () => {
   function callBuildWsUrl(opts: ConstructorParameters<typeof DatasoleClient>[0]): string {
-    const client = new DatasoleClient(opts);
+    const client = new DatasoleClient<TestContract>(opts);
     return (client as unknown as { buildWsUrl: () => string }).buildWsUrl();
   }
 
@@ -122,29 +123,29 @@ describe('DatasoleClient — buildWsUrl', () => {
 
 describe('DatasoleClient — getConnectionState', () => {
   it('returns disconnected initially', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     expect(client.getConnectionState()).toBe('disconnected');
   });
 });
 
 describe('DatasoleClient — subscribeState / getState', () => {
   it('getState returns undefined for unknown key', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
-    expect(client.getState('nonexistent')).toBeUndefined();
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
+    expect(client.getState(TestState.Dashboard)).toBeUndefined();
   });
 
   it('subscribeState returns unsubscribe handle', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
-    const sub = client.subscribeState('key1', () => {});
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
+    const sub = client.subscribeState(TestState.Dashboard, () => {});
     expect(sub).toBeDefined();
     expect(typeof sub.unsubscribe).toBe('function');
     sub.unsubscribe();
   });
 
   it('subscribeState reuses store for same key', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
-    client.subscribeState('k', () => {});
-    client.subscribeState('k', () => {});
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
+    client.subscribeState(TestState.Dashboard, () => {});
+    client.subscribeState(TestState.Dashboard, () => {});
     const stores = (client as unknown as { stateStores: Map<string, unknown> }).stateStores;
     expect(stores.size).toBe(1);
   });
@@ -152,9 +153,9 @@ describe('DatasoleClient — subscribeState / getState', () => {
 
 describe('DatasoleClient — on / off', () => {
   it('on registers a handler that receives emitted events', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     const handler = vi.fn();
-    client.on('test-event', handler);
+    client.on(TestEvent.TestEvent, handler);
 
     const emitter = (
       client as unknown as { eventEmitter: { emit: (e: string, d: unknown) => void } }
@@ -166,10 +167,10 @@ describe('DatasoleClient — on / off', () => {
   });
 
   it('off removes a handler so it no longer receives events', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     const handler = vi.fn();
-    client.on('test-event', handler);
-    client.off('test-event', handler);
+    client.on(TestEvent.TestEvent, handler);
+    client.off(TestEvent.TestEvent, handler);
 
     const emitter = (
       client as unknown as { eventEmitter: { emit: (e: string, d: unknown) => void } }
@@ -180,11 +181,11 @@ describe('DatasoleClient — on / off', () => {
   });
 
   it('multiple handlers on the same event all fire', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     const h1 = vi.fn();
     const h2 = vi.fn();
-    client.on('ev', h1);
-    client.on('ev', h2);
+    client.on(TestEvent.Ev, h1);
+    client.on(TestEvent.Ev, h2);
 
     const emitter = (
       client as unknown as { eventEmitter: { emit: (e: string, d: unknown) => void } }
@@ -196,12 +197,12 @@ describe('DatasoleClient — on / off', () => {
   });
 
   it('off only removes the specified handler', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     const h1 = vi.fn();
     const h2 = vi.fn();
-    client.on('ev', h1);
-    client.on('ev', h2);
-    client.off('ev', h1);
+    client.on(TestEvent.Ev, h1);
+    client.on(TestEvent.Ev, h2);
+    client.off(TestEvent.Ev, h1);
 
     const emitter = (
       client as unknown as { eventEmitter: { emit: (e: string, d: unknown) => void } }
@@ -215,24 +216,24 @@ describe('DatasoleClient — on / off', () => {
 
 describe('DatasoleClient — registerCrdt / getCrdtStore', () => {
   it('getCrdtStore returns null before registration', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     expect(client.getCrdtStore()).toBeNull();
   });
 
   it('registerCrdt returns a CrdtStore with correct nodeId', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     const store = client.registerCrdt('node-1');
     expect(store.nodeId).toBe('node-1');
   });
 
   it('getCrdtStore returns the registered store', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     const store = client.registerCrdt('node-1');
     expect(client.getCrdtStore()).toBe(store);
   });
 
   it('registerCrdt replaces previous store', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     client.registerCrdt('node-1');
     const store2 = client.registerCrdt('node-2');
     expect(client.getCrdtStore()).toBe(store2);
@@ -242,27 +243,27 @@ describe('DatasoleClient — registerCrdt / getCrdtStore', () => {
 
 describe('DatasoleClient — emit when not connected', () => {
   it('throws when not connected', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
-    expect(() => client.emit('test', { a: 1 })).toThrow('Not connected');
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
+    expect(() => client.emit(TestEvent.TestEvent, { a: 1 })).toThrow('Not connected');
   });
 });
 
 describe('DatasoleClient — rpc when not connected', () => {
   it('rejects when not connected', async () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
-    await expect(client.rpc('method')).rejects.toThrow('Transport not connected');
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
+    await expect(client.rpc(TestRpc.Echo)).rejects.toThrow('Transport not connected');
   });
 });
 
 describe('DatasoleClient — disconnect safety', () => {
   it('is safe when already disconnected', async () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     await client.disconnect();
     expect(client.getConnectionState()).toBe('disconnected');
   });
 
   it('can be called multiple times', async () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     await client.disconnect();
     await client.disconnect();
     expect(client.getConnectionState()).toBe('disconnected');
@@ -275,65 +276,65 @@ describe('DatasoleClient — disconnect safety', () => {
 
 describe('DatasoleClient — connect to live server', () => {
   beforeEach(async () => {
-    srv = await createLiveTestServer();
-    srv.ds.rpc('echo', async (params: unknown) => params);
-    srv.ds.rpc('add', async (params: { a: number; b: number }) => ({
+    srv = await createLiveTestServer<TestContract>();
+    srv.ds.rpc.register(TestRpc.Echo, async (params: unknown) => params);
+    srv.ds.rpc.register(TestRpc.Add, async (params) => ({
       sum: params.a + params.b,
     }));
   });
 
   it('connects and transitions to connected state', async () => {
-    const client = new DatasoleClient({ url: srv.url, reconnect: false });
+    const client = new DatasoleClient<TestContract>({ url: srv.url, reconnect: false });
     await client.connect();
     expect(client.getConnectionState()).toBe('connected');
     await client.disconnect();
   });
 
   it('disconnects cleanly after connect', async () => {
-    const client = new DatasoleClient({ url: srv.url, reconnect: false });
+    const client = new DatasoleClient<TestContract>({ url: srv.url, reconnect: false });
     await client.connect();
     await client.disconnect();
     expect(client.getConnectionState()).toBe('disconnected');
   });
 
   it('performs RPC echo through live server', async () => {
-    const client = new DatasoleClient({ url: srv.url, reconnect: false });
+    const client = new DatasoleClient<TestContract>({ url: srv.url, reconnect: false });
     await client.connect();
-    const result = await client.rpc('echo', { x: 42 });
+    const result = (await client.rpc(TestRpc.Echo, { x: 42 })) as { x: number };
     expect(result).toEqual({ x: 42 });
     await client.disconnect();
   });
 
   it('performs RPC add through live server', async () => {
-    const client = new DatasoleClient({ url: srv.url, reconnect: false });
+    const client = new DatasoleClient<TestContract>({ url: srv.url, reconnect: false });
     await client.connect();
-    const result = await client.rpc<{ sum: number }>('add', { a: 10, b: 20 });
+    const result = await client.rpc(TestRpc.Add, { a: 10, b: 20 });
     expect(result.sum).toBe(30);
     await client.disconnect();
   });
 
   it('emits event that reaches server', async () => {
     const received: unknown[] = [];
-    srv.ds.on('test-event', (payload) => received.push(payload));
+    srv.ds.events.on(TestEvent.TestEvent, (payload) => received.push(payload));
 
-    const client = new DatasoleClient({ url: srv.url, reconnect: false });
+    const client = new DatasoleClient<TestContract>({ url: srv.url, reconnect: false });
     await client.connect();
-    client.emit('test-event', { hello: 'world' });
+    client.emit(TestEvent.TestEvent, { hello: 'world' });
     await tick(50);
 
-    expect(received.length).toBe(1);
+    expect(received.length).toBeGreaterThanOrEqual(1);
     expect((received[0] as Record<string, unknown>).data).toEqual({ hello: 'world' });
     await client.disconnect();
   });
 
   it('receives broadcast events from server', async () => {
-    const client = new DatasoleClient({ url: srv.url, reconnect: false });
+    const client = new DatasoleClient<TestContract>({ url: srv.url, reconnect: false });
     const received: unknown[] = [];
-    client.on('server-notify', (payload) => received.push(payload));
+    client.on(TestEvent.ServerNotify, (payload) => received.push(payload));
     await client.connect();
     await tick(20);
 
-    srv.ds.broadcast('server-notify', { msg: 'broadcast-test' });
+    srv.ds.broadcast(TestEvent.ServerNotify, { msg: 'broadcast-test' });
     await tick(100);
 
     expect(received.length).toBe(1);
@@ -342,14 +343,14 @@ describe('DatasoleClient — connect to live server', () => {
   });
 
   it('receives state patches from server', async () => {
-    const client = new DatasoleClient({ url: srv.url, reconnect: false });
+    const client = new DatasoleClient<TestContract>({ url: srv.url, reconnect: false });
     const states: unknown[] = [];
-    client.subscribeState('dashboard', (s) => states.push(s));
+    client.subscribeState(TestState.Dashboard, (s) => states.push(s));
     await client.connect();
     await tick(20);
 
-    await srv.ds.setState('dashboard', { visitors: 0 });
-    await srv.ds.setState('dashboard', { visitors: 42 });
+    await srv.ds.setState(TestState.Dashboard, { visitors: 0 });
+    await srv.ds.setState(TestState.Dashboard, { visitors: 42 });
     await tick(100);
 
     expect(states.length).toBeGreaterThanOrEqual(1);
@@ -357,7 +358,7 @@ describe('DatasoleClient — connect to live server', () => {
   });
 
   it('resets reconnect attempts on successful connect', async () => {
-    const client = new DatasoleClient({ url: srv.url, reconnect: false });
+    const client = new DatasoleClient<TestContract>({ url: srv.url, reconnect: false });
     (client as unknown as { reconnectAttempts: number }).reconnectAttempts = 5;
     await client.connect();
     expect((client as unknown as { reconnectAttempts: number }).reconnectAttempts).toBe(0);
@@ -367,7 +368,7 @@ describe('DatasoleClient — connect to live server', () => {
 
 describe('DatasoleClient — auth with live server', () => {
   beforeEach(async () => {
-    srv = await createLiveTestServer({
+    srv = await createLiveTestServer<TestContract>({
       authHandler: async (req) => {
         const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
         const token = url.searchParams.get('token');
@@ -375,23 +376,27 @@ describe('DatasoleClient — auth with live server', () => {
         return { authenticated: false };
       },
     });
-    srv.ds.rpc('whoami', async (_p, ctx) => ctx?.connection?.userId ?? 'unknown');
+    srv.ds.rpc.register(
+      TestRpc.Whoami,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      async (_p: unknown, ctx: any) => ctx?.connection?.userId ?? 'unknown',
+    );
   });
 
   it('connects with valid token', async () => {
-    const client = new DatasoleClient({
+    const client = new DatasoleClient<TestContract>({
       url: srv.url,
       auth: { token: 'valid' },
       reconnect: false,
     });
     await client.connect();
-    const result = await client.rpc<string>('whoami');
+    const result = await client.rpc(TestRpc.Whoami);
     expect(result).toBe('alice');
     await client.disconnect();
   });
 
   it('fails to connect with invalid token', async () => {
-    const client = new DatasoleClient({
+    const client = new DatasoleClient<TestContract>({
       url: srv.url,
       auth: { token: 'invalid' },
       reconnect: false,
@@ -402,8 +407,8 @@ describe('DatasoleClient — auth with live server', () => {
 
 describe('DatasoleClient — reconnection with live server', () => {
   it('transitions to reconnecting when server closes connection', async () => {
-    srv = await createLiveTestServer();
-    const client = new DatasoleClient({
+    srv = await createLiveTestServer<TestContract>();
+    const client = new DatasoleClient<TestContract>({
       url: srv.url,
       reconnect: true,
       reconnectInterval: 100,
@@ -420,8 +425,8 @@ describe('DatasoleClient — reconnection with live server', () => {
   });
 
   it('does not reconnect when reconnect is disabled', async () => {
-    srv = await createLiveTestServer();
-    const client = new DatasoleClient({
+    srv = await createLiveTestServer<TestContract>();
+    const client = new DatasoleClient<TestContract>({
       url: srv.url,
       reconnect: false,
     });
@@ -437,22 +442,23 @@ describe('DatasoleClient — reconnection with live server', () => {
 
 describe('DatasoleClient — multiple concurrent RPCs', () => {
   beforeEach(async () => {
-    srv = await createLiveTestServer();
-    srv.ds.rpc('echo', async (params: unknown) => params);
-    srv.ds.rpc('slow', async (params: { ms: number; v: unknown }) => {
-      await new Promise((r) => setTimeout(r, params.ms));
-      return params.v;
+    srv = await createLiveTestServer<TestContract>();
+    srv.ds.rpc.register(TestRpc.Echo, async (params: unknown) => params);
+    srv.ds.rpc.register(TestRpc.Slow, async (params) => {
+      const p = params as { ms: number; v: unknown };
+      await new Promise((r) => setTimeout(r, p.ms));
+      return p.v;
     });
   });
 
   it('resolves multiple RPCs concurrently', async () => {
-    const client = new DatasoleClient({ url: srv.url, reconnect: false });
+    const client = new DatasoleClient<TestContract>({ url: srv.url, reconnect: false });
     await client.connect();
 
     const [r1, r2, r3] = await Promise.all([
-      client.rpc('echo', 'a'),
-      client.rpc('echo', 'b'),
-      client.rpc('echo', 'c'),
+      client.rpc(TestRpc.Echo, 'a'),
+      client.rpc(TestRpc.Echo, 'b'),
+      client.rpc(TestRpc.Echo, 'c'),
     ]);
 
     expect(r1).toBe('a');

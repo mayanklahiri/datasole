@@ -6,11 +6,12 @@ import { createServer } from 'http';
 import { WebSocket } from 'ws';
 
 import { DatasoleServer } from '../../../src/server/server';
-import { MemoryBackend } from '../../../src/server/state/backends/memory';
+import { MemoryBackend } from '../../../src/server/backends/memory';
 import { compress } from '../../../src/shared/codec/compression';
 import { encodeFrame, FRAME_HEADER_SIZE, Opcode } from '../../../src/shared/protocol';
 import { serialize } from '../../../src/shared/codec/serialization';
 import { ServerHarness } from '../helpers/server-harness';
+import { TestRpc, type TestContract } from '../../helpers/test-contract';
 
 const harness = new ServerHarness();
 
@@ -111,11 +112,11 @@ test.describe('Security', () => {
 
   test('connection limit works', async () => {
     const httpServer = createServer();
-    const ds = new DatasoleServer({
+    const ds = new DatasoleServer<TestContract>({
       stateBackend: new MemoryBackend(),
       maxConnections: 2,
     });
-    ds.rpc('ping', async () => 'pong');
+    ds.rpc.register(TestRpc.Ping, async () => 'pong');
     ds.attach(httpServer);
 
     await new Promise<void>((resolve) => httpServer.listen(0, resolve));
@@ -142,7 +143,7 @@ test.describe('Security', () => {
 
   test('auth handler exception denies access', async () => {
     const httpServer = createServer();
-    const ds = new DatasoleServer({
+    const ds = new DatasoleServer<TestContract>({
       stateBackend: new MemoryBackend(),
       authHandler: async () => {
         throw new Error('Auth service down');

@@ -5,8 +5,9 @@ import { FallbackTransport } from '../../../src/client/transport/fallback-transp
 import { serialize } from '../../../src/shared/codec';
 import { Opcode } from '../../../src/shared/protocol';
 import { createLiveTestServer, tick, type LiveTestServer } from '../../helpers/live-server';
+import { TestRpc, type TestContract } from '../../helpers/test-contract';
 
-let srv: LiveTestServer;
+let srv: LiveTestServer<TestContract>;
 
 beforeEach(() => {
   vi.stubGlobal('WebSocket', NodeWebSocket);
@@ -19,8 +20,8 @@ afterEach(async () => {
 
 describe('FallbackTransport (live server)', () => {
   beforeEach(async () => {
-    srv = await createLiveTestServer();
-    srv.ds.rpc('echo', async (params: unknown) => params);
+    srv = await createLiveTestServer<TestContract>();
+    srv.ds.rpc.register(TestRpc.Echo, async (params: unknown) => params);
   });
 
   describe('connect', () => {
@@ -132,7 +133,7 @@ describe('FallbackTransport (live server)', () => {
       expect(closeCode).toBeGreaterThanOrEqual(1000);
 
       // Prevent afterEach from double-closing
-      srv = undefined as unknown as LiveTestServer;
+      srv = undefined as unknown as LiveTestServer<TestContract>;
     });
   });
 

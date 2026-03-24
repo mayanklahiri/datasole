@@ -9,15 +9,16 @@ import WebSocket from 'ws';
 
 import { compress, decompress, isCompressed, deserialize, serialize } from '../../src/shared/codec';
 import { COMPRESSION_THRESHOLD } from '../../src/shared/constants';
+import type { DatasoleContract } from '../../src/shared/contract';
 import { decodeFrame, encodeFrame, Opcode } from '../../src/shared/protocol';
 import type { Frame } from '../../src/shared/protocol';
 import { DatasoleServer, type DatasoleServerOptions } from '../../src/server/server';
 
 export { Opcode };
 
-export interface LiveTestServer {
+export interface LiveTestServer<T extends DatasoleContract = DatasoleContract> {
   httpServer: Server;
-  ds: DatasoleServer;
+  ds: DatasoleServer<T>;
   port: number;
   url: string;
   wsUrl: string;
@@ -25,11 +26,11 @@ export interface LiveTestServer {
   close(): Promise<void>;
 }
 
-export async function createLiveTestServer(
+export async function createLiveTestServer<T extends DatasoleContract>(
   options?: DatasoleServerOptions,
-): Promise<LiveTestServer> {
+): Promise<LiveTestServer<T>> {
   const httpServer = createServer();
-  const ds = new DatasoleServer(options);
+  const ds = new DatasoleServer<T>(options);
   ds.attach(httpServer);
 
   const port = await new Promise<number>((resolve) => {

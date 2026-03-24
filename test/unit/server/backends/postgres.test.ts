@@ -20,7 +20,7 @@ vi.mock('pg', () => {
   };
 });
 
-import { PostgresBackend } from '../../../../src/server/state/backends/postgres';
+import { PostgresBackend } from '../../../../src/server/backends/postgres';
 
 describe('PostgresBackend', () => {
   beforeEach(() => {

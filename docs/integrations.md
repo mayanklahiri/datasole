@@ -364,7 +364,7 @@ const ds = new DatasoleServer({
   },
 });
 
-ds.rpc('getData', async () => ({ items: [] }));
+ds.rpc.register('getData', async () => ({ items: [] }));
 
 const httpServer = createServer(app);
 ds.attach(httpServer);
@@ -397,7 +397,7 @@ async function bootstrap() {
   });
 
   // Register RPC handlers, events, state, etc.
-  ds.rpc('getItems', async () => ({ items: [] }));
+  ds.rpc.register('getItems', async () => ({ items: [] }));
 
   ds.attach(httpServer);
 
@@ -460,8 +460,8 @@ import { DatasoleServer } from 'datasole/server';
 @Injectable()
 export class ItemsService {
   constructor(private readonly ds: DatasoleServer) {
-    this.ds.rpc('getItems', async () => this.findAll());
-    this.ds.rpc('createItem', async (params: { name: string }) => this.create(params));
+    this.ds.rpc.register('getItems', async () => this.findAll());
+    this.ds.rpc.register('createItem', async (params: { name: string }) => this.create(params));
   }
 
   findAll() {
@@ -483,7 +483,7 @@ import { DatasoleServer } from 'datasole/server';
 
 const ds = new DatasoleServer();
 
-ds.rpc('ping', async () => ({ pong: Date.now() }));
+ds.rpc.register('ping', async () => ({ pong: Date.now() }));
 
 const httpServer = createServer((req, res) => {
   if (req.url === '/health') {
@@ -519,7 +519,7 @@ const ds = new DatasoleServer({
   },
 });
 
-ds.rpc('getUser', async (params: { id: string }) => {
+ds.rpc.register('getUser', async (params: { id: string }) => {
   // Use AdonisJS services via the IoC container
   const UserService = await app.container.make('UserService');
   return UserService.find(params.id);
@@ -625,7 +625,7 @@ export interface AddResult {
 
 // server
 import type { AddParams, AddResult } from '../shared/types';
-ds.rpc<AddParams, AddResult>('add', async (params) => {
+ds.rpc.register<AddParams, AddResult>('add', async (params) => {
   return { sum: params.a + params.b };
 });
 

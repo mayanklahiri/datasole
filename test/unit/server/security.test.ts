@@ -4,9 +4,10 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { EventBus } from '../../../src/server/events/event-bus';
-import { MemoryRateLimiter } from '../../../src/server/rate-limit/memory-limiter';
-import { MemoryBackend } from '../../../src/server/state/backends/memory';
+import { MemoryBackend } from '../../../src/server/backends/memory';
+import { EventBus } from '../../../src/server/primitives/events/event-bus';
+import { BackendRateLimiter } from '../../../src/server/primitives/rate-limit/backend-limiter';
+import type { DatasoleContract } from '../../../src/shared/contract';
 
 describe('MemoryBackend security', () => {
   it('publish with key "error" does not crash (no EventEmitter special-casing)', async () => {
@@ -34,36 +35,36 @@ describe('MemoryBackend security', () => {
     expect(good).toHaveBeenCalledWith('test', 'data');
   });
 
-  it('unsubscribe cleans up empty sets', () => {
+  it('unsubscribe cleans up empty sets', async () => {
     const backend = new MemoryBackend();
     const unsub = backend.subscribe('key', () => {});
     unsub();
     // Should not throw on subsequent operations
-    expect(() => backend.publish('key', 'x')).not.toThrow();
+    await expect(backend.publish('key', 'x')).resolves.toBeUndefined();
   });
 });
 
-describe('MemoryRateLimiter lifecycle', () => {
-  let limiter: MemoryRateLimiter;
+describe('BackendRateLimiter lifecycle', () => {
+  let limiter: BackendRateLimiter;
 
   beforeEach(() => {
-    limiter = new MemoryRateLimiter();
+    limiter = new BackendRateLimiter(new MemoryBackend());
   });
 
-  afterEach(() => {
-    limiter.destroy();
+  afterEach(async () => {
+    await limiter.destroy();
   });
 
-  it('destroy clears interval and windows', () => {
-    limiter.destroy();
+  it('destroy clears interval and windows', async () => {
+    await limiter.destroy();
     // Should not throw when destroyed twice
-    expect(() => limiter.destroy()).not.toThrow();
+    await expect(limiter.destroy()).resolves.toBeUndefined();
   });
 });
 
 describe('EventBus handler isolation', () => {
   it('throwing handler does not prevent other handlers from running', () => {
-    const bus = new EventBus();
+    const bus = new EventBus<DatasoleContract>(new MemoryBackend());
     const good = vi.fn();
     bus.on('test', () => {
       throw new Error('handler crash');

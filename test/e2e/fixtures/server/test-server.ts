@@ -3,13 +3,19 @@ import { createServer } from 'http';
 import path from 'path';
 
 import { DatasoleServer } from '../../../../src/server/server';
-import { MemoryBackend } from '../../../../src/server/state/backends/memory';
+import { MemoryBackend } from '../../../../src/server/backends/memory';
 import { PNCounter } from '../../../../src/shared/crdt/pn-counter';
+import {
+  type TestContract,
+  TestRpc,
+  TestEvent,
+  TestState,
+} from '../../../../test/helpers/test-contract';
 
 export interface TestServerResult {
   server: ReturnType<typeof createServer>;
   port: number;
-  ds: DatasoleServer;
+  ds: DatasoleServer<TestContract>;
   logs: string[];
 }
 
@@ -36,7 +42,7 @@ export async function startTestServer(): Promise<TestServerResult> {
 
   const httpServer = createServer(app);
 
-  const ds = new DatasoleServer({
+  const ds = new DatasoleServer<TestContract>({
     stateBackend: new MemoryBackend(),
     authHandler: async (req) => {
       const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
@@ -62,38 +68,38 @@ export async function startTestServer(): Promise<TestServerResult> {
   });
 
   // --- RPC handlers ---
-  ds.rpc('echo', async (params) => {
+  ds.rpc.register(TestRpc.Echo, async (params) => {
     log(`RPC echo: ${JSON.stringify(params)}`);
     return params;
   });
 
-  ds.rpc('add', async (params: { a: number; b: number }) => {
+  ds.rpc.register(TestRpc.Add, async (params: { a: number; b: number }) => {
     log(`RPC add: ${params.a} + ${params.b}`);
     return { sum: params.a + params.b };
   });
 
-  ds.rpc('error', async () => {
+  ds.rpc.register(TestRpc.Error, async () => {
     throw new Error('Intentional test error');
   });
 
-  ds.rpc('slow', async (params: { ms: number }) => {
+  ds.rpc.register(TestRpc.Slow, async (params: { ms: number }) => {
     await new Promise((resolve) => setTimeout(resolve, params.ms));
     return { waited: params.ms };
   });
 
   // --- Session RPCs ---
-  ds.rpc('saveProgress', async (params: { level: number; score: number }, ctx) => {
+  ds.rpc.register(TestRpc.SaveProgress, async (params: { level: number; score: number }, ctx) => {
     const uid = ctx?.connection?.userId ?? 'anon';
-    ds.setSessionValue(uid, 'level', params.level);
-    ds.setSessionValue(uid, 'score', params.score);
+    ds.sessions.set(uid, 'level', params.level);
+    ds.sessions.set(uid, 'score', params.score);
     log(`Session saveProgress: ${uid} level=${params.level} score=${params.score}`);
     return { ok: true };
   });
 
-  ds.rpc('getProgress', async (_params, ctx) => {
+  ds.rpc.register(TestRpc.GetProgress, async (_params, ctx) => {
     const uid = ctx?.connection?.userId ?? 'anon';
-    const level = ds.getSessionValue<number>(uid, 'level') ?? 1;
-    const score = ds.getSessionValue<number>(uid, 'score') ?? 0;
+    const level = ds.sessions.get<number>(uid, 'level') ?? 1;
+    const score = ds.sessions.get<number>(uid, 'score') ?? 0;
     log(`Session getProgress: ${uid} level=${level} score=${score}`);
     return { level, score };
   });
@@ -105,11 +111,11 @@ export async function startTestServer(): Promise<TestServerResult> {
   };
   async function syncBoard() {
     // Deep clone to avoid mutation-in-place making diff empty
-    await ds.setState('board', JSON.parse(JSON.stringify(board)));
+    await ds.setState(TestState.Board, JSON.parse(JSON.stringify(board)));
   }
   syncBoard();
 
-  ds.rpc('addTask', async (params: { title: string }) => {
+  ds.rpc.register(TestRpc.AddTask, async (params: { title: string }) => {
     const id = `task-${board.tasks.length + 1}`;
     board.tasks.push({ id, title: params.title, column: 'todo' });
     await syncBoard();
@@ -117,7 +123,7 @@ export async function startTestServer(): Promise<TestServerResult> {
     return { id };
   });
 
-  ds.rpc('moveTask', async (params: { taskId: string; column: string }) => {
+  ds.rpc.register(TestRpc.MoveTask, async (params: { taskId: string; column: string }) => {
     const task = board.tasks.find((t) => t.id === params.taskId);
     if (task) task.column = params.column;
     await syncBoard();
@@ -128,14 +134,14 @@ export async function startTestServer(): Promise<TestServerResult> {
   // --- CRDT: shared counter ---
   const counter = new PNCounter('server');
 
-  ds.on('crdt:op', (payload) => {
+  ds.events.on(TestEvent.CrdtOp, (payload) => {
     log(`CRDT op: ${JSON.stringify(payload.data)}`);
     counter.apply(payload.data);
-    ds.broadcast('crdt:state', counter.state());
+    ds.broadcast(TestEvent.CrdtState, counter.state());
   });
 
-  ds.on('crdt:get', () => {
-    ds.broadcast('crdt:state', counter.state());
+  ds.events.on(TestEvent.CrdtGet, () => {
+    ds.broadcast(TestEvent.CrdtState, counter.state());
   });
 
   // --- Sync channels ---
@@ -154,55 +160,61 @@ export async function startTestServer(): Promise<TestServerResult> {
   });
 
   // RPC to trigger sync channel updates
-  ds.rpc('triggerAlert', async (params: { message: string }) => {
+  ds.rpc.register(TestRpc.TriggerAlert, async (params: { message: string }) => {
     alertChannel.enqueue([{ op: 'replace', path: '/latest', value: params.message }]);
     log(`SyncChannel alert: ${params.message}`);
     return { ok: true };
   });
 
-  ds.rpc('pushMetric', async (params: { cpu: number }) => {
+  ds.rpc.register(TestRpc.PushMetric, async (params: { cpu: number }) => {
     metricsChannel.enqueue([{ op: 'replace', path: '/cpu', value: params.cpu }]);
     log(`SyncChannel metric: cpu=${params.cpu}`);
     return { ok: true };
   });
 
   // --- Benchmark RPCs ---
-  ds.rpc('startBroadcastFlood', async (params: { durationMs: number; intervalMs?: number }) => {
-    const end = Date.now() + params.durationMs;
-    const interval = params.intervalMs ?? 1;
-    let count = 0;
-    const tick = () => {
-      if (Date.now() >= end) return;
-      ds.broadcast('bench:event', { seq: count++, ts: Date.now() });
-      setTimeout(tick, interval);
-    };
-    tick();
-    log(`Benchmark: broadcasting for ${params.durationMs}ms`);
-    return { ok: true };
-  });
+  ds.rpc.register(
+    TestRpc.StartBroadcastFlood,
+    async (params: { durationMs: number; intervalMs?: number }) => {
+      const end = Date.now() + params.durationMs;
+      const interval = params.intervalMs ?? 1;
+      let count = 0;
+      const tick = () => {
+        if (Date.now() >= end) return;
+        ds.broadcast(TestEvent.BenchEvent, { seq: count++, ts: Date.now() });
+        setTimeout(tick, interval);
+      };
+      tick();
+      log(`Benchmark: broadcasting for ${params.durationMs}ms`);
+      return { ok: true };
+    },
+  );
 
   let benchStateCounter = 0;
-  ds.rpc('startStateMutationFlood', async (params: { durationMs: number; intervalMs?: number }) => {
-    const end = Date.now() + params.durationMs;
-    const interval = params.intervalMs ?? 5;
-    const tick = async () => {
-      if (Date.now() >= end) return;
-      benchStateCounter++;
-      await ds.setState('benchState', {
-        counter: benchStateCounter,
-        ts: Date.now(),
-        payload: `item-${benchStateCounter}`,
-      });
-      setTimeout(tick, interval);
-    };
-    void tick();
-    log(`Benchmark: mutating state for ${params.durationMs}ms`);
-    return { ok: true };
-  });
+  ds.rpc.register(
+    TestRpc.StartStateMutationFlood,
+    async (params: { durationMs: number; intervalMs?: number }) => {
+      const end = Date.now() + params.durationMs;
+      const interval = params.intervalMs ?? 5;
+      const tick = async () => {
+        if (Date.now() >= end) return;
+        benchStateCounter++;
+        await ds.setState(TestState.BenchState, {
+          counter: benchStateCounter,
+          ts: Date.now(),
+          payload: `item-${benchStateCounter}`,
+        });
+        setTimeout(tick, interval);
+      };
+      void tick();
+      log(`Benchmark: mutating state for ${params.durationMs}ms`);
+      return { ok: true };
+    },
+  );
 
   // --- Binary frame streaming benchmark ---
-  ds.rpc(
-    'startBinaryFrameFlood',
+  ds.rpc.register(
+    TestRpc.StartBinaryFrameFlood,
     async (params: { durationMs: number; frameSizeBytes: number }) => {
       const end = Date.now() + params.durationMs;
       let count = 0;
@@ -214,7 +226,7 @@ export async function startTestServer(): Promise<TestServerResult> {
         // Overwrite first 8 bytes with sequence + timestamp for realism
         frameData.writeUInt32BE(count, 0);
         frameData.writeUInt32BE(Date.now() & 0xffffffff, 4);
-        ds.broadcast('bench:binary-frame', {
+        ds.broadcast(TestEvent.BenchBinaryFrame, {
           seq: count++,
           frame: Array.from(frameData.subarray(0, Math.min(params.frameSizeBytes, 256))),
           size: params.frameSizeBytes,
@@ -228,13 +240,13 @@ export async function startTestServer(): Promise<TestServerResult> {
   );
 
   // --- RPC with large JSON payload benchmark ---
-  ds.rpc('echoLargeJson', async (params: { payload: unknown }) => {
+  ds.rpc.register(TestRpc.EchoLargeJson, async (params: { payload: unknown }) => {
     return params;
   });
 
   // Heavy-payload flood: sends large JSON events at max rate to stress client decode/decompress
-  ds.rpc(
-    'startHeavyPayloadFlood',
+  ds.rpc.register(
+    TestRpc.StartHeavyPayloadFlood,
     async (params: { durationMs: number; payloadSizeKb?: number }) => {
       const end = Date.now() + params.durationMs;
       let count = 0;
@@ -242,7 +254,7 @@ export async function startTestServer(): Promise<TestServerResult> {
       const filler = 'x'.repeat(sizeKb * 1024);
       const tick = () => {
         if (Date.now() >= end) return;
-        ds.broadcast('bench:heavy-payload', {
+        ds.broadcast(TestEvent.BenchHeavyPayload, {
           seq: count++,
           ts: Date.now(),
           data: filler,
@@ -257,8 +269,8 @@ export async function startTestServer(): Promise<TestServerResult> {
   );
 
   // --- Two-way low-latency echo (game tick / trade confirm) ---
-  ds.on('bench:game-tick', (payload) => {
-    ds.broadcast('bench:game-state', {
+  ds.events.on(TestEvent.BenchGameTick, (payload) => {
+    ds.broadcast(TestEvent.BenchGameState, {
       seq: payload.data.seq,
       ack: true,
       ts: Date.now(),
@@ -266,15 +278,15 @@ export async function startTestServer(): Promise<TestServerResult> {
   });
 
   // --- Events ---
-  ds.on('client-ping', (payload) => {
+  ds.events.on(TestEvent.ClientPing, (payload) => {
     log(`Event client-ping: ${JSON.stringify(payload.data)}`);
-    ds.broadcast('server-pong', { echo: payload.data });
+    ds.broadcast(TestEvent.ServerPong, { echo: payload.data });
   });
 
   let chatSeq = 0;
-  ds.on('chat:send', (payload) => {
+  ds.events.on(TestEvent.ChatSend, (payload) => {
     log(`Event chat:send: ${JSON.stringify(payload.data)}`);
-    ds.broadcast('chat:message', { text: payload.data.text, seq: ++chatSeq });
+    ds.broadcast(TestEvent.ChatMessage, { text: payload.data.text, seq: ++chatSeq });
   });
 
   // Server logs endpoint

@@ -1,10 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import { EventBus } from '../../../src/server/events/event-bus';
+import { MemoryBackend } from '../../../src/server/backends/memory';
+import { EventBus } from '../../../src/server/primitives/events/event-bus';
+import type { DatasoleContract } from '../../../src/shared/contract';
 
 describe('EventBus', () => {
   it('on + emit invokes handler with event, data, timestamp', () => {
-    const bus = new EventBus();
+    const bus = new EventBus<DatasoleContract>(new MemoryBackend());
     const handler = vi.fn();
     bus.on('evt', handler);
     bus.emit('evt', { n: 1 });
@@ -16,7 +18,7 @@ describe('EventBus', () => {
   });
 
   it('off removes handler', () => {
-    const bus = new EventBus();
+    const bus = new EventBus<DatasoleContract>(new MemoryBackend());
     const handler = vi.fn();
     bus.on('evt', handler);
     bus.off('evt', handler);
@@ -25,7 +27,7 @@ describe('EventBus', () => {
   });
 
   it('multiple handlers all run', () => {
-    const bus = new EventBus();
+    const bus = new EventBus<DatasoleContract>(new MemoryBackend());
     const a = vi.fn();
     const b = vi.fn();
     bus.on('x', a);
@@ -36,7 +38,7 @@ describe('EventBus', () => {
   });
 
   it('emit with no handlers does not throw', () => {
-    const bus = new EventBus();
+    const bus = new EventBus<DatasoleContract>(new MemoryBackend());
     expect(() => bus.emit('missing', null)).not.toThrow();
   });
 });

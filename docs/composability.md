@@ -33,11 +33,11 @@ All primitives multiplex over the same binary WebSocket connection via opcodes i
 import { PNCounter } from 'datasole';
 
 // Server — all on the same DatasoleServer instance
-ds.rpc('addTask', handler); // RPC
+ds.rpc.register('addTask', handler); // RPC
 ds.broadcast('notification', data); // Server event
-ds.on('typing', handler); // Client event
+ds.events.on('typing', handler); // Client event
 await ds.setState('board', board); // Live state
-ds.registerCrdt('votes', new PNCounter('server')); // CRDT
+ds.crdt.registerByType('votes', new PNCounter('server')); // CRDT
 ds.createSyncChannel({
   key: 'cursors',
   direction: 'server-to-client',
@@ -69,7 +69,7 @@ The server owns a state tree. The client subscribes to diffs. When the user acts
 
 ```typescript
 // Server
-ds.rpc('toggleDone', async ({ id }) => {
+ds.rpc.register('toggleDone', async ({ id }) => {
   const todo = todos.find((t) => t.id === id);
   if (todo) todo.done = !todo.done;
   await ds.setState('todos', todos);
@@ -88,7 +88,7 @@ Clients fire chat messages as events. The server broadcasts them to everyone. Se
 
 ```typescript
 // Server
-ds.on('chat', ({ data }) => {
+ds.events.on('chat', ({ data }) => {
   ds.broadcast('chat', { user: data.user, text: data.text });
 });
 
@@ -107,8 +107,8 @@ Shared counters for voting (CRDT convergence), a server-owned task board (live s
 import { PNCounter } from 'datasole';
 
 // Server
-ds.registerCrdt('votes:task-1', new PNCounter('server'));
-ds.rpc('moveTask', async ({ id, column }) => {
+ds.crdt.registerByType('votes:task-1', new PNCounter('server'));
+ds.rpc.register('moveTask', async ({ id, column }) => {
   board[id].column = column;
   await ds.setState('board', board);
 });
@@ -139,7 +139,7 @@ ds.createSyncChannel({
   mode: 'json-patch',
   flush: { flushStrategy: 'batched', batchIntervalMs: 1000, maxBatchSize: 50 },
 });
-ds.on('pageview', async ({ data }) => {
+ds.events.on('pageview', async ({ data }) => {
   stats.pageviews++;
   await ds.setState('analytics', stats); // routed through sync channel
 });

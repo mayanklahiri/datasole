@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import { SyncChannel } from '../../../../src/server/sync';
+import { SyncChannel } from '../../../../src/server/primitives/sync';
 
 describe('SyncChannel server wiring', () => {
-  it('immediate flush triggers listener synchronously', () => {
+  it('immediate flush triggers listener synchronously', async () => {
     const channel = new SyncChannel({
       key: 'test',
       direction: 'server-to-client',
@@ -18,10 +18,10 @@ describe('SyncChannel server wiring', () => {
     expect(flushed).toHaveLength(1);
     expect(flushed[0]).toEqual([{ op: 'replace', path: '/x', value: 1 }]);
 
-    channel.destroy();
+    await channel.destroy();
   });
 
-  it('batched flush accumulates and flushes at threshold', () => {
+  it('batched flush accumulates and flushes at threshold', async () => {
     vi.useFakeTimers();
     const channel = new SyncChannel({
       key: 'test',
@@ -41,11 +41,11 @@ describe('SyncChannel server wiring', () => {
     expect(flushed).toHaveLength(1);
     expect(flushed[0]).toHaveLength(3);
 
-    channel.destroy();
+    await channel.destroy();
     vi.useRealTimers();
   });
 
-  it('debounced flush waits for inactivity', () => {
+  it('debounced flush waits for inactivity', async () => {
     vi.useFakeTimers();
     const channel = new SyncChannel({
       key: 'test',
@@ -66,11 +66,11 @@ describe('SyncChannel server wiring', () => {
     expect(flushed).toHaveLength(1);
     expect(flushed[0]).toHaveLength(2);
 
-    channel.destroy();
+    await channel.destroy();
     vi.useRealTimers();
   });
 
-  it('onFlush returns unsubscribe function', () => {
+  it('onFlush returns unsubscribe function', async () => {
     const channel = new SyncChannel({
       key: 'test',
       direction: 'server-to-client',
@@ -87,6 +87,6 @@ describe('SyncChannel server wiring', () => {
     channel.enqueue([{ op: 'replace', path: '/b', value: 2 }]);
     expect(flushed).toHaveLength(1);
 
-    channel.destroy();
+    await channel.destroy();
   });
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import { ChannelManager } from '../../../../src/server/data-flow';
+import { ChannelManager } from '../../../../src/server/primitives/data-flow';
 
 describe('ChannelManager', () => {
   function createDeps() {

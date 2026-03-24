@@ -12,8 +12,9 @@ import {
   tick,
   type LiveTestServer,
 } from '../../helpers/live-server';
+import { type TestContract, TestRpc, TestEvent, TestState } from '../../helpers/test-contract';
 
-let srv: LiveTestServer;
+let srv: LiveTestServer<TestContract>;
 
 afterEach(async () => {
   if (srv) await srv.close();
@@ -21,12 +22,12 @@ afterEach(async () => {
 
 describe('DatasoleServer — RPC via live WebSocket', () => {
   beforeEach(async () => {
-    srv = await createLiveTestServer();
-    srv.ds.rpc('echo', async (params: unknown) => params);
-    srv.ds.rpc('add', async (params: { a: number; b: number }) => ({
+    srv = await createLiveTestServer<TestContract>();
+    srv.ds.rpc.register(TestRpc.Echo, async (params: unknown) => params);
+    srv.ds.rpc.register(TestRpc.Add, async (params: { a: number; b: number }) => ({
       sum: params.a + params.b,
     }));
-    srv.ds.rpc('boom', async () => {
+    srv.ds.rpc.register(TestRpc.Boom, async () => {
       throw new Error('Intentional test error');
     });
   });
@@ -65,7 +66,6 @@ describe('DatasoleServer — RPC via live WebSocket', () => {
   it('multiplexes concurrent RPCs by correlationId', async () => {
     const ws = await srv.connectWs();
 
-    // Set up listener before sending to avoid race
     const framesPromise = collectFrames(ws, 2);
     sendFrame(ws, Opcode.RPC_REQ, 10, {
       method: 'echo',
@@ -87,9 +87,9 @@ describe('DatasoleServer — RPC via live WebSocket', () => {
 
 describe('DatasoleServer — events via live WebSocket', () => {
   it('EVENT_C2S fires registered event handler on server', async () => {
-    srv = await createLiveTestServer();
+    srv = await createLiveTestServer<TestContract>();
     const received: unknown[] = [];
-    srv.ds.on('chat', (payload) => received.push(payload));
+    srv.ds.events.on(TestEvent.Chat, (payload) => received.push(payload));
 
     const ws = await srv.connectWs();
     sendFrame(ws, Opcode.EVENT_C2S, 0, { event: 'chat', data: 'hello' });
@@ -102,13 +102,13 @@ describe('DatasoleServer — events via live WebSocket', () => {
   });
 
   it('broadcast sends EVENT_S2C to all connected clients', async () => {
-    srv = await createLiveTestServer();
+    srv = await createLiveTestServer<TestContract>();
     const ws1 = await srv.connectWs();
     const ws2 = await srv.connectWs();
 
     const p1 = receiveFrame(ws1);
     const p2 = receiveFrame(ws2);
-    srv.ds.broadcast('notify', { msg: 'hi' });
+    srv.ds.broadcast(TestEvent.Notify, { msg: 'hi' });
 
     const [f1, f2] = await Promise.all([p1, p2]);
     expect(f1.opcode).toBe(Opcode.EVENT_S2C);
@@ -119,10 +119,10 @@ describe('DatasoleServer — events via live WebSocket', () => {
   });
 
   it('off removes server-side handler', async () => {
-    srv = await createLiveTestServer();
+    srv = await createLiveTestServer<TestContract>();
     const handler = vi.fn();
-    srv.ds.on('ev', handler);
-    srv.ds.off('ev', handler);
+    srv.ds.events.on(TestEvent.Ev, handler);
+    srv.ds.events.off(TestEvent.Ev, handler);
 
     const ws = await srv.connectWs();
     sendFrame(ws, Opcode.EVENT_C2S, 0, { event: 'ev', data: 'x' });
@@ -135,7 +135,7 @@ describe('DatasoleServer — events via live WebSocket', () => {
 
 describe('DatasoleServer — PING/PONG via live WebSocket', () => {
   it('responds to PING with PONG', async () => {
-    srv = await createLiveTestServer();
+    srv = await createLiveTestServer<TestContract>();
     const ws = await srv.connectWs();
 
     sendFrame(ws, Opcode.PING, 99, null);
@@ -149,55 +149,55 @@ describe('DatasoleServer — PING/PONG via live WebSocket', () => {
 
 describe('DatasoleServer — state management via live WebSocket', () => {
   it('setState and getState round-trip', async () => {
-    srv = await createLiveTestServer();
-    await srv.ds.setState('key1', { foo: 'bar' });
-    expect(await srv.ds.getState('key1')).toEqual({ foo: 'bar' });
+    srv = await createLiveTestServer<TestContract>();
+    await srv.ds.setState(TestState.Key1, { foo: 'bar' });
+    expect(await srv.ds.getState(TestState.Key1)).toEqual({ foo: 'bar' });
   });
 
   it('setState broadcasts STATE_PATCH to connected clients', async () => {
-    srv = await createLiveTestServer();
+    srv = await createLiveTestServer<TestContract>();
     const ws = await srv.connectWs();
     await tick(20);
 
-    await srv.ds.setState('obj', { a: 1 });
+    await srv.ds.setState(TestState.Obj, { a: 1 });
     const patchPromise = receiveFrame(ws);
-    await srv.ds.setState('obj', { a: 2 });
+    await srv.ds.setState(TestState.Obj, { a: 2 });
 
     const resp = await patchPromise;
     expect(resp.opcode).toBe(Opcode.STATE_PATCH);
     const data = resp.data as { key: string; patches: unknown[] };
-    expect(data.key).toBe('obj');
+    expect(data.key).toBe(TestState.Obj);
     expect(data.patches.length).toBeGreaterThan(0);
     ws.close();
   });
 
   it('setState via sync channel with immediate flush', async () => {
-    srv = await createLiveTestServer();
+    srv = await createLiveTestServer<TestContract>();
     const channel = srv.ds.createSyncChannel({
-      key: 'synced',
+      key: TestState.Synced,
       direction: 'server-to-client',
       mode: 'json-patch',
       flush: { flushStrategy: 'immediate' },
     });
-    expect(srv.ds.getSyncChannel('synced')).toBe(channel);
+    expect(srv.ds.getSyncChannel(TestState.Synced)).toBe(channel);
 
     const ws = await srv.connectWs();
     await tick(20);
 
-    await srv.ds.setState('synced', { a: 1 });
+    await srv.ds.setState(TestState.Synced, { a: 1 });
     const patchPromise = receiveFrame(ws);
-    await srv.ds.setState('synced', { a: 2 });
+    await srv.ds.setState(TestState.Synced, { a: 2 });
     const resp = await patchPromise;
     expect(resp.opcode).toBe(Opcode.STATE_PATCH);
 
-    channel.destroy();
+    await channel.destroy();
     ws.close();
   });
 });
 
 describe('DatasoleServer — CRDT operations via live WebSocket', () => {
   it('CRDT_OP applies pn-counter and broadcasts CRDT_STATE', async () => {
-    srv = await createLiveTestServer();
+    srv = await createLiveTestServer<TestContract>();
     const ws = await srv.connectWs();
 
     const crdtOp = {
@@ -222,7 +222,7 @@ describe('DatasoleServer — CRDT operations via live WebSocket', () => {
   });
 
   it('CRDT_OP applies lww-register', async () => {
-    srv = await createLiveTestServer();
+    srv = await createLiveTestServer<TestContract>();
     const ws = await srv.connectWs();
 
     sendFrame(ws, Opcode.CRDT_OP, 0, {
@@ -245,7 +245,7 @@ describe('DatasoleServer — CRDT operations via live WebSocket', () => {
   });
 
   it('CRDT_OP applies lww-map', async () => {
-    srv = await createLiveTestServer();
+    srv = await createLiveTestServer<TestContract>();
     const ws = await srv.connectWs();
 
     sendFrame(ws, Opcode.CRDT_OP, 0, {
@@ -268,15 +268,15 @@ describe('DatasoleServer — CRDT operations via live WebSocket', () => {
   });
 
   it('registerCrdt and getCrdtState work', async () => {
-    srv = await createLiveTestServer();
+    srv = await createLiveTestServer<TestContract>();
     const counter = new PNCounter('server');
-    srv.ds.registerCrdt('myCounter', counter);
-    expect(srv.ds.getCrdtState('myCounter')).toBeDefined();
-    expect(srv.ds.getCrdtState('nonexistent')).toBeUndefined();
+    srv.ds.crdt.register('myCounter', counter);
+    expect(srv.ds.crdt.getState('myCounter')).toBeDefined();
+    expect(srv.ds.crdt.getState('nonexistent')).toBeUndefined();
   });
 
   it('CRDT_OP uses connectionId as key when op.key is undefined', async () => {
-    srv = await createLiveTestServer();
+    srv = await createLiveTestServer<TestContract>();
     const ws = await srv.connectWs();
 
     sendFrame(ws, Opcode.CRDT_OP, 0, {
@@ -297,16 +297,9 @@ describe('DatasoleServer — CRDT operations via live WebSocket', () => {
 
 describe('DatasoleServer — rate limiting via live WebSocket', () => {
   it('rate limit exceeded sends ERROR frame', async () => {
-    srv = await createLiveTestServer({
-      rateLimiter: {
-        check: async () => ({ allowed: false, remaining: 0, resetAt: Date.now() + 5000 }),
-        consume: async () => ({
-          allowed: false,
-          remaining: 0,
-          resetAt: Date.now() + 5000,
-          retryAfter: 5000,
-        }),
-        reset: async () => {},
+    srv = await createLiveTestServer<TestContract>({
+      rateLimit: {
+        defaultRule: { windowMs: 60_000, maxRequests: 0 },
       },
     });
 
@@ -317,15 +310,15 @@ describe('DatasoleServer — rate limiting via live WebSocket', () => {
     expect(resp.opcode).toBe(Opcode.ERROR);
     const data = resp.data as { message: string; retryAfter: number };
     expect(data.message).toBe('Rate limit exceeded');
-    expect(data.retryAfter).toBe(5000);
+    expect(data.retryAfter).toBeGreaterThan(0);
     ws.close();
   });
 });
 
 describe('DatasoleServer — malformed frames', () => {
   it('malformed binary data does not crash the server', async () => {
-    srv = await createLiveTestServer();
-    srv.ds.rpc('echo', async (p: unknown) => p);
+    srv = await createLiveTestServer<TestContract>();
+    srv.ds.rpc.register(TestRpc.Echo, async (p: unknown) => p);
     const ws = await srv.connectWs();
 
     ws.send(new Uint8Array([0xff, 0xfe, 0xab, 0x12]));
@@ -339,7 +332,7 @@ describe('DatasoleServer — malformed frames', () => {
 
 describe('DatasoleServer — auth via live WebSocket', () => {
   it('authenticated connection proceeds', async () => {
-    srv = await createLiveTestServer({
+    srv = await createLiveTestServer<TestContract>({
       authHandler: async (req) => {
         const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
         const token = url.searchParams.get('token');
@@ -347,7 +340,7 @@ describe('DatasoleServer — auth via live WebSocket', () => {
         return { authenticated: false };
       },
     });
-    srv.ds.rpc('whoami', async (_p, ctx) => ctx?.connection?.userId ?? 'unknown');
+    srv.ds.rpc.register(TestRpc.Whoami, async (_p, ctx) => ctx?.connection?.userId ?? 'unknown');
 
     const ws = await srv.connectWs({ token: 'valid' });
     const res = await rpc(ws, 'whoami', null, 1);
@@ -356,7 +349,7 @@ describe('DatasoleServer — auth via live WebSocket', () => {
   });
 
   it('unauthenticated connection is rejected', async () => {
-    srv = await createLiveTestServer({
+    srv = await createLiveTestServer<TestContract>({
       authHandler: async () => ({ authenticated: false }),
     });
 
@@ -366,7 +359,7 @@ describe('DatasoleServer — auth via live WebSocket', () => {
 
 describe('DatasoleServer — connection tracking', () => {
   it('tracks connection count', async () => {
-    srv = await createLiveTestServer();
+    srv = await createLiveTestServer<TestContract>();
     expect(srv.ds.getConnectionCount()).toBe(0);
 
     const ws1 = await srv.connectWs();
@@ -389,7 +382,7 @@ describe('DatasoleServer — connection tracking', () => {
 
 describe('DatasoleServer — data channels', () => {
   it('createDataChannel and getDataChannel', async () => {
-    srv = await createLiveTestServer();
+    srv = await createLiveTestServer<TestContract>();
     const ch = srv.ds.createDataChannel({
       key: 'live',
       pattern: 'server-live-state',
@@ -403,45 +396,40 @@ describe('DatasoleServer — data channels', () => {
 
 describe('DatasoleServer — session', () => {
   it('set and get session value', async () => {
-    srv = await createLiveTestServer();
-    srv.ds.setSessionValue('user1', 'theme', 'dark');
-    expect(srv.ds.getSessionValue('user1', 'theme')).toBe('dark');
-    expect(srv.ds.getSessionValue('user1', 'missing')).toBeUndefined();
+    srv = await createLiveTestServer<TestContract>();
+    srv.ds.sessions.set('user1', 'theme', 'dark');
+    expect(srv.ds.sessions.get('user1', 'theme')).toBe('dark');
+    expect(srv.ds.sessions.get('user1', 'missing')).toBeUndefined();
   });
 
   it('onSessionChange fires handler', async () => {
-    srv = await createLiveTestServer();
+    srv = await createLiveTestServer<TestContract>();
     const handler = vi.fn();
-    const unsub = srv.ds.onSessionChange(handler);
-    srv.ds.setSessionValue('u1', 'lang', 'en');
+    const unsub = srv.ds.sessions.onChange(handler);
+    srv.ds.sessions.set('u1', 'lang', 'en');
     expect(handler).toHaveBeenCalledWith('u1', 'lang', 'en', expect.any(Number));
     unsub();
-    srv.ds.setSessionValue('u1', 'lang', 'fr');
+    srv.ds.sessions.set('u1', 'lang', 'fr');
     expect(handler).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('DatasoleServer — getters', () => {
-  it('getMetrics returns MetricsCollector', async () => {
-    srv = await createLiveTestServer();
-    expect(srv.ds.getMetrics()).toBeDefined();
+  it('metrics returns MetricsCollector', async () => {
+    srv = await createLiveTestServer<TestContract>();
+    expect(srv.ds.metrics).toBeDefined();
   });
 
-  it('getRateLimiter returns limiter', async () => {
-    srv = await createLiveTestServer();
-    expect(srv.ds.getRateLimiter()).toBeDefined();
-  });
-
-  it('getConcurrency returns strategy', async () => {
-    srv = await createLiveTestServer();
-    expect(srv.ds.getConcurrency()).toBeDefined();
+  it('rateLimiter returns limiter', async () => {
+    srv = await createLiveTestServer<TestContract>();
+    expect(srv.ds.rateLimiter).toBeDefined();
   });
 });
 
 describe('DatasoleServer — close', () => {
   it('close clears connections, CRDTs, and sync channels', async () => {
-    srv = await createLiveTestServer();
-    srv.ds.registerCrdt('c', new PNCounter('s'));
+    srv = await createLiveTestServer<TestContract>();
+    srv.ds.crdt.register('c', new PNCounter('s'));
     srv.ds.createSyncChannel({
       key: 'sc',
       direction: 'server-to-client',
@@ -456,30 +444,29 @@ describe('DatasoleServer — close', () => {
     await srv.ds.close();
 
     expect(srv.ds.getConnectionCount()).toBe(0);
-    expect(srv.ds.getCrdtState('c')).toBeUndefined();
+    expect(srv.ds.crdt.getState('c')).toBeUndefined();
     expect(srv.ds.getSyncChannel('sc')).toBeUndefined();
     ws.close();
 
-    // Prevent afterEach from double-closing
-    srv = undefined as unknown as LiveTestServer;
+    srv = undefined as unknown as LiveTestServer<TestContract>;
   });
 
   it('close is safe to call when no wsServer attached', async () => {
     const { DatasoleServer: DS } = await import('../../../src/server/server');
-    const ds = new DS();
+    const ds = new DS<TestContract>();
     await expect(ds.close()).resolves.toBeUndefined();
   });
 });
 
 describe('DatasoleServer — metrics increment on traffic', () => {
   it('increments messagesIn and messagesOut on RPC', async () => {
-    srv = await createLiveTestServer();
-    srv.ds.rpc('ping', async () => 'pong');
+    srv = await createLiveTestServer<TestContract>();
+    srv.ds.rpc.register(TestRpc.Ping, async () => 'pong');
 
     const ws = await srv.connectWs();
     await rpc(ws, 'ping', null, 1);
 
-    const snap = srv.ds.getMetrics().snapshot();
+    const snap = srv.ds.metrics.snapshot();
     expect(snap.messagesIn).toBeGreaterThanOrEqual(1);
     expect(snap.messagesOut).toBeGreaterThanOrEqual(1);
     ws.close();
@@ -488,22 +475,22 @@ describe('DatasoleServer — metrics increment on traffic', () => {
 
 describe('DatasoleServer — multiple clients', () => {
   it('broadcasts state patches to all connected clients', async () => {
-    srv = await createLiveTestServer();
+    srv = await createLiveTestServer<TestContract>();
     const clients: WebSocket[] = [];
     for (let i = 0; i < 3; i++) {
       clients.push(await srv.connectWs());
     }
     await tick(20);
 
-    await srv.ds.setState('shared', { v: 1 });
+    await srv.ds.setState(TestState.Shared, { v: 1 });
 
     const promises = clients.map((ws) => receiveFrame(ws));
-    await srv.ds.setState('shared', { v: 2 });
+    await srv.ds.setState(TestState.Shared, { v: 2 });
     const frames = await Promise.all(promises);
 
     for (const f of frames) {
       expect(f.opcode).toBe(Opcode.STATE_PATCH);
-      expect((f.data as Record<string, unknown>).key).toBe('shared');
+      expect((f.data as Record<string, unknown>).key).toBe(TestState.Shared);
     }
 
     for (const ws of clients) ws.close();

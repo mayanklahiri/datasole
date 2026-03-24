@@ -12,8 +12,10 @@ import {
 } from 'vue';
 import { DatasoleClient } from 'datasole/client';
 import type { ConnectionState } from 'datasole/client';
+import type { EventPayload } from 'datasole';
+import type { AppContract } from '../../shared/contract';
 
-const DS_KEY: InjectionKey<ShallowRef<DatasoleClient | null>> = Symbol('datasole');
+const DS_KEY: InjectionKey<ShallowRef<DatasoleClient<AppContract> | null>> = Symbol('datasole');
 const CONN_KEY: InjectionKey<Ref<ConnectionState>> = Symbol('datasole:conn');
 
 /**
@@ -21,7 +23,7 @@ const CONN_KEY: InjectionKey<Ref<ConnectionState>> = Symbol('datasole:conn');
  * the client + connectionState to all descendants via inject().
  */
 export function useDatasole() {
-  const ds = shallowRef<DatasoleClient | null>(null);
+  const ds = shallowRef<DatasoleClient<AppContract> | null>(null);
   const connectionState = ref<ConnectionState>('disconnected');
   let interval: ReturnType<typeof setInterval> | undefined;
 
@@ -29,7 +31,7 @@ export function useDatasole() {
   provide(CONN_KEY, connectionState);
 
   onMounted(() => {
-    const client = new DatasoleClient({
+    const client = new DatasoleClient<AppContract>({
       url: `ws://${window.location.host}`,
     });
     ds.value = client;
@@ -55,9 +57,11 @@ export function useDatasole() {
  *   const metrics = useDatasoleEvent<Metrics>('system-metrics');
  *   // metrics.value updates automatically — no Vuex, no Pinia
  */
-export function useDatasoleEvent<T>(eventName: string): Ref<T | null> {
+export function useDatasoleEvent<K extends keyof AppContract['events'] & string>(
+  eventName: K,
+): Ref<AppContract['events'][K] | null> {
   const ds = inject(DS_KEY)!;
-  const data = ref<T | null>(null) as Ref<T | null>;
+  const data = ref<AppContract['events'][K] | null>(null) as Ref<AppContract['events'][K] | null>;
   let cleanup: (() => void) | null = null;
 
   watch(
@@ -66,7 +70,7 @@ export function useDatasoleEvent<T>(eventName: string): Ref<T | null> {
       cleanup?.();
       cleanup = null;
       if (!client) return;
-      const handler = (ev: { data: T }) => {
+      const handler = (ev: EventPayload<AppContract['events'][K]>) => {
         data.value = ev.data;
       };
       client.on(eventName, handler);
@@ -86,9 +90,11 @@ export function useDatasoleEvent<T>(eventName: string): Ref<T | null> {
  *   const messages = useDatasoleState<ChatMessage[]>('chat:messages');
  *   // messages.value auto-replaces on every server state change — the server IS the store
  */
-export function useDatasoleState<T>(key: string): Ref<T | null> {
+export function useDatasoleState<K extends keyof AppContract['state'] & string>(
+  key: K,
+): Ref<AppContract['state'][K] | null> {
   const ds = inject(DS_KEY)!;
-  const data = ref<T | null>(null) as Ref<T | null>;
+  const data = ref<AppContract['state'][K] | null>(null) as Ref<AppContract['state'][K] | null>;
   let cleanup: (() => void) | null = null;
 
   watch(
@@ -97,7 +103,7 @@ export function useDatasoleState<T>(key: string): Ref<T | null> {
       cleanup?.();
       cleanup = null;
       if (!client) return;
-      const sub = client.subscribeState(key, (val: T) => {
+      const sub = client.subscribeState(key, (val) => {
         data.value = val;
       });
       cleanup = () => sub.unsubscribe();
@@ -110,7 +116,7 @@ export function useDatasoleState<T>(key: string): Ref<T | null> {
 }
 
 /** Raw client ref for imperative operations (emit, rpc). */
-export function useDatasoleClient(): ShallowRef<DatasoleClient | null> {
+export function useDatasoleClient(): ShallowRef<DatasoleClient<AppContract> | null> {
   return inject(DS_KEY)!;
 }
 

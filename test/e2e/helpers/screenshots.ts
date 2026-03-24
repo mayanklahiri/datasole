@@ -88,21 +88,3 @@ function copyToDocsScreenshots(key: string, buffer: Buffer): void {
   ensureDir(docsDir);
   writeFileSync(path.join(docsDir, `${key}.png`), buffer);
 }
-
-/**
- * Legacy wrapper kept for backward compat. Delegates to snap().
- */
-export async function saveScreenshot(
-  page: Page,
-  name: string,
-  testInfo?: TestInfo,
-): Promise<string> {
-  if (testInfo) {
-    await snap(page, testInfo, name);
-  }
-  const docsDir = path.resolve(__dirname, '../../../docs/public/screenshots');
-  ensureDir(docsDir);
-  const filePath = path.join(docsDir, `${name}.png`);
-  await page.screenshot({ path: filePath, fullPage: true, animations: 'disabled', caret: 'hide' });
-  return filePath;
-}

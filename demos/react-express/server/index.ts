@@ -6,6 +6,7 @@ import os from 'os';
 import express from 'express';
 import { DatasoleServer } from 'datasole/server';
 import { createSeededRandom } from '../../seeded-random.js';
+import { AppContract, RpcMethod, Event, StateKey, ChatMessage } from '../shared/contract';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '4001', 10);
@@ -35,41 +36,34 @@ if (existsSync(clientDist)) {
 const httpServer = createServer(app);
 
 // ─── Datasole ──────────────────────────────────────────────────────
-const ds = new DatasoleServer();
+const ds = new DatasoleServer<AppContract>();
 const rng = createSeededRandom();
 ds.attach(httpServer);
 
 // ─── Chat ──────────────────────────────────────────────────────────
-interface ChatMessage {
-  id: string;
-  text: string;
-  username: string;
-  ts: number;
-}
-
 const chatHistory: ChatMessage[] = [];
 
-ds.on('chat:send', (payload: { data: { text: string; username: string } }) => {
+ds.events.on(Event.ChatSend, (payload: { data: { text: string; username: string } }) => {
   const { text, username } = payload.data;
   const msg: ChatMessage = { id: rng.uuid(), text, username, ts: Date.now() };
   chatHistory.push(msg);
   if (chatHistory.length > 50) chatHistory.shift();
-  ds.setState('chat:messages', [...chatHistory]);
-  ds.broadcast('chat:message', msg);
+  ds.setState(StateKey.ChatMessages, [...chatHistory]);
+  ds.broadcast(Event.ChatMessage, msg);
 });
 
-ds.setState('chat:messages', chatHistory);
+ds.setState(StateKey.ChatMessages, chatHistory);
 
 // ─── RPC ───────────────────────────────────────────────────────────
-ds.rpc('randomNumber', async ({ min, max }: { min: number; max: number }) => {
+ds.rpc.register(RpcMethod.RandomNumber, async ({ min, max }: { min: number; max: number }) => {
   return { value: rng.int(Math.floor(min), Math.floor(max)), generatedAt: Date.now() };
 });
 
 // ─── System metrics broadcast ──────────────────────────────────────
 setInterval(() => {
-  const snap = ds.getMetrics().snapshot();
+  const snap = ds.metrics.snapshot();
   const now = new Date();
-  ds.broadcast('system-metrics', {
+  ds.broadcast(Event.SystemMetrics, {
     uptime: snap.uptime,
     connections: snap.connections,
     messagesIn: snap.messagesIn,

@@ -19,7 +19,7 @@ vi.mock('ioredis', () => {
   };
 });
 
-import { RedisBackend } from '../../../../src/server/state/backends/redis';
+import { RedisBackend } from '../../../../src/server/backends/redis';
 
 describe('RedisBackend', () => {
   beforeEach(() => {

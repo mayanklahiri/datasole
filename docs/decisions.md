@@ -88,7 +88,8 @@ description: Architecture Decision Records for the datasole project.
 
 ## ADR-011: Pluggable concurrency models (async / thread / thread-pool / process)
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-018
+
 - **Date:** 2026-03-19
 - **Context:** Different deployment scenarios benefit from different concurrency models. Chat apps need lightweight async per-connection; CPU-heavy game logic benefits from thread-per-connection; high-throughput API gateways need pooled threads; and multi-tenant isolation may require process-per-connection with serialized IPC.
 - **Decision:** `ConcurrencyStrategy` interface with four implementations: `AsyncStrategy` (default Node.js event loop, no isolation), `ThreadStrategy` (new `worker_threads` per connection), `ThreadPoolStrategy` (fixed thread pool with least-connections assignment, **default**), and `ProcessStrategy` (child_process fork with serialized packet forwarding). All RPC, events, and messages are 1:1 mapped from a connected WebSocket to its assigned worker. The main process handles WebSocket I/O and dispatches serialized frames. Selection via `DatasoleServerOptions.concurrency.model`. Cluster-friendly: no shared mutable state in the main process beyond the connection registry—compatible with `pm2 cluster` mode out of the box.
@@ -96,7 +97,7 @@ description: Architecture Decision Records for the datasole project.
 
 ## ADR-012: Rate limiting with pluggable backends
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-018
 - **Date:** 2026-03-19
 - **Context:** WebSocket servers need protection against abusive clients. Unlike HTTP rate limiting (well-served by existing middleware), persistent connections require per-connection, per-method rate limiting at the frame level.
 - **Decision:** `RateLimiter` interface with `check`/`consume`/`reset`. Two built-in implementations: `MemoryRateLimiter` (sliding-window counters, suitable for single-process) and `RedisRateLimiter` (atomic INCR+EXPIRE, shares the same Redis connection as the state backend, suitable for clustered deployments). Configurable per-method rules via `RateLimitConfig.rules` map. Default: 100 requests/minute/connection.
@@ -141,3 +142,24 @@ description: Architecture Decision Records for the datasole project.
 - **Context:** The framework must support a mix-and-match set of patterns: RPC, server→client events (broadcast), client→server events, bidirectional events (CRDTs), server→client live data structures (JSON Patch), client→server live data, and combinations thereof. Each pattern has different consistency, latency, and API characteristics.
 - **Decision:** Data flow patterns are defined as the `DataFlowPattern` discriminated union. Each pattern is served by a corresponding subsystem: `RpcDispatcher` for RPC, `EventBus` for events, `SyncChannel` with `json-patch` mode for live data structures, `SyncChannel` with `crdt` mode for bidirectional sync. The framework composes these freely—a single connection can use multiple patterns concurrently. The minimum viable set of use cases is: (1) pure RPC, (2) server event broadcast (e.g. stock ticker), (3) client→server RPC + server→client live state for seamless frontend data binding (React/Vue reactive model backed by server-side state).
 - **Consequences:** Users pick only the patterns they need. Composability avoids framework lock-in to a single paradigm. Trade-off: more concepts to learn, but each is independently useful and well-documented.
+
+## ADR-018: Decompose DatasoleServer into Composable Layers
+
+- **Status:** Accepted
+- **Date:** 2026-03-23
+
+- **Context:** DatasoleServer was a 452-line god class conflating transport, frame routing, rate limiting, domain primitives, data-flow orchestration, and lifecycle. The concurrency module was dead code. Backend usage was limited to StateManager/SessionManager. Auth and rate-limiting were standalone modules not integrated with the backend distribution layer.
+
+- **Decision:** Decompose into four layers:
+  1. **Transport** — pure byte pipe (ServerTransport)
+  2. **Executor** — compressed frame processing + isolation (AsyncExecutor, ThreadExecutor, PoolExecutor, ProcessExecutor)
+  3. **Backends** — distribution layer (StateBackend with factory + serializable config)
+  4. **Primitives** — all backend-powered services (RPC, Events, State, CRDT, Sessions, Sync, Auth, Rate-limit, Data-flow)
+
+  Additionally:
+  - DatasoleServer/DatasoleClient become generic with required DatasoleContract type parameter
+  - All stateful services receive StateBackend via constructor injection
+  - EventBus, CrdtManager, SyncChannel, RateLimiter are backend-powered
+  - Old concurrency module (ADR-011) replaced by ConnectionExecutor
+
+- **Consequences:** Breaking API change: all method calls changed (`ds.rpc.register()` vs `ds.rpc()`). DatasoleContract type parameter is required (no DefaultContract). All demos restructured with `shared/contract.ts`. Better testability via constructor injection and interface-first design. Better extensibility: new primitives implement RealtimePrimitive interface. Distribution via backend swap (MemoryBackend → RedisBackend).

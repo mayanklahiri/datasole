@@ -2,7 +2,7 @@ import type { IncomingMessage } from 'http';
 
 import { describe, it, expect, vi } from 'vitest';
 
-import { createAuthHandler } from '../../../src/server/auth/auth-handler';
+import { createAuthHandler } from '../../../src/server/primitives/auth/auth-handler';
 
 describe('createAuthHandler', () => {
   it('returns handler result when authenticated', async () => {

@@ -12,6 +12,22 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 
 ### Added
 
+#### Architecture
+
+- **Composable layer architecture**: DatasoleServer decomposed into Transport, Executor, Backends, and Primitives layers [ADR-018]
+- **Type-safe contracts**: `DatasoleContract` generic type parameter required on `DatasoleServer<T>` and `DatasoleClient<T>`
+- **Enum-based keys**: RPC methods, events, and state keys use TypeScript enums shared between client and server
+- **Backend as distribution layer**: All stateful services (EventBus, CrdtManager, SyncChannel, RateLimiter) receive StateBackend via constructor injection
+- **ConnectionExecutor**: Replaces dead-code concurrency module with frame-processing isolation (async, thread, pool, process models)
+- **ServerTransport**: Pure byte pipe with pre-executor rate limit gate
+- **FrameRouter**: Opcode-based frame dispatch inside executor context
+- **BackendRateLimiter**: Unified rate limiter backed by StateBackend (replaces MemoryRateLimiter + RedisRateLimiter)
+- **CrdtManager**: Extracted CRDT logic into backend-powered primitive
+- **RealtimePrimitive interface**: Shared `destroy()` lifecycle for all services
+- **BackendConfig + createBackend()**: Serializable factory pattern for multi-context backend instantiation
+- **Demo shared contracts**: Each demo has `shared/contract.ts` with AppContract + enums
+- Exposed primitives as readonly properties: `ds.rpc`, `ds.events`, `ds.state`, `ds.crdt`, `ds.sessions`, `ds.rateLimiter`, `ds.metrics`
+
 #### Core Framework
 
 - Binary WebSocket wire protocol with 9-byte frame envelope (opcode, correlation ID, payload length)

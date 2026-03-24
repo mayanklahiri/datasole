@@ -1,224 +1,68 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
-const mockRedisInstance = vi.hoisted(() => ({
-  get: vi.fn(),
-  pttl: vi.fn(),
-  del: vi.fn(),
-  multi: vi.fn(),
-  quit: vi.fn(),
-}));
+import { MemoryBackend } from '../../../../src/server/backends/memory';
+import { BackendRateLimiter } from '../../../../src/server/primitives/rate-limit/backend-limiter';
+import type { RateLimitRule } from '../../../../src/server/primitives/rate-limit/types';
 
-const mockPipeline = vi.hoisted(() => ({
-  incr: vi.fn(),
-  pexpire: vi.fn(),
-  pttl: vi.fn(),
-  exec: vi.fn(),
-}));
-
-vi.mock('ioredis', () => {
-  return {
-    default: vi.fn(function () {
-      return mockRedisInstance;
-    }),
-  };
-});
-
-import { RedisRateLimiter } from '../../../../src/server/rate-limit/redis-limiter';
-import type { RateLimitRule } from '../../../../src/server/rate-limit/types';
-
-describe('RedisRateLimiter', () => {
+describe('BackendRateLimiter', () => {
   const rule: RateLimitRule = { windowMs: 60_000, maxRequests: 10 };
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockPipeline.incr.mockReturnValue(mockPipeline);
-    mockPipeline.pexpire.mockReturnValue(mockPipeline);
-    mockPipeline.pttl.mockReturnValue(mockPipeline);
-    mockRedisInstance.multi.mockReturnValue(mockPipeline);
-    mockRedisInstance.quit.mockResolvedValue('OK');
-  });
-
-  it('constructs with default options', () => {
-    const limiter = new RedisRateLimiter();
+  it('constructs with a StateBackend', () => {
+    const limiter = new BackendRateLimiter(new MemoryBackend());
     expect(limiter).toBeDefined();
   });
 
-  it('constructs with custom options', () => {
-    const limiter = new RedisRateLimiter({ prefix: 'rl:', url: 'redis://custom:6380' });
-    expect(limiter).toBeDefined();
+  it('check returns allowed when under limit', async () => {
+    const limiter = new BackendRateLimiter(new MemoryBackend());
+    const result = await limiter.check('user:1', rule);
+    expect(result.allowed).toBe(true);
+    expect(result.remaining).toBe(10);
+    await limiter.destroy();
   });
 
-  describe('connect()', () => {
-    it('creates redis client', async () => {
-      const limiter = new RedisRateLimiter();
-      await limiter.connect();
-    });
+  it('consume decrements remaining', async () => {
+    const limiter = new BackendRateLimiter(new MemoryBackend());
+    const r1 = await limiter.consume('user:1', rule);
+    expect(r1.allowed).toBe(true);
+    expect(r1.remaining).toBe(9);
+
+    const r2 = await limiter.consume('user:1', rule);
+    expect(r2.remaining).toBe(8);
+    await limiter.destroy();
   });
 
-  describe('disconnect()', () => {
-    it('quits client', async () => {
-      const limiter = new RedisRateLimiter();
-      await limiter.connect();
-      await limiter.disconnect();
-      expect(mockRedisInstance.quit).toHaveBeenCalled();
-    });
-
-    it('handles disconnect when not connected', async () => {
-      const limiter = new RedisRateLimiter();
-      await expect(limiter.disconnect()).resolves.toBeUndefined();
-    });
+  it('consume with cost > 1', async () => {
+    const limiter = new BackendRateLimiter(new MemoryBackend());
+    const result = await limiter.consume('user:1', rule, 3);
+    expect(result.allowed).toBe(true);
+    expect(result.remaining).toBe(7);
+    await limiter.destroy();
   });
 
-  describe('check()', () => {
-    it('throws when not connected', async () => {
-      const limiter = new RedisRateLimiter();
-      await expect(limiter.check('user:1', rule)).rejects.toThrow('not connected');
-    });
-
-    it('returns allowed when count below max', async () => {
-      const limiter = new RedisRateLimiter();
-      await limiter.connect();
-      mockRedisInstance.get.mockResolvedValue('5');
-      mockRedisInstance.pttl.mockResolvedValue(30000);
-
-      const result = await limiter.check('user:1', rule);
-      expect(result.allowed).toBe(true);
-      expect(result.remaining).toBe(5);
-      expect(mockRedisInstance.get).toHaveBeenCalledWith('ds:rl:user:1');
-    });
-
-    it('returns not allowed when count at or above max', async () => {
-      const limiter = new RedisRateLimiter();
-      await limiter.connect();
-      mockRedisInstance.get.mockResolvedValue('10');
-      mockRedisInstance.pttl.mockResolvedValue(30000);
-
-      const result = await limiter.check('user:1', rule);
-      expect(result.allowed).toBe(false);
-      expect(result.remaining).toBe(0);
-    });
-
-    it('uses windowMs as resetAt when pttl is non-positive', async () => {
-      const limiter = new RedisRateLimiter();
-      await limiter.connect();
-      mockRedisInstance.get.mockResolvedValue(null);
-      mockRedisInstance.pttl.mockResolvedValue(-1);
-
-      const before = Date.now();
-      const result = await limiter.check('user:1', rule);
-      expect(result.allowed).toBe(true);
-      expect(result.remaining).toBe(10);
-      expect(result.resetAt).toBeGreaterThanOrEqual(before + rule.windowMs);
-    });
-
-    it('uses custom prefix', async () => {
-      const limiter = new RedisRateLimiter({ prefix: 'custom:' });
-      await limiter.connect();
-      mockRedisInstance.get.mockResolvedValue('0');
-      mockRedisInstance.pttl.mockResolvedValue(5000);
-
-      await limiter.check('k', rule);
-      expect(mockRedisInstance.get).toHaveBeenCalledWith('custom:k');
-    });
+  it('returns denied when over limit', async () => {
+    const limiter = new BackendRateLimiter(new MemoryBackend());
+    const smallRule: RateLimitRule = { windowMs: 60_000, maxRequests: 2 };
+    await limiter.consume('user:1', smallRule);
+    await limiter.consume('user:1', smallRule);
+    const result = await limiter.consume('user:1', smallRule);
+    expect(result.allowed).toBe(false);
+    expect(result.remaining).toBe(0);
+    expect(result.retryAfter).toBeDefined();
+    await limiter.destroy();
   });
 
-  describe('consume()', () => {
-    it('throws when not connected', async () => {
-      const limiter = new RedisRateLimiter();
-      await expect(limiter.consume('user:1', rule)).rejects.toThrow('not connected');
-    });
-
-    it('returns allowed result when under limit', async () => {
-      const limiter = new RedisRateLimiter();
-      await limiter.connect();
-      mockPipeline.exec.mockResolvedValue([
-        [null, 3], // incr (cost=1)
-        [null, 1], // pexpire
-        [null, 55000], // pttl
-      ]);
-
-      const result = await limiter.consume('user:1', rule);
-      expect(result.allowed).toBe(true);
-      expect(result.remaining).toBe(7);
-      expect(result.retryAfter).toBeUndefined();
-      expect(mockPipeline.incr).toHaveBeenCalledWith('ds:rl:user:1');
-      expect(mockPipeline.pexpire).toHaveBeenCalledWith('ds:rl:user:1', 60000);
-    });
-
-    it('returns denied result when over limit', async () => {
-      const limiter = new RedisRateLimiter();
-      await limiter.connect();
-      mockPipeline.exec.mockResolvedValue([
-        [null, 11], // incr
-        [null, 1], // pexpire
-        [null, 55000], // pttl
-      ]);
-
-      const result = await limiter.consume('user:1', rule);
-      expect(result.allowed).toBe(false);
-      expect(result.remaining).toBe(0);
-      expect(result.retryAfter).toBeDefined();
-    });
-
-    it('handles cost > 1', async () => {
-      const limiter = new RedisRateLimiter();
-      await limiter.connect();
-      mockPipeline.exec.mockResolvedValue([
-        [null, 1], // incr 1
-        [null, 2], // incr 2
-        [null, 3], // incr 3 (cost-1 = index 2)
-        [null, 1], // pexpire
-        [null, 50000], // pttl (index cost+1 = 4)
-      ]);
-
-      const result = await limiter.consume('user:1', rule, 3);
-      expect(result.allowed).toBe(true);
-      expect(mockPipeline.incr).toHaveBeenCalledTimes(3);
-    });
-
-    it('throws on pipeline error', async () => {
-      const limiter = new RedisRateLimiter();
-      await limiter.connect();
-      mockPipeline.exec.mockResolvedValue([[new Error('REDIS_ERR'), null]]);
-
-      await expect(limiter.consume('user:1', rule)).rejects.toThrow('transaction failed');
-    });
-
-    it('throws on null pipeline results', async () => {
-      const limiter = new RedisRateLimiter();
-      await limiter.connect();
-      mockPipeline.exec.mockResolvedValue(null);
-
-      await expect(limiter.consume('user:1', rule)).rejects.toThrow('transaction failed');
-    });
-
-    it('uses windowMs when pttl is non-positive', async () => {
-      const limiter = new RedisRateLimiter();
-      await limiter.connect();
-      mockPipeline.exec.mockResolvedValue([
-        [null, 1],
-        [null, 1],
-        [null, -1],
-      ]);
-
-      const before = Date.now();
-      const result = await limiter.consume('user:1', rule);
-      expect(result.resetAt).toBeGreaterThanOrEqual(before + rule.windowMs);
-    });
+  it('reset clears the counter', async () => {
+    const limiter = new BackendRateLimiter(new MemoryBackend());
+    const smallRule: RateLimitRule = { windowMs: 60_000, maxRequests: 1 };
+    await limiter.consume('user:1', smallRule);
+    await limiter.reset('user:1');
+    const result = await limiter.consume('user:1', smallRule);
+    expect(result.allowed).toBe(true);
+    await limiter.destroy();
   });
 
-  describe('reset()', () => {
-    it('throws when not connected', async () => {
-      const limiter = new RedisRateLimiter();
-      await expect(limiter.reset('user:1')).rejects.toThrow('not connected');
-    });
-
-    it('deletes the rate limit key', async () => {
-      const limiter = new RedisRateLimiter();
-      await limiter.connect();
-      mockRedisInstance.del.mockResolvedValue(1);
-      await limiter.reset('user:1');
-      expect(mockRedisInstance.del).toHaveBeenCalledWith('ds:rl:user:1');
-    });
+  it('destroy cleans up without error', async () => {
+    const limiter = new BackendRateLimiter(new MemoryBackend());
+    await expect(limiter.destroy()).resolves.toBeUndefined();
   });
 });

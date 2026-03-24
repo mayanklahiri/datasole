@@ -13,14 +13,9 @@ description: Server API reference, adapter setup, concurrency, rate limiting, se
 ### Constructor
 
 ```typescript
-import {
-  DatasoleServer,
-  MemoryBackend,
-  PrometheusExporter,
-  MemoryRateLimiter,
-} from 'datasole/server';
+import { DatasoleServer, MemoryBackend, PrometheusExporter } from 'datasole/server';
 
-const ds = new DatasoleServer({
+const ds = new DatasoleServer<AppContract>({
   path: '/__ds', // WebSocket path (default: /__ds)
 
   authHandler: async (req) => {
@@ -31,13 +26,12 @@ const ds = new DatasoleServer({
   stateBackend: new MemoryBackend(), // or RedisBackend, PostgresBackend
   metricsExporter: new PrometheusExporter(),
 
-  concurrency: {
+  executor: {
     // See "Concurrency Models" below
     model: 'thread-pool', // 'async' | 'thread' | 'thread-pool' | 'process'
     poolSize: 4,
   },
 
-  rateLimiter: new MemoryRateLimiter(), // or RedisRateLimiter
   rateLimit: {
     defaultRule: { windowMs: 60_000, maxRequests: 200 },
     rules: { 'heavy-rpc': { windowMs: 60_000, maxRequests: 10 } },
@@ -65,13 +59,16 @@ http.listen(3000);
 Register typed request/response handlers. The client calls them with `client.rpc()`.
 
 ```typescript
-ds.rpc<{ userId: string }, { name: string; email: string }>('getUser', async (params, ctx) => {
-  // ctx.auth — the authenticated user's identity
-  // ctx.connectionId — unique connection ID
-  // ctx.connection — full ConnectionContext (metadata, tags, get/set)
-  console.log(`User ${ctx.auth?.userId} is looking up ${params.userId}`);
-  return { name: 'Alice', email: 'alice@example.com' };
-});
+ds.rpc.register<{ userId: string }, { name: string; email: string }>(
+  'getUser',
+  async (params, ctx) => {
+    // ctx.auth — the authenticated user's identity
+    // ctx.connectionId — unique connection ID
+    // ctx.connection — full ConnectionContext (metadata, tags, get/set)
+    console.log(`User ${ctx.auth?.userId} is looking up ${params.userId}`);
+    return { name: 'Alice', email: 'alice@example.com' };
+  },
+);
 ```
 
 > **Tutorial:** [RPC — Call the Server, Get a Response](tutorials.md#2-rpc--call-the-server-get-a-response)
@@ -101,7 +98,7 @@ Clients subscribe with `client.subscribeState('dashboard', handler)` — no poll
 
 ```typescript
 // Listen for client events
-ds.on<{ text: string }>('chat:message', ({ data }) => {
+ds.events.on<{ text: string }>('chat:message', ({ data }) => {
   console.log('Received:', data.text);
 });
 
@@ -109,7 +106,7 @@ ds.on<{ text: string }>('chat:message', ({ data }) => {
 ds.broadcast('notification', { title: 'Server restarting in 5 minutes' });
 
 // Unsubscribe
-ds.off('chat:message', handler);
+ds.events.off('chat:message', handler);
 ```
 
 > **Tutorial:** [Server Events — A Live Stock Ticker](tutorials.md#3-server-events--a-live-stock-ticker)
@@ -152,14 +149,14 @@ Per-user state that survives disconnections. Auto-flushes to the state backend.
 
 ```typescript
 // Restore session on reconnect (pass ConnectionContext, not RpcContext)
-const state = await ds.restoreSession(ctx.connection);
+const state = await ds.sessions.restore(ctx.connection);
 
 // Read/write session values
-ds.setSessionValue('user-123', 'lastPage', '/dashboard');
-const page = ds.getSessionValue<string>('user-123', 'lastPage');
+ds.sessions.set('user-123', 'lastPage', '/dashboard');
+const page = ds.sessions.get<string>('user-123', 'lastPage');
 
 // Listen for session changes (e.g., to update a leaderboard)
-ds.onSessionChange((userId, key, value, version) => {
+ds.sessions.onChange((userId, key, value, version) => {
   console.log(`${userId} → ${key} = ${JSON.stringify(value)} (v${version})`);
 });
 ```
@@ -171,8 +168,8 @@ ds.onSessionChange((userId, key, value, version) => {
 Choose how connections are handled. Each WebSocket maps 1:1 to a worker.
 
 ```typescript
-const ds = new DatasoleServer({
-  concurrency: { model: 'thread-pool', poolSize: 4 },
+const ds = new DatasoleServer<AppContract>({
+  executor: { model: 'thread-pool', poolSize: 4 },
 });
 ```
 
@@ -189,19 +186,12 @@ All models are cluster-friendly — no shared mutable state in the main process.
 
 ## Rate Limiting
 
-Frame-level rate limiting on persistent WebSocket connections.
+Frame-level rate limiting on persistent WebSocket connections. Rate limiting uses a `BackendRateLimiter` backed by the configured `StateBackend`, so it is automatically distributed when using Redis or Postgres.
 
 ```typescript
-import { MemoryRateLimiter, RedisRateLimiter } from 'datasole/server';
+import { DatasoleServer } from 'datasole/server';
 
-// In-memory (single process)
-const limiter = new MemoryRateLimiter();
-
-// Redis (clustered)
-const limiter = new RedisRateLimiter({ prefix: 'ds:rl:' });
-
-const ds = new DatasoleServer({
-  rateLimiter: limiter,
+const ds = new DatasoleServer<AppContract>({
   rateLimit: {
     defaultRule: { windowMs: 60_000, maxRequests: 100 },
     rules: {
@@ -217,7 +207,7 @@ const ds = new DatasoleServer({
 Hook into the HTTP upgrade request to authenticate connections. Supports any auth scheme (JWT, OAuth, SSO, API keys).
 
 ```typescript
-const ds = new DatasoleServer({
+const ds = new DatasoleServer<AppContract>({
   authHandler: async (req) => {
     // Access any header from the upgrade request
     const token = req.headers.authorization?.replace('Bearer ', '');
@@ -238,7 +228,7 @@ const ds = new DatasoleServer({
 The auth result is available everywhere via `ConnectionContext`:
 
 ```typescript
-ds.rpc('protectedMethod', async (params, ctx) => {
+ds.rpc.register('protectedMethod', async (params, ctx) => {
   if (!ctx.auth?.roles?.includes('admin')) {
     throw new Error('Forbidden');
   }
@@ -259,7 +249,7 @@ import { DatasoleServer } from 'datasole/server';
 
 const app = express();
 const httpServer = createServer(app);
-const ds = new DatasoleServer();
+const ds = new DatasoleServer<AppContract>();
 ds.attach(httpServer);
 httpServer.listen(3000);
 ```
@@ -269,7 +259,7 @@ httpServer.listen(3000);
 ```typescript
 import { DatasoleServer } from 'datasole/server';
 
-const ds = new DatasoleServer();
+const ds = new DatasoleServer<AppContract>();
 ds.attach(app.getHttpServer());
 ```
 
@@ -280,34 +270,34 @@ import { createServer } from 'http';
 import { DatasoleServer } from 'datasole/server';
 
 const server = createServer();
-new DatasoleServer().attach(server);
+new DatasoleServer<AppContract>().attach(server);
 server.listen(3000);
 ```
 
 ## Full Method Reference
 
-| Method                                | Description                                                             |
-| ------------------------------------- | ----------------------------------------------------------------------- |
-| `attach(httpServer, adapter?)`        | Attach to HTTP server (adapter accepted but currently unused)           |
-| `setState<T>(key, value)`             | Set state, diff, and broadcast patches. Returns `Promise<StatePatch[]>` |
-| `getState<T>(key)`                    | Get current state. Returns `Promise<T \| undefined>`                    |
-| `createSyncChannel<T>(config)`        | Create a sync channel with configurable flush                           |
-| `getSyncChannel(key)`                 | Get existing sync channel                                               |
-| `createDataChannel<T>(config)`        | Create a data channel for bidirectional data flow                       |
-| `getDataChannel(key)`                 | Get existing data channel                                               |
-| `snapshotSession(ctx)`                | Snapshot session from persistence (`ctx` is `ConnectionContext`)        |
-| `restoreSession(ctx)`                 | Restore session on reconnect (`ctx` is `ConnectionContext`)             |
-| `setSessionValue(userId, key, value)` | Set session value (auto-flushes)                                        |
-| `getSessionValue<T>(userId, key)`     | Get session value                                                       |
-| `onSessionChange(handler)`            | Listen for session mutations. Returns unsubscribe `() => void`          |
-| `rpc<TReq, TRes>(method, handler)`    | Register typed RPC handler                                              |
-| `on<T>(event, handler)`               | Listen for client events                                                |
-| `off<T>(event, handler)`              | Unsubscribe                                                             |
-| `broadcast(event, data)`              | Send event to all clients                                               |
-| `registerCrdt(key, crdt)`             | Register a CRDT instance by key                                         |
-| `getCrdtState(key)`                   | Get current CRDT state for a key                                        |
-| `getConnectionCount()`                | Number of currently connected clients                                   |
-| `getMetrics()`                        | Access metrics collector                                                |
-| `getRateLimiter()`                    | Access rate limiter                                                     |
-| `getConcurrency()`                    | Access concurrency strategy                                             |
-| `close()`                             | Flush sessions, shut down workers, close. Returns `Promise<void>`       |
+| Method                                      | Description                                                             |
+| ------------------------------------------- | ----------------------------------------------------------------------- |
+| `attach(httpServer, adapter?)`              | Attach to HTTP server (adapter accepted but currently unused)           |
+| `setState<T>(key, value)`                   | Set state, diff, and broadcast patches. Returns `Promise<StatePatch[]>` |
+| `getState<T>(key)`                          | Get current state. Returns `Promise<T \| undefined>`                    |
+| `createSyncChannel<T>(config)`              | Create a sync channel with configurable flush                           |
+| `getSyncChannel(key)`                       | Get existing sync channel                                               |
+| `createDataChannel<T>(config)`              | Create a data channel for bidirectional data flow                       |
+| `getDataChannel(key)`                       | Get existing data channel                                               |
+| `sessions.snapshot(ctx)`                    | Snapshot session from persistence (`ctx` is `ConnectionContext`)        |
+| `sessions.restore(ctx)`                     | Restore session on reconnect (`ctx` is `ConnectionContext`)             |
+| `sessions.set(userId, key, value)`          | Set session value (auto-flushes)                                        |
+| `sessions.get<T>(userId, key)`              | Get session value                                                       |
+| `sessions.onChange(handler)`                | Listen for session mutations. Returns unsubscribe `() => void`          |
+| `rpc.register<TReq, TRes>(method, handler)` | Register typed RPC handler                                              |
+| `events.on<T>(event, handler)`              | Listen for client events                                                |
+| `events.off<T>(event, handler)`             | Unsubscribe                                                             |
+| `broadcast(event, data)`                    | Send event to all clients                                               |
+| `crdt.registerByType(key, crdt)`            | Register a CRDT instance by key                                         |
+| `crdt.getState(key)`                        | Get current CRDT state for a key                                        |
+| `getConnectionCount()`                      | Number of currently connected clients                                   |
+| `metrics.snapshot()`                        | Get current metrics snapshot                                            |
+| `getRateLimiter()`                          | Access rate limiter                                                     |
+| `getExecutor()`                             | Access connection executor                                              |
+| `close()`                                   | Flush sessions, shut down workers, close. Returns `Promise<void>`       |

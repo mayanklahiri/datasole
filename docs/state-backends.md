@@ -31,7 +31,7 @@ In-memory Map + EventEmitter. Zero dependencies. Suitable for single-process dep
 ```typescript
 import { DatasoleServer, MemoryBackend } from 'datasole/server';
 
-const ds = new DatasoleServer({
+const ds = new DatasoleServer<AppContract>({
   stateBackend: new MemoryBackend(), // This is the default
 });
 ```
@@ -49,7 +49,7 @@ const backend = new RedisBackend({
 });
 await backend.connect();
 
-const ds = new DatasoleServer({ stateBackend: backend });
+const ds = new DatasoleServer<AppContract>({ stateBackend: backend });
 ```
 
 ### PostgresBackend
@@ -65,7 +65,7 @@ const backend = new PostgresBackend({
 });
 await backend.connect();
 
-const ds = new DatasoleServer({ stateBackend: backend });
+const ds = new DatasoleServer<AppContract>({ stateBackend: backend });
 ```
 
 ## Session Persistence
@@ -76,7 +76,7 @@ The `SessionManager` sits on top of any state backend to provide per-user state 
 const redisBackend = new RedisBackend({ url: 'redis://localhost:6379' });
 await redisBackend.connect();
 
-const ds = new DatasoleServer({
+const ds = new DatasoleServer<AppContract>({
   stateBackend: redisBackend,
   session: {
     flushThreshold: 10, // Persist after 10 mutations
@@ -85,11 +85,11 @@ const ds = new DatasoleServer({
 });
 
 // Per-user read/write
-ds.setSessionValue('user-123', 'theme', 'dark');
-const theme = ds.getSessionValue<string>('user-123', 'theme');
+ds.sessions.set('user-123', 'theme', 'dark');
+const theme = ds.sessions.get<string>('user-123', 'theme');
 
 // Change streams
-ds.onSessionChange((userId, key, value, version) => {
+ds.sessions.onChange((userId, key, value, version) => {
   console.log(`${userId} changed ${key}`);
 });
 ```
@@ -119,5 +119,5 @@ class MyCustomBackend implements StateBackend {
   }
 }
 
-const ds = new DatasoleServer({ stateBackend: new MyCustomBackend() });
+const ds = new DatasoleServer<AppContract>({ stateBackend: new MyCustomBackend() });
 ```

@@ -50,7 +50,7 @@ The most common pattern for real-world apps is **client → server RPC + server 
 flowchart TB
     subgraph Browser
         subgraph MT["Main Thread"]
-            DC[DatasoleClient]
+            DC["DatasoleClient&lt;T&gt;"]
             SS[StateStore]
             CS[CrdtStore]
             RC[RPC Client]
@@ -66,18 +66,65 @@ flowchart TB
     WS <-->|"Binary frames (pako compressed)"| WSS
 
     subgraph Server
-        subgraph DS["DatasoleServer"]
-            WSS["WsServer (ws)"]
-            RPCd["RPC Dispatch"]
-            SM["State Manager (JSON Patch)"]
-            EB["EventBus"]
-            Sess["Sessions"]
-            Met["Metrics"]
-            RL["RateLimit"]
-            SM --- SBE["State Backend (memory / redis / postgres)"]
-            Conc["Concurrency: async | thread | pool | process"]
+        subgraph DS["DatasoleServer&lt;T&gt; (facade)"]
+            subgraph Transport["Transport Layer"]
+                WSS["ServerTransport → WsServer → Connection"]
+            end
+            subgraph Executor["Executor Layer"]
+                FR["FrameRouter"]
+                EX["ConnectionExecutor (async / thread / pool / process)"]
+            end
+            subgraph Backend["Backend Layer"]
+                SBE["StateBackend (memory / redis / postgres)"]
+            end
+            subgraph Primitives["Primitives (all backend-powered)"]
+                RPCd["ds.rpc — RpcDispatcher"]
+                EB["ds.events — EventBus"]
+                SM["ds.state — StateManager"]
+                CRDT["ds.crdt — CrdtManager"]
+                Sess["ds.sessions — SessionManager"]
+                Sync["ds.sync — SyncChannel"]
+                Auth["ds.auth — AuthHandler"]
+                RLim["ds.rateLimit — RateLimiter"]
+                DF["ds.dataFlow — ChannelManager"]
+                Met["ds.metrics"]
+            end
+            Transport --> Executor --> Primitives
+            Primitives --> Backend
         end
     end
+```
+
+### Directory Structure (server)
+
+```
+src/server/
+├── backends/        # StateBackend implementations + factory
+│   ├── memory.ts    # MemoryBackend (default)
+│   ├── redis.ts     # RedisBackend (optional peer dep)
+│   ├── postgres.ts  # PostgresBackend (optional peer dep)
+│   ├── factory.ts   # createBackend(config)
+│   └── types.ts     # StateBackend interface
+├── executor/        # ConnectionExecutor implementations + FrameRouter
+│   ├── async-executor.ts
+│   ├── thread-executor.ts
+│   ├── pool-executor.ts
+│   ├── process-executor.ts
+│   ├── frame-router.ts
+│   ├── factory.ts   # createExecutor(config)
+│   └── types.ts     # ConnectionExecutor interface
+├── primitives/      # All backend-powered services
+│   ├── rpc/         # RpcDispatcher
+│   ├── events/      # EventBus
+│   ├── state/       # StateManager, SessionManager
+│   ├── crdt/        # CrdtManager
+│   ├── sync/        # SyncChannel
+│   ├── auth/        # AuthHandler
+│   ├── rate-limit/  # BackendLimiter
+│   └── data-flow/   # ChannelManager
+├── transport/       # ServerTransport + WsServer + Connection
+├── server.ts        # DatasoleServer<T> facade
+└── types.ts
 ```
 
 ## Wire Protocol
@@ -95,14 +142,14 @@ Opcodes cover: RPC request/response, event, state snapshot, state patch, CRDT op
 
 ## Connection Lifecycle
 
-1. Client creates `DatasoleClient` and calls `connect()`
+1. Client creates `DatasoleClient<T>` and calls `connect()`
 2. Web Worker opens WebSocket to `wss://server/__ds`
-3. Server receives HTTP upgrade → `authHandler` validates credentials
+3. ServerTransport receives HTTP upgrade → `AuthHandler` validates credentials
 4. On success: `ConnectionContext` created with auth identity, metadata
-5. Concurrency strategy assigns a worker (event loop / thread / process)
-6. Server pushes initial state snapshots
+5. FrameRouter assigns connection to a ConnectionExecutor (async / thread / pool / process)
+6. Primitives push initial state snapshots via StateBackend
 7. Ongoing: incremental JSON Patches, events, RPC, CRDT ops — all multiplexed
-8. On disconnect: session flushed to persistence for future restore
+8. On disconnect: SessionManager flushes to StateBackend for future restore
 
 ## Sync Channel Architecture
 

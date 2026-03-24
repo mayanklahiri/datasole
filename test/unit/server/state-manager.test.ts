@@ -1,12 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import { MemoryBackend } from '../../../src/server/state/backends/memory';
-import { StateManager } from '../../../src/server/state/state-manager';
+import { MemoryBackend } from '../../../src/server/backends/memory';
+import { StateManager } from '../../../src/server/primitives/state/state-manager';
+import type { DatasoleContract } from '../../../src/shared/contract';
 
 describe('StateManager', () => {
   it('setState returns patches and getState returns value', async () => {
     const backend = new MemoryBackend();
-    const mgr = new StateManager(backend);
+    const mgr = new StateManager<DatasoleContract>(backend);
     const patches = await mgr.setState('k', { a: 1 });
     expect(patches.length).toBeGreaterThan(0);
     expect(await mgr.getState('k')).toEqual({ a: 1 });
@@ -14,7 +15,7 @@ describe('StateManager', () => {
 
   it('setState with same value returns empty patches', async () => {
     const backend = new MemoryBackend();
-    const mgr = new StateManager(backend);
+    const mgr = new StateManager<DatasoleContract>(backend);
     await mgr.setState('k', { x: 1 });
     const second = await mgr.setState('k', { x: 1 });
     expect(second).toEqual([]);
@@ -22,7 +23,7 @@ describe('StateManager', () => {
 
   it('subscribe receives publishes from backend', async () => {
     const backend = new MemoryBackend();
-    const mgr = new StateManager(backend);
+    const mgr = new StateManager<DatasoleContract>(backend);
     const fn = vi.fn();
     mgr.subscribe('k', fn);
     await mgr.setState('k', 1);

@@ -2,9 +2,15 @@
 
 ## Project Structure
 
-- `src/shared/` — Code shared between client and server (protocol, codec, diff, types, CRDTs)
+- `src/shared/` — Code shared between client and server (protocol, codec, diff, types, CRDTs, contract)
 - `src/client/` — Browser client library (Web Worker transport, state store, RPC, events, CRDT store)
-- `src/server/` — Node.js server library (ws transport, auth, state backends, RPC, events, metrics, adapters, concurrency, rate limiting, sync channels, sessions)
+- `src/server/` — Node.js server library, decomposed into layers:
+  - `src/server/transport/` — Byte pipe: ServerTransport, WsServer, Connection
+  - `src/server/executor/` — Frame processing + isolation: AsyncExecutor, FrameRouter
+  - `src/server/backends/` — Distribution layer: StateBackend, MemoryBackend, RedisBackend, PostgresBackend, factory
+  - `src/server/primitives/` — All backend-powered services: RPC, Events, State, CRDT, Sessions, Sync, Auth, Rate-limit, Data-flow
+  - `src/server/adapters/` — HTTP server adapters (Express, NestJS, native)
+  - `src/server/metrics/` — Observability
 - `build/` — Rollup and TypeScript build configurations, metrics collection, gate summary, build artifact printer
 - `demos/` — Independent demo apps: `vanilla/`, `react-express/`, `vue-nestjs/` (each a self-contained sub-package)
 - `test/unit/` — Vitest unit tests

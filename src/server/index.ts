@@ -1,79 +1,88 @@
 export { DatasoleServer } from './server';
 export type { DatasoleServerOptions } from './server';
 
+// Contract
+export type {
+  DatasoleContract,
+  RpcParams,
+  RpcResult,
+  EventData,
+  StateValue,
+} from '../shared/contract';
+
 // Adapters
 export { ExpressAdapter, NativeHttpAdapter, DatasoleNestAdapter } from './adapters';
 export type { ServerAdapter } from './adapters';
 
-// Auth
-export { createAuthHandler } from './auth';
-export type { AuthHandlerInterface, AuthHandlerConfig } from './auth';
-
-// Data Flow
-export { ChannelManager } from './data-flow';
-export type { ChannelManagerDeps } from './data-flow';
-
-// Concurrency
-export {
-  createConcurrencyStrategy,
-  AsyncStrategy,
-  ThreadStrategy,
-  ThreadPoolStrategy,
-  ProcessStrategy,
-} from './concurrency';
-export type {
-  ConcurrencyModel,
-  ConcurrencyOptions,
-  ConcurrencyStrategy,
-  ConnectionWorker,
-  WorkerMessage,
-} from './concurrency';
-export { DEFAULT_CONCURRENCY_OPTIONS } from './concurrency';
-
-// Events
-export { EventBus } from './events';
-
-// Metrics
-export { MetricsCollector, PrometheusExporter, OpenTelemetryExporter } from './metrics';
-export type { MetricsSnapshot, MetricsExporter } from './metrics';
-
-// Rate Limiting
-export { MemoryRateLimiter, RedisRateLimiter } from './rate-limit';
-export type { RateLimiter, RateLimitResult, RateLimitRule, RateLimitConfig } from './rate-limit';
-export { DEFAULT_RATE_LIMIT_RULE } from './rate-limit';
-
-// RPC
-export { RpcDispatcher } from './rpc';
-export type { RpcHandler, RpcContext } from './rpc';
-
-// State
-export {
-  StateManager,
-  MemoryBackend,
-  RedisBackend,
-  PostgresBackend,
-  SessionManager,
-} from './state';
+// Backends
+export { MemoryBackend, RedisBackend, PostgresBackend, createBackend } from './backends';
 export type {
   StateBackend,
   StateBackendOptions,
   RedisBackendOptions,
   PostgresBackendOptions,
-  SessionOptions,
-  SessionState,
-} from './state';
+  BackendConfig,
+} from './backends';
 
-// Sync
-export { SyncChannel } from './sync';
+// Executor
+export {
+  AsyncExecutor,
+  ThreadExecutor,
+  PoolExecutor,
+  ProcessExecutor,
+  FrameRouter,
+  createExecutor,
+  DEFAULT_EXECUTOR_OPTIONS,
+} from './executor';
+export type {
+  ExecutorModel,
+  ConnectionMeta,
+  ExecutorSend,
+  ConnectionExecutor,
+  ExecutorOptions,
+  DecodedFrame,
+  FrameHandlerFn,
+} from './executor';
+
+// Primitives
+export type { RealtimePrimitive } from './primitives';
+export { RpcDispatcher } from './primitives';
+export type { RpcHandler, RpcContext } from './primitives';
+export { EventBus } from './primitives';
+export { StateManager, SessionManager } from './primitives';
+export type { SessionOptions, SessionState } from './primitives';
+export { CrdtManager } from './primitives';
+export { SyncChannel, DEFAULT_SYNC_OPTIONS } from './primitives';
 export type {
   FlushStrategy,
   SyncChannelOptions,
   SyncDirection,
   SyncMode,
   SyncChannelConfig,
-} from './sync';
-export { DEFAULT_SYNC_OPTIONS } from './sync';
+} from './primitives';
+export { createAuthHandler, createDefaultAuthHandler } from './primitives';
+export type { AuthHandlerInterface, AuthHandlerFn, AuthHandlerConfig } from './primitives';
+export { BackendRateLimiter, DEFAULT_RATE_LIMIT_RULE } from './primitives';
+export type { RateLimiter, RateLimitResult, RateLimitRule, RateLimitConfig } from './primitives';
+export { ChannelManager } from './primitives';
+export type { ChannelManagerDeps } from './primitives';
+
+// Metrics
+export { MetricsCollector, PrometheusExporter, OpenTelemetryExporter } from './metrics';
+export type { MetricsSnapshot, MetricsExporter } from './metrics';
 
 // Transport
-export { WsServer, Connection, handleUpgrade, DefaultConnectionContext } from './transport';
-export type { WsServerOptions, ConnectionInfo, AuthHandler, ConnectionContext } from './transport';
+export {
+  WsServer,
+  Connection,
+  handleUpgrade,
+  DefaultConnectionContext,
+  ServerTransport,
+} from './transport';
+export type {
+  WsServerOptions,
+  ConnectionInfo,
+  AuthHandler,
+  ConnectionContext,
+  TransportOptions,
+} from './transport';

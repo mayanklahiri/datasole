@@ -24,13 +24,13 @@ test.describe('Events', () => {
 
     await page.waitForTimeout(200);
 
-    harness.getDatasoleServer().broadcast('server-pong', { msg: 'hello from server' });
+    harness.getDatasoleServer().broadcast('server-pong', { echo: 'hello from server' });
 
     await page.waitForFunction(() => (window as any).__events.length > 0, null, { timeout: 5000 });
 
     const events = await page.evaluate(() => (window as any).__events);
     expect(events.length).toBeGreaterThan(0);
-    expect(events[0].data).toEqual({ msg: 'hello from server' });
+    expect(events[0].data).toEqual({ echo: 'hello from server' });
     expect(hasErrors(logs)).toBe(false);
 
     await snap(page, testInfo, 'events-server-broadcast');

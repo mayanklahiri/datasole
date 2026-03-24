@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 
-import type { RpcContext } from '../../../src/server/rpc/rpc-dispatcher';
-import { RpcDispatcher } from '../../../src/server/rpc/rpc-dispatcher';
+import { RpcDispatcher } from '../../../src/server/primitives/rpc/rpc-dispatcher';
+import type { RpcContext } from '../../../src/server/primitives/rpc/rpc-dispatcher';
 import type { ConnectionContext } from '../../../src/server/transport/connection-context';
 import type { RpcRequest } from '../../../src/shared/types';
+import { TestRpc, type TestContract } from '../../helpers/test-contract';
 
 function mockCtx(): RpcContext {
   const connection = {} as ConnectionContext;
@@ -16,17 +17,17 @@ function mockCtx(): RpcContext {
 
 describe('RpcDispatcher', () => {
   it('register + dispatch returns result', async () => {
-    const d = new RpcDispatcher();
-    d.register('add', async (params: { a: number; b: number }) => params.a + params.b);
+    const d = new RpcDispatcher<TestContract>();
+    d.register(TestRpc.Add, async (params) => ({ sum: params.a + params.b }));
     const req: RpcRequest = { method: 'add', params: { a: 2, b: 3 }, correlationId: 10 };
     const res = await d.dispatch(req, mockCtx());
     expect(res.correlationId).toBe(10);
-    expect(res.result).toBe(5);
+    expect(res.result).toEqual({ sum: 5 });
     expect(res.error).toBeUndefined();
   });
 
   it('unknown method returns JSON-RPC method not found (-32601)', async () => {
-    const d = new RpcDispatcher();
+    const d = new RpcDispatcher<TestContract>();
     const req: RpcRequest = { method: 'nope', params: null, correlationId: 1 };
     const res = await d.dispatch(req, mockCtx());
     expect(res.error?.code).toBe(-32601);
@@ -34,8 +35,8 @@ describe('RpcDispatcher', () => {
   });
 
   it('handler exception returns -32000 with message', async () => {
-    const d = new RpcDispatcher();
-    d.register('boom', async () => {
+    const d = new RpcDispatcher<TestContract>();
+    d.register(TestRpc.Boom, async () => {
       throw new Error('kaboom');
     });
     const req: RpcRequest = { method: 'boom', params: null, correlationId: 2 };
@@ -45,10 +46,11 @@ describe('RpcDispatcher', () => {
   });
 
   it('concurrent dispatches resolve independently', async () => {
-    const d = new RpcDispatcher();
-    d.register('slow', async (params: { ms: number; v: number }) => {
-      await new Promise((r) => setTimeout(r, params.ms));
-      return params.v;
+    const d = new RpcDispatcher<TestContract>();
+    d.register(TestRpc.Slow, async (params) => {
+      const p = params as { ms: number; v: number };
+      await new Promise((r) => setTimeout(r, p.ms));
+      return p.v;
     });
     const ctx = mockCtx();
     const [ra, rb] = await Promise.all([
