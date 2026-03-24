@@ -17,8 +17,10 @@ const history = ref([])
 const loaded = ref(false)
 const throughputCanvas = ref(null)
 const latencyCanvas = ref(null)
+const threadCanvas = ref(null)
 let throughputChart = null
 let latencyChart = null
+let threadChart = null
 
 onMounted(async () => {
   try {
@@ -84,11 +86,38 @@ const scenarioLabels = {
   'client-event-emit': 'Client event emit',
   'crdt-increment': 'CRDT PN counter increment',
   'mixed-workload': 'Mixed workload (RPC + events)',
+  'main-thread-heavy-flood-worker': 'Heavy payload flood (worker)',
+  'main-thread-heavy-flood-no-worker': 'Heavy payload flood (no worker)',
+  'main-thread-event-flood-worker': 'Event flood (worker)',
+  'main-thread-event-flood-no-worker': 'Event flood (no worker)',
+  'main-thread-rpc-echo-worker': 'RPC echo (worker)',
+  'main-thread-rpc-echo-no-worker': 'RPC echo (no worker)',
 }
 
 function label(name) {
   return scenarioLabels[name] || name
 }
+
+const mainThreadScenarios = computed(() => {
+  return benchmarks.value.filter(b => b.name.startsWith('main-thread-') && b.mainThread)
+})
+
+const mainThreadPairs = computed(() => {
+  const pairs = []
+  const byBase = new Map()
+  for (const s of mainThreadScenarios.value) {
+    const base = s.name.replace(/-worker$/, '').replace(/-no-worker$/, '')
+    if (!byBase.has(base)) byBase.set(base, {})
+    if (s.name.endsWith('-worker')) byBase.get(base).worker = s
+    else byBase.get(base).noWorker = s
+  }
+  for (const [base, pair] of byBase) {
+    if (pair.worker && pair.noWorker) {
+      pairs.push({ base, label: scenarioLabels[pair.worker.name] || base, ...pair })
+    }
+  }
+  return pairs
+})
 
 async function loadChartJs() {
   if (typeof window === 'undefined') return null
@@ -190,6 +219,58 @@ watch([loaded, history], async () => {
       },
     })
   }
+
+  // Main-thread blocking chart
+  if (threadCanvas.value) {
+    const threadScenarios = [
+      'main-thread-heavy-flood-worker', 'main-thread-heavy-flood-no-worker',
+      'main-thread-event-flood-worker', 'main-thread-event-flood-no-worker',
+      'main-thread-rpc-echo-worker', 'main-thread-rpc-echo-no-worker',
+    ]
+    const threadColors = {
+      'main-thread-heavy-flood-worker': '#22c55e',
+      'main-thread-heavy-flood-no-worker': '#ef4444',
+      'main-thread-event-flood-worker': '#3b82f6',
+      'main-thread-event-flood-no-worker': '#f97316',
+      'main-thread-rpc-echo-worker': '#8b5cf6',
+      'main-thread-rpc-echo-no-worker': '#ec4899',
+    }
+    const threadDatasets = threadScenarios.map(name => ({
+      label: scenarioLabels[name] || name,
+      data: withBench.map(e => {
+        const s = (e.benchmarks || []).find(b => b.name === name)
+        return s && s.mainThread ? s.mainThread.longTaskTotalMs : null
+      }),
+      borderColor: threadColors[name] || '#6b7280',
+      borderDash: name.endsWith('-no-worker') ? [6, 3] : [],
+      fill: false,
+      tension: 0.3,
+    })).filter(ds => ds.data.some(v => v != null))
+
+    if (threadDatasets.length > 0) {
+      if (threadChart) threadChart.destroy()
+      threadChart = new Chart(threadCanvas.value, {
+        type: 'line',
+        data: { labels, datasets: threadDatasets },
+        options: {
+          responsive: true,
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            x: {
+              title: { display: true, text: 'Date', font: { weight: 'bold' } },
+            },
+            y: {
+              title: { display: true, text: 'Total main-thread blocking (ms)', font: { weight: 'bold' } },
+              ticks: { callback: v => v + ' ms' },
+            },
+          },
+          plugins: {
+            tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y != null ? ctx.parsed.y.toFixed(0) : '—') + ' ms blocked' } },
+          },
+        },
+      })
+    }
+  }
 }, { immediate: true })
 </script>
 
@@ -256,6 +337,52 @@ P50 (median) latency in milliseconds for round-trip scenarios. Lower is better.
 <p>Not enough data points for trends yet.</p>
 </div>
 
+## Main-thread impact: Worker vs no-worker
+
+<div v-if="loaded && mainThreadPairs.length > 0">
+
+One of datasole's key features is off-main-thread WebSocket transport via Web Workers. The table below compares identical workloads with workers enabled vs disabled, measuring main-thread blocking via the **Long Tasks API** (tasks >50 ms) and **requestAnimationFrame jitter**.
+
+<div class="bench-table">
+
+| Workload | Mode | Throughput | Long Tasks | Total blocked | rAF P99 | Jank frames |
+| :------- | :--- | ---------: | ---------: | ------------: | ------: | ----------: |
+
+<template v-for="pair in mainThreadPairs" :key="pair.base">
+| {{ pair.label.replace(' (worker)', '') }} | **Worker** | {{ fmtOps(pair.worker.opsPerSec) }} ops/s | {{ pair.worker.mainThread.longTaskCount }} | {{ pair.worker.mainThread.longTaskTotalMs.toFixed(0) }} ms | {{ pair.worker.mainThread.rafP99Ms.toFixed(1) }} ms | {{ pair.worker.mainThread.rafJankFrames }} / {{ pair.worker.mainThread.rafTotalFrames }} |
+| | No worker | {{ fmtOps(pair.noWorker.opsPerSec) }} ops/s | {{ pair.noWorker.mainThread.longTaskCount }} | {{ pair.noWorker.mainThread.longTaskTotalMs.toFixed(0) }} ms | {{ pair.noWorker.mainThread.rafP99Ms.toFixed(1) }} ms | {{ pair.noWorker.mainThread.rafJankFrames }} / {{ pair.noWorker.mainThread.rafTotalFrames }} |
+</template>
+
+</div>
+
+<p style="color: var(--vp-c-text-3); font-size: 0.85rem; margin-top: 1rem;">
+<strong>Long Tasks</strong>: browser tasks that block the main thread for >50 ms (fewer = better UI responsiveness). <strong>rAF P99</strong>: 99th percentile requestAnimationFrame gap (closer to 16.7 ms = smoother). <strong>Jank frames</strong>: rAF callbacks delayed by >50 ms.
+</p>
+
+</div>
+
+<div v-else-if="loaded">
+<p>No main-thread comparison data available yet. Run <code>npm run test:e2e</code> to generate worker vs no-worker benchmarks.</p>
+</div>
+
+## Main-thread blocking over time
+
+<div v-if="loaded && history.filter(e => e.benchmarks && e.benchmarks.some(b => b.mainThread)).length > 1">
+
+<div style="max-width: 800px; margin: 1rem 0;">
+<canvas ref="threadCanvas"></canvas>
+</div>
+
+<p style="color: var(--vp-c-text-3); font-size: 0.8rem;">
+Total main-thread blocking time (ms) during 3-second sustained load. Lower is better. Worker transport should show near-zero blocking.
+</p>
+
+</div>
+
+<div v-else-if="loaded">
+<p>Not enough data points for trends yet.</p>
+</div>
+
 ## What's measured
 
 Each benchmark connects a real browser client (datasole IIFE bundle in headless Chromium) to a live Node.js server via WebSocket and runs sustained load for 3 seconds:
@@ -273,6 +400,8 @@ Each benchmark connects a real browser client (datasole IIFE bundle in headless 
 | **Client event emit**        | Client fires `ds.emit()` in a tight loop — fire-and-forget throughput                             |
 | **CRDT increment**           | Client increments a PN counter rapidly — CRDT op throughput                                       |
 | **Mixed workload**           | Alternating RPC, emit, and add — combined throughput under mixed load                             |
+
+Additionally, 6 **main-thread comparison** benchmarks run each workload twice (with and without Web Worker transport) and measure Long Tasks, rAF jitter, and jank frames to quantify the off-main-thread benefit.
 
 All benchmarks run as part of the CI gate on every push to `main`.
 

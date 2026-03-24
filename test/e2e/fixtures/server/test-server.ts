@@ -232,6 +232,30 @@ export async function startTestServer(): Promise<TestServerResult> {
     return params;
   });
 
+  // Heavy-payload flood: sends large JSON events at max rate to stress client decode/decompress
+  ds.rpc(
+    'startHeavyPayloadFlood',
+    async (params: { durationMs: number; payloadSizeKb?: number }) => {
+      const end = Date.now() + params.durationMs;
+      let count = 0;
+      const sizeKb = params.payloadSizeKb ?? 5;
+      const filler = 'x'.repeat(sizeKb * 1024);
+      const tick = () => {
+        if (Date.now() >= end) return;
+        ds.broadcast('bench:heavy-payload', {
+          seq: count++,
+          ts: Date.now(),
+          data: filler,
+          nested: { a: count, b: filler.slice(0, 200), c: [1, 2, 3, count] },
+        });
+        setImmediate(tick);
+      };
+      tick();
+      log(`Benchmark: heavy payload flood ${sizeKb}KB for ${params.durationMs}ms`);
+      return { ok: true };
+    },
+  );
+
   // --- Two-way low-latency echo (game tick / trade confirm) ---
   ds.on('bench:game-tick', (payload) => {
     ds.broadcast('bench:game-state', {

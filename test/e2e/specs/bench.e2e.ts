@@ -348,4 +348,105 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
     results.push(result);
     expect(result.totalOps).toBeGreaterThan(0);
   });
+
+  /**
+   * Main-thread blocking comparison: worker vs no-worker under identical flood workloads.
+   * Uses Long Tasks API + rAF jitter to quantify the difference.
+   * CPU is throttled 4× via CDP to simulate mobile/constrained devices where
+   * the off-main-thread benefit is most pronounced.
+   */
+  for (const useWorker of [true, false]) {
+    const tag = useWorker ? 'worker' : 'no-worker';
+
+    async function setupWithMode(pg: import('@playwright/test').Page) {
+      const cdp = await pg.context().newCDPSession(pg);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+
+      await pg.goto(harness.getUrl());
+      await expect(pg.locator('#status')).toHaveText('ready', { timeout: 10000 });
+      await pg.evaluate(
+        (opts: Record<string, unknown>) => (window as Record<string, unknown>).__connect(opts),
+        { useWorker },
+      );
+      await pg.waitForFunction(
+        () => (window as Record<string, unknown>).__getConnectionState?.() === 'connected',
+        undefined,
+        { timeout: 10000 },
+      );
+    }
+
+    test(`main-thread: heavy payload flood (${tag})`, async ({ page }) => {
+      await setupWithMode(page);
+
+      const result = await runReceiveBench(
+        page,
+        `main-thread-heavy-flood-${tag}`,
+        BENCH_DURATION_SEC,
+        `
+        window.__benchHeavyCount = 0;
+        window.__client.on('bench:heavy-payload', function(ev) {
+          window.__benchHeavyCount++;
+          var el = document.getElementById('vis-log');
+          if (el) el.setAttribute('data-bench', String(window.__benchHeavyCount));
+        });
+        await window.__rpc('startHeavyPayloadFlood', { durationMs: ${BENCH_DURATION_SEC * 1000}, payloadSizeKb: 5 });
+        `,
+        'window.__benchHeavyCount',
+        true,
+      );
+
+      results.push(result);
+      expect(result.totalOps).toBeGreaterThan(0);
+      expect(result.mainThread).toBeTruthy();
+    });
+
+    test(`main-thread: event flood (${tag})`, async ({ page }) => {
+      await setupWithMode(page);
+
+      const result = await runReceiveBench(
+        page,
+        `main-thread-event-flood-${tag}`,
+        BENCH_DURATION_SEC,
+        `
+        window.__benchEventCount = 0;
+        window.__client.on('bench:event', function() { window.__benchEventCount++; });
+        await window.__rpc('startBroadcastFlood', { durationMs: ${BENCH_DURATION_SEC * 1000} });
+        `,
+        'window.__benchEventCount',
+        true,
+      );
+
+      results.push(result);
+      expect(result.totalOps).toBeGreaterThan(0);
+      expect(result.mainThread).toBeTruthy();
+    });
+
+    test(`main-thread: RPC echo (${tag})`, async ({ page }) => {
+      await setupWithMode(page);
+
+      const result = await runBench(
+        page,
+        `main-thread-rpc-echo-${tag}`,
+        BENCH_DURATION_SEC,
+        '',
+        `
+        var latencies = [];
+        var errors = 0;
+        while (performance.now() < deadline) {
+          var t0 = performance.now();
+          try {
+            await window.__rpc('echo', { ts: Date.now() });
+            latencies.push(performance.now() - t0);
+          } catch { errors++; }
+        }
+        return { latencies: latencies, errors: errors };
+        `,
+        true,
+      );
+
+      results.push(result);
+      expect(result.totalOps).toBeGreaterThan(0);
+      expect(result.mainThread).toBeTruthy();
+    });
+  }
 });

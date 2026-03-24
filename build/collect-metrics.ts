@@ -133,6 +133,17 @@ function generateMarkdown(metrics: BuildMetrics): string {
   return lines.join('\n');
 }
 
+interface MainThreadSummary {
+  longTaskCount: number;
+  longTaskTotalMs: number;
+  longTaskMaxMs: number;
+  rafMedianMs: number;
+  rafP99Ms: number;
+  rafJankFrames: number;
+  rafDroppedFrames: number;
+  rafTotalFrames: number;
+}
+
 interface BenchScenarioSummary {
   name: string;
   opsPerSec: number;
@@ -140,6 +151,7 @@ interface BenchScenarioSummary {
   p95Ms: number;
   p99Ms: number;
   totalOps: number;
+  mainThread?: MainThreadSummary;
 }
 
 interface HistoryEntry {
@@ -188,6 +200,7 @@ function appendToHistory(metrics: BuildMetrics): void {
         p95Ms: s.p95Ms,
         p99Ms: s.p99Ms,
         totalOps: s.totalOps,
+        ...(s.mainThread ? { mainThread: s.mainThread } : {}),
       }))
     : null;
 

@@ -6,6 +6,25 @@ import type { Page } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'fs';
 import path from 'path';
 
+export interface MainThreadMetrics {
+  /** Number of Long Tasks (>50 ms) observed during the benchmark. */
+  longTaskCount: number;
+  /** Total time spent in Long Tasks (ms). */
+  longTaskTotalMs: number;
+  /** Max single Long Task duration (ms). */
+  longTaskMaxMs: number;
+  /** Median rAF inter-frame gap (ms); ideal ≈ 16.67. */
+  rafMedianMs: number;
+  /** 99th percentile rAF inter-frame gap (ms). */
+  rafP99Ms: number;
+  /** Number of rAF frames that exceeded 50 ms gap ("janky frames"). */
+  rafJankFrames: number;
+  /** Number of rAF frames that exceeded 33 ms gap ("dropped frames"). */
+  rafDroppedFrames: number;
+  /** Total rAF frames measured. */
+  rafTotalFrames: number;
+}
+
 export interface BenchScenarioResult {
   name: string;
   durationMs: number;
@@ -17,6 +36,8 @@ export interface BenchScenarioResult {
   minMs: number;
   maxMs: number;
   errors: number;
+  /** Main-thread blocking metrics (present when measurement is enabled). */
+  mainThread?: MainThreadMetrics;
 }
 
 export interface BenchSuiteResult {
@@ -53,6 +74,69 @@ export function computeStats(
 }
 
 /**
+ * Inject Long Tasks + rAF observers into the page. Call before starting a workload.
+ * Returns a stop handle that collects and returns MainThreadMetrics.
+ */
+export async function startMainThreadMetrics(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as Record<string, unknown>;
+    w.__mtLongTasks = [] as { duration: number }[];
+    w.__mtRafGaps = [] as number[];
+    w.__mtRafRunning = true;
+
+    const obs = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        (w.__mtLongTasks as { duration: number }[]).push({ duration: entry.duration });
+      }
+    });
+    obs.observe({ type: 'longtask', buffered: false });
+    w.__mtObserver = obs;
+
+    let last = performance.now();
+    function rafLoop() {
+      const now = performance.now();
+      (w.__mtRafGaps as number[]).push(now - last);
+      last = now;
+      if (w.__mtRafRunning) requestAnimationFrame(rafLoop);
+    }
+    requestAnimationFrame(rafLoop);
+  });
+}
+
+export async function collectMainThreadMetrics(page: Page): Promise<MainThreadMetrics> {
+  return page.evaluate(() => {
+    const w = window as Record<string, unknown>;
+    w.__mtRafRunning = false;
+    const obs = w.__mtObserver as PerformanceObserver | undefined;
+    if (obs) obs.disconnect();
+
+    const longTasks = (w.__mtLongTasks ?? []) as { duration: number }[];
+    const rafGaps = (w.__mtRafGaps ?? []) as number[];
+    const sorted = rafGaps.slice().sort((a, b) => a - b);
+
+    function pctl(arr: number[], p: number): number {
+      if (arr.length === 0) return 0;
+      const idx = Math.ceil((p / 100) * arr.length) - 1;
+      return arr[Math.max(0, idx)];
+    }
+
+    return {
+      longTaskCount: longTasks.length,
+      longTaskTotalMs: Math.round(longTasks.reduce((s, t) => s + t.duration, 0) * 100) / 100,
+      longTaskMaxMs:
+        longTasks.length > 0
+          ? Math.round(Math.max(...longTasks.map((t) => t.duration)) * 100) / 100
+          : 0,
+      rafMedianMs: Math.round(pctl(sorted, 50) * 100) / 100,
+      rafP99Ms: Math.round(pctl(sorted, 99) * 100) / 100,
+      rafJankFrames: rafGaps.filter((g) => g > 50).length,
+      rafDroppedFrames: rafGaps.filter((g) => g > 33).length,
+      rafTotalFrames: rafGaps.length,
+    };
+  });
+}
+
+/**
  * Run a benchmark scenario inside the browser page via page.evaluate.
  * The `fn` string is injected as an async function body that has access to
  * `window.__client` (DatasoleClient) and must return `{ latencies: number[], errors: number }`.
@@ -63,7 +147,10 @@ export async function runBench(
   durationSec: number,
   setupFn: string,
   benchFn: string,
+  measureMainThread = false,
 ): Promise<BenchScenarioResult> {
+  if (measureMainThread) await startMainThreadMetrics(page);
+
   const result = await page.evaluate(
     async ({ setupCode, benchCode, durationMs }) => {
       const setupFunc = new Function(
@@ -82,7 +169,11 @@ export async function runBench(
     { setupCode: setupFn, benchCode: benchFn, durationMs: durationSec * 1000 },
   );
 
-  return computeStats(name, result.latencies, durationSec * 1000, result.errors);
+  const stats = computeStats(name, result.latencies, durationSec * 1000, result.errors);
+  if (measureMainThread) {
+    stats.mainThread = await collectMainThreadMetrics(page);
+  }
+  return stats;
 }
 
 /**
@@ -94,7 +185,10 @@ export async function runReceiveBench(
   durationSec: number,
   triggerRpc: string,
   countExpr: string,
+  measureMainThread = false,
 ): Promise<BenchScenarioResult> {
+  if (measureMainThread) await startMainThreadMetrics(page);
+
   const result = await page.evaluate(
     async ({ trigger, countCode, durationMs }) => {
       const triggerFn = new Function(
@@ -108,7 +202,7 @@ export async function runReceiveBench(
     { trigger: triggerRpc, countCode: countExpr, durationMs: durationSec * 1000 },
   );
 
-  return {
+  const stats: BenchScenarioResult = {
     name,
     durationMs: result.durationMs,
     totalOps: result.count,
@@ -120,6 +214,11 @@ export async function runReceiveBench(
     maxMs: 0,
     errors: 0,
   };
+
+  if (measureMainThread) {
+    stats.mainThread = await collectMainThreadMetrics(page);
+  }
+  return stats;
 }
 
 export function saveBenchResults(results: BenchSuiteResult): void {
