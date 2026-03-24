@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useDatasoleClient } from '../composables/useDatasole';
+import { RpcMethod } from '../../shared/contract';
 
 const ds = useDatasoleClient();
 
@@ -33,10 +34,7 @@ async function generate() {
   const hi = Math.max(min.value, max.value);
   const start = performance.now();
   try {
-    const data = (await ds.value.rpc('randomNumber', { min: lo, max: hi })) as {
-      value: number;
-      generatedAt: number;
-    };
+    const data = await ds.value.rpc(RpcMethod.RandomNumber, { min: lo, max: hi });
     const elapsed = (performance.now() - start).toFixed(1);
     const entry: RpcResult = { value: data.value, min: lo, max: hi, ms: elapsed };
     result.value = entry;
@@ -58,8 +56,8 @@ async function generate() {
     <div class="panel-header">RPC &mdash; Random Number</div>
     <div class="panel-body">
       <div class="panel-help">
-        <code>await ds.rpc('randomNumber', { min, max })</code> — typed request/response over the
-        WebSocket. Latency is the full round trip. No REST endpoint needed.
+        <code>await ds.rpc(RpcMethod.RandomNumber, { min, max })</code> — typed request/response
+        over the WebSocket. Latency is the full round trip. No REST endpoint needed.
       </div>
       <div class="rpc-section">
         <div class="rpc-controls">

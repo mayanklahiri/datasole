@@ -1,19 +1,10 @@
 import { useMemo } from 'react';
+import type { EventData } from 'datasole';
 import { useDatasoleEvent } from '../hooks/useDatasole';
+import type { AppContract } from '../../shared/contract';
+import { Event } from '../../shared/contract';
 
-interface Metrics {
-  uptime: number;
-  connections: number;
-  cpuUsage: number;
-  memoryMB: number;
-  cpuCount: number;
-  totalMemoryGB: number;
-  serverTime: string;
-  timezone: string;
-  messagesIn: number;
-  messagesOut: number;
-  timestamp: number;
-}
+type Metrics = EventData<AppContract, Event.SystemMetrics>;
 
 function formatUptime(ms: number): string {
   const s = Math.floor(ms / 1000);
@@ -25,7 +16,7 @@ function formatUptime(ms: number): string {
 
 export function MetricsDashboard() {
   // One line. This re-renders only when the server broadcasts new data.
-  const metrics = useDatasoleEvent<Metrics>('system-metrics');
+  const metrics = useDatasoleEvent<Metrics>(Event.SystemMetrics);
 
   // Derived values — just useMemo, no store selectors, no reducers.
   const uptimeDisplay = useMemo(
@@ -46,7 +37,7 @@ export function MetricsDashboard() {
       <div className="panel-header">Server Metrics</div>
       <div className="panel-body">
         <div className="panel-help">
-          <code>useDatasoleEvent('system-metrics')</code> — one line, no Redux, no Zustand, no{' '}
+          <code>useDatasoleEvent(Event.SystemMetrics)</code> — one line, no Redux, no Zustand, no{' '}
           <code>useEffect</code>. Data arrives reactively from the Web Worker. Derive with{' '}
           <code>useMemo</code>.
         </div>

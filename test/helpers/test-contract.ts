@@ -46,6 +46,9 @@ export enum TestEvent {
 
 export enum TestState {
   Board = 'board',
+  /** Isolated key for e2e tests that set server state without racing syncBoard(). */
+  E2ETaskboard = 'e2e-taskboard',
+  Counter = 'counter',
   Dashboard = 'dashboard',
   Key1 = 'key1',
   Obj = 'obj',
@@ -119,6 +122,8 @@ export interface TestContract extends DatasoleContract {
   };
   state: {
     [TestState.Board]: Board;
+    [TestState.E2ETaskboard]: Board;
+    [TestState.Counter]: { value: number };
     [TestState.Dashboard]: unknown;
     [TestState.Key1]: unknown;
     [TestState.Obj]: unknown;

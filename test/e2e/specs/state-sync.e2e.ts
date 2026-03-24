@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 
+import { TestState } from '../../helpers/test-contract';
 import { snap } from '../helpers/screenshots';
 import { ServerHarness } from '../helpers/server-harness';
 
@@ -21,9 +22,9 @@ test.describe('State Sync', () => {
 
     await snap(page, testInfo, 'state-sync-before');
 
-    await page.evaluate(() => window.__subscribeState('counter'));
+    await page.evaluate((k) => window.__subscribeState(k), TestState.Counter);
 
-    await harness.getDatasoleServer().setState('counter', { value: 42 });
+    await harness.getDatasoleServer().setState(TestState.Counter, { value: 42 });
 
     await page.waitForFunction(() => window.__stateUpdates.length > 0, null, {
       timeout: 5000,
@@ -31,7 +32,7 @@ test.describe('State Sync', () => {
 
     const updates = await page.evaluate(() => window.__stateUpdates);
     expect(updates.length).toBeGreaterThan(0);
-    expect(updates[0].key).toBe('counter');
+    expect(updates[0]!.key).toBe(TestState.Counter);
 
     await snap(page, testInfo, 'state-sync-after');
 

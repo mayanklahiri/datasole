@@ -2,7 +2,15 @@ import { describe, expectTypeOf, it } from 'vitest';
 
 import { DatasoleClient } from '../../../src/client/client';
 import { DatasoleServer } from '../../../src/server/server';
-import type { EventData, RpcParams, RpcResult, StateValue } from '../../../src/shared/contract';
+import type {
+  EventData,
+  EventName,
+  RpcMethodKey,
+  RpcParams,
+  RpcResult,
+  StateKeyName,
+  StateValue,
+} from '../../../src/shared/contract';
 import type { TestContract, TestEvent, TestRpc, TestState } from '../../helpers/test-contract';
 
 describe('contract type inference', () => {
@@ -32,6 +40,14 @@ describe('contract type inference', () => {
     >();
     expectTypeOf<Parameters<DatasoleServer<TestContract>['broadcast']>[0]>().toEqualTypeOf<
       keyof TestContract['events'] & string
+    >();
+  });
+
+  it('exposes nominal contract key aliases', () => {
+    expectTypeOf<RpcMethodKey<TestContract>>().toEqualTypeOf<keyof TestContract['rpc'] & string>();
+    expectTypeOf<EventName<TestContract>>().toEqualTypeOf<keyof TestContract['events'] & string>();
+    expectTypeOf<StateKeyName<TestContract>>().toEqualTypeOf<
+      keyof TestContract['state'] & string
     >();
   });
 });

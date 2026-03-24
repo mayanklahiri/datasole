@@ -1,24 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { EventData } from 'datasole';
 import { useDatasoleEvent } from '../composables/useDatasole';
+import type { AppContract } from '../../shared/contract';
+import { Event } from '../../shared/contract';
 
-interface Metrics {
-  uptime: number;
-  connections: number;
-  cpuUsage: number;
-  memoryMB: number;
-  cpuCount: number;
-  totalMemoryGB: number;
-  serverTime: string;
-  timezone: string;
-  messagesIn: number;
-  messagesOut: number;
-  timestamp: number;
-}
+type Metrics = EventData<AppContract, Event.SystemMetrics>;
 
 // One line. That's it. This ref auto-updates from the Web Worker
-// whenever the server broadcasts 'system-metrics'. No store needed.
-const metrics = useDatasoleEvent<Metrics>('system-metrics');
+// whenever the server broadcasts system metrics. No store needed.
+const metrics = useDatasoleEvent<Metrics>(Event.SystemMetrics);
 
 // Computed properties compose naturally with the reactive ref —
 // they re-evaluate automatically when metrics.value changes.
@@ -47,7 +38,7 @@ const totalMessages = computed(() => {
     <div class="panel-header">Server Metrics</div>
     <div class="panel-body">
       <div class="panel-help">
-        <code>const metrics = useDatasoleEvent('system-metrics')</code> — one line, no Pinia, no
+        <code>const metrics = useDatasoleEvent(Event.SystemMetrics)</code> — one line, no Pinia, no
         Vuex, no <code>watch()</code>. The ref updates reactively from the Web Worker. Bind it in
         your template like any other ref. Computed properties just work.
       </div>

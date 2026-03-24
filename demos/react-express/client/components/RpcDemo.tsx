@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import { useDatasoleClient } from '../hooks/useDatasole';
+import { RpcMethod } from '../../shared/contract';
 
 interface RpcResult {
   value: number;
@@ -32,10 +33,7 @@ export function RpcDemo() {
     const hi = Math.max(min, max);
     const start = performance.now();
     try {
-      const data = (await ds.rpc('randomNumber', { min: lo, max: hi })) as {
-        value: number;
-        generatedAt: number;
-      };
+      const data = await ds.rpc(RpcMethod.RandomNumber, { min: lo, max: hi });
       const elapsed = (performance.now() - start).toFixed(1);
       const entry: RpcResult = { value: data.value, min: lo, max: hi, ms: elapsed };
       setResult(entry);
@@ -54,7 +52,7 @@ export function RpcDemo() {
       <div className="panel-body">
         <div className="panel-help">
           <code>
-            await ds.rpc('randomNumber', {'{'} min, max {'}'})
+            await ds.rpc(RpcMethod.RandomNumber, {'{'} min, max {'}'})
           </code>{' '}
           — typed request/response over the WebSocket. Latency is the full round trip. No REST
           endpoint needed.

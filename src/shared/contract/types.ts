@@ -25,6 +25,22 @@ export interface DatasoleContract {
 }
 
 /**
+ * RPC method key for contract `T`. Declare keys with string enums or `as const` objects so call
+ * sites use `RpcMethod.Foo`, not raw string literals.
+ */
+export type RpcMethodKey<T extends DatasoleContract> = keyof T['rpc'] & string;
+
+/**
+ * Event name for contract `T`. Pair with {@link EventData} at call sites.
+ */
+export type EventName<T extends DatasoleContract> = keyof T['events'] & string;
+
+/**
+ * State key for contract `T`. Pair with {@link StateValue} at call sites.
+ */
+export type StateKeyName<T extends DatasoleContract> = keyof T['state'] & string;
+
+/**
  * Extract the params type for a given RPC method from a contract.
  *
  * Example: `RpcParams<AppContract, 'getUser'>` -> `{ id: string }`

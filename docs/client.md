@@ -43,18 +43,18 @@ const state = client.getConnectionState(); // 'disconnected' | 'connecting' | 'c
 ### RPC — Call the Server
 
 ```typescript
-// Typed request and response
-const user = await client.rpc<{ name: string }>('getUser', { userId: '123' });
+// Contract-first (recommended): use enum members from your shared AppContract as the method key
+const user = await client.rpc(RpcMethod.GetUser, { userId: '123' });
 console.log(user.name);
 
 // With timeout
-const result = await client.rpc('slowQuery', { q: 'test' }, { timeout: 10000 });
+const result = await client.rpc(RpcMethod.SlowQuery, { q: 'test' }, { timeout: 10000 });
 
 // Multiple calls in flight simultaneously — they're multiplexed over one WebSocket
 const [a, b, c] = await Promise.all([
-  client.rpc('getUser', { id: '1' }),
-  client.rpc('getUser', { id: '2' }),
-  client.rpc('getUser', { id: '3' }),
+  client.rpc(RpcMethod.GetUser, { id: '1' }),
+  client.rpc(RpcMethod.GetUser, { id: '2' }),
+  client.rpc(RpcMethod.GetUser, { id: '3' }),
 ]);
 ```
 
@@ -63,16 +63,16 @@ const [a, b, c] = await Promise.all([
 ### Events — Send and Receive
 
 ```typescript
-// Subscribe to server-pushed events
-client.on<{ symbol: string; price: number }>('price', ({ data }) => {
+// Subscribe to server-pushed events (use contract event enum members as names)
+client.on(Event.Price, ({ data }) => {
   console.log(`${data.symbol}: $${data.price}`);
 });
 
 // Unsubscribe
-client.off('price', handler);
+client.off(Event.Price, handler);
 
 // Send event to server
-client.emit('chat:message', { text: 'hello' });
+client.emit(Event.ChatMessage, { text: 'hello' });
 ```
 
 > **Tutorial:** [Server Events — A Live Stock Ticker](tutorials.md#3-server-events--a-live-stock-ticker)
@@ -81,13 +81,13 @@ client.emit('chat:message', { text: 'hello' });
 
 ```typescript
 // Subscribe to a state key — callback fires on every JSON Patch update
-client.subscribeState<Dashboard>('dashboard', (state) => {
+client.subscribeState(StateKey.Dashboard, (state) => {
   // state is the full, patched object — ready to render
   console.log(state.visitors, state.activeNow);
 });
 
 // Get current snapshot (synchronous)
-const current = client.getState<Dashboard>('dashboard');
+const current = client.getState(StateKey.Dashboard);
 ```
 
 > **Tutorial:** [Live State — A Server-Synced Dashboard](tutorials.md#4-live-state--a-server-synced-dashboard) — the most important pattern for most apps
@@ -140,11 +140,14 @@ client.on('crdt:state', ({ data }) => {
 ### React
 
 ```typescript
+import type { StateKeyName } from 'datasole';
 import { DatasoleClient } from 'datasole/client';
 import { useEffect, useRef, useState } from 'react';
+import type { AppContract } from './contract';
+import { StateKey } from './contract';
 
 function useDatasole(url: string) {
-  const clientRef = useRef(new DatasoleClient({ url }));
+  const clientRef = useRef(new DatasoleClient<AppContract>({ url }));
   useEffect(() => {
     clientRef.current.connect();
     return () => { clientRef.current.disconnect(); };
@@ -152,7 +155,7 @@ function useDatasole(url: string) {
   return clientRef.current;
 }
 
-function useLiveState<T>(client: DatasoleClient, key: string): T | null {
+function useLiveState<T>(client: DatasoleClient<AppContract>, key: StateKeyName<AppContract>): T | null {
   const [state, setState] = useState<T | null>(null);
   useEffect(() => {
     const sub = client.subscribeState<T>(key, setState);
@@ -164,7 +167,7 @@ function useLiveState<T>(client: DatasoleClient, key: string): T | null {
 // Usage:
 function Dashboard() {
   const ds = useDatasole('wss://example.com');
-  const dashboard = useLiveState<{ visitors: number }>(ds, 'dashboard');
+  const dashboard = useLiveState<{ visitors: number }>(ds, StateKey.Dashboard);
   if (!dashboard) return <p>Loading...</p>;
   return <p>Visitors: {dashboard.visitors}</p>;
 }
@@ -176,14 +179,16 @@ function Dashboard() {
 <script setup lang="ts">
 import { DatasoleClient } from 'datasole/client';
 import { onMounted, onUnmounted, ref } from 'vue';
+import type { AppContract } from './contract';
+import { StateKey } from './contract';
 
-const client = new DatasoleClient({ url: 'wss://example.com' });
+const client = new DatasoleClient<AppContract>({ url: 'wss://example.com' });
 const dashboard = ref<Record<string, unknown>>({});
 let stateSub: { unsubscribe(): void } | null = null;
 
 onMounted(() => {
   client.connect();
-  stateSub = client.subscribeState('dashboard', (s) => {
+  stateSub = client.subscribeState(StateKey.Dashboard, (s) => {
     dashboard.value = s;
   });
 });
@@ -202,17 +207,22 @@ onUnmounted(() => {
 ### Vue 3 Composable
 
 ```typescript
+import type { StateKeyName } from 'datasole';
 import { DatasoleClient } from 'datasole/client';
 import { onMounted, onUnmounted, ref, type Ref } from 'vue';
+import type { AppContract } from './contract';
 
 export function useDatasole(url: string) {
-  const client = new DatasoleClient({ url });
+  const client = new DatasoleClient<AppContract>({ url });
   onMounted(() => client.connect());
   onUnmounted(() => client.disconnect());
   return client;
 }
 
-export function useLiveState<T>(client: DatasoleClient, key: string): Ref<T | null> {
+export function useLiveState<T>(
+  client: DatasoleClient<AppContract>,
+  key: StateKeyName<AppContract>,
+): Ref<T | null> {
   const state = ref<T | null>(null) as Ref<T | null>;
   let sub: { unsubscribe(): void } | null = null;
   onMounted(() => {
@@ -243,10 +253,11 @@ client.connect();
 
 ```html
 <script src="https://unpkg.com/datasole/dist/client/datasole.iife.min.js"></script>
-<script>
+<script type="module">
+  import { StateKey } from './contract.mjs'; // shared enum/const map from your app
   const ds = new Datasole.DatasoleClient({ url: 'wss://example.com' });
   ds.connect();
-  ds.subscribeState('dashboard', (state) => {
+  ds.subscribeState(StateKey.Dashboard, (state) => {
     document.getElementById('output').textContent = JSON.stringify(state);
   });
 </script>

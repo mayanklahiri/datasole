@@ -16,6 +16,9 @@ import {
 } from '../../helpers/live-server';
 import { type TestContract, TestRpc, TestEvent, TestState } from '../../helpers/test-contract';
 
+/** Wire-level name for an RPC that is intentionally not registered (negative tests). */
+const UNKNOWN_RPC_METHOD = '__unknown_rpc__';
+
 let srv: LiveTestServer<TestContract> | undefined;
 
 function liveSrv(): LiveTestServer<TestContract> {
@@ -51,7 +54,7 @@ describe('DatasoleServer — thread-pool executor', () => {
     });
     liveSrv().ds.rpc.register(TestRpc.Echo, async (params: unknown) => params);
     const ws = await liveSrv().connectWs();
-    const res = await rpc(ws, 'echo', { x: 1 }, 1);
+    const res = await rpc(ws, TestRpc.Echo, { x: 1 }, 1);
     expect(res.result).toEqual({ x: 1 });
     ws.close();
   });
@@ -71,7 +74,7 @@ describe('DatasoleServer — RPC via live WebSocket', () => {
 
   it('dispatches RPC request and returns response', async () => {
     const ws = await liveSrv().connectWs();
-    const res = await rpc(ws, 'echo', { x: 42 }, 1);
+    const res = await rpc(ws, TestRpc.Echo, { x: 42 }, 1);
     expect(res.correlationId).toBe(1);
     expect(res.result).toEqual({ x: 42 });
     ws.close();
@@ -79,14 +82,14 @@ describe('DatasoleServer — RPC via live WebSocket', () => {
 
   it('handles RPC with computation', async () => {
     const ws = await liveSrv().connectWs();
-    const res = await rpc(ws, 'add', { a: 10, b: 20 }, 2);
+    const res = await rpc(ws, TestRpc.Add, { a: 10, b: 20 }, 2);
     expect(res.result).toEqual({ sum: 30 });
     ws.close();
   });
 
   it('returns error for unknown RPC method', async () => {
     const ws = await liveSrv().connectWs();
-    const res = await rpc(ws, 'nonexistent', null, 3);
+    const res = await rpc(ws, UNKNOWN_RPC_METHOD, null, 3);
     expect(res.error).toBeDefined();
     expect(res.error!.code).toBe(-32601);
     ws.close();
@@ -94,7 +97,7 @@ describe('DatasoleServer — RPC via live WebSocket', () => {
 
   it('returns error when handler throws', async () => {
     const ws = await liveSrv().connectWs();
-    const res = await rpc(ws, 'boom', null, 4);
+    const res = await rpc(ws, TestRpc.Boom, null, 4);
     expect(res.error).toBeDefined();
     expect(res.error!.message).toBe('Intentional test error');
     ws.close();
@@ -105,12 +108,12 @@ describe('DatasoleServer — RPC via live WebSocket', () => {
 
     const framesPromise = collectFrames(ws, 2);
     sendFrame(ws, Opcode.RPC_REQ, 10, {
-      method: 'echo',
+      method: TestRpc.Echo,
       params: 'first',
       correlationId: 10,
     });
     sendFrame(ws, Opcode.RPC_REQ, 11, {
-      method: 'echo',
+      method: TestRpc.Echo,
       params: 'second',
       correlationId: 11,
     });
@@ -129,7 +132,7 @@ describe('DatasoleServer — events via live WebSocket', () => {
     liveSrv().ds.events.on(TestEvent.Chat, (payload) => received.push(payload));
 
     const ws = await liveSrv().connectWs();
-    sendFrame(ws, Opcode.EVENT_C2S, 0, { event: 'chat', data: 'hello' });
+    sendFrame(ws, Opcode.EVENT_C2S, 0, { event: TestEvent.Chat, data: 'hello' });
     await tick(50);
 
     expect(received.length).toBe(1);
@@ -149,7 +152,7 @@ describe('DatasoleServer — events via live WebSocket', () => {
 
     const [f1, f2] = await Promise.all([p1, p2]);
     expect(f1.opcode).toBe(Opcode.EVENT_S2C);
-    expect((f1.data as Record<string, unknown>).event).toBe('notify');
+    expect((f1.data as Record<string, unknown>).event).toBe(TestEvent.Notify);
     expect(f2.opcode).toBe(Opcode.EVENT_S2C);
     ws1.close();
     ws2.close();
@@ -162,7 +165,7 @@ describe('DatasoleServer — events via live WebSocket', () => {
     liveSrv().ds.events.off(TestEvent.Ev, handler);
 
     const ws = await liveSrv().connectWs();
-    sendFrame(ws, Opcode.EVENT_C2S, 0, { event: 'ev', data: 'x' });
+    sendFrame(ws, Opcode.EVENT_C2S, 0, { event: TestEvent.Ev, data: 'x' });
     await tick(50);
 
     expect(handler).not.toHaveBeenCalled();
@@ -361,7 +364,7 @@ describe('DatasoleServer — malformed frames', () => {
     ws.send(new Uint8Array([0xff, 0xfe, 0xab, 0x12]));
     await tick(50);
 
-    const res = await rpc(ws, 'echo', 'still alive', 1);
+    const res = await rpc(ws, TestRpc.Echo, 'still alive', 1);
     expect(res.result).toBe('still alive');
     ws.close();
   });
@@ -383,7 +386,7 @@ describe('DatasoleServer — auth via live WebSocket', () => {
     );
 
     const ws = await liveSrv().connectWs({ token: 'valid' });
-    const res = await rpc(ws, 'whoami', null, 1);
+    const res = await rpc(ws, TestRpc.Whoami, null, 1);
     expect(res.result).toBe('alice');
     ws.close();
   });
@@ -507,7 +510,7 @@ describe('DatasoleServer — metrics increment on traffic', () => {
     liveSrv().ds.rpc.register(TestRpc.Ping, async () => 'pong');
 
     const ws = await liveSrv().connectWs();
-    await rpc(ws, 'ping', null, 1);
+    await rpc(ws, TestRpc.Ping, null, 1);
 
     const snap = liveSrv().ds.metrics.snapshot();
     expect(snap.messagesIn).toBeGreaterThanOrEqual(1);

@@ -1,5 +1,7 @@
 /* global Datasole */
 
+import { RpcMethod, Event, StateKey } from '/shared/contract.mjs';
+
 (function () {
   'use strict';
 
@@ -32,7 +34,7 @@
     return (h > 0 ? h + 'h ' : '') + m + 'm ' + s + 's';
   }
 
-  ds.on('system-metrics', function (ev) {
+  ds.on(Event.SystemMetrics, function (ev) {
     const d = ev.data;
     metricsEl.className = 'metrics-grid';
     metricsEl.innerHTML =
@@ -137,11 +139,11 @@
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
-  ds.on('chat:message', function (ev) {
+  ds.on(Event.ChatMessage, function (ev) {
     appendMessage(ev.data);
   });
 
-  ds.subscribeState('chat:messages', function (messages) {
+  ds.subscribeState(StateKey.ChatMessages, function (messages) {
     if (!messages) return;
     seenIds.clear();
     chatMessages.innerHTML = '';
@@ -153,7 +155,7 @@
   function sendChat() {
     const text = chatInput.value.trim();
     if (!text) return;
-    ds.emit('chat:send', { text, username });
+    ds.emit(Event.ChatSend, { text, username });
     chatInput.value = '';
   }
 
@@ -180,7 +182,7 @@
     rpcCall.disabled = true;
     const start = performance.now();
     try {
-      const data = await ds.rpc('randomNumber', { min, max });
+      const data = await ds.rpc(RpcMethod.RandomNumber, { min, max });
       const elapsed = (performance.now() - start).toFixed(1);
 
       rpcResult.innerHTML =

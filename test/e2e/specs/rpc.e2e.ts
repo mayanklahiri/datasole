@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 
+import { TestRpc } from '../../helpers/test-contract';
 import { captureConsoleLogs, hasErrors } from '../helpers/console-capture';
 import { snap } from '../helpers/screenshots';
 import { ServerHarness } from '../helpers/server-harness';
@@ -27,7 +28,10 @@ test.describe('RPC', () => {
 
   test('echo RPC returns params', async ({ page }, testInfo) => {
     const logs = captureConsoleLogs(page);
-    const result = await page.evaluate(() => window.__rpc('echo', { hello: 'world' }));
+    const result = await page.evaluate(({ m, p }) => window.__rpc(m, p), {
+      m: TestRpc.Echo,
+      p: { hello: 'world' },
+    });
     expect(result).toEqual({ hello: 'world' });
     expect(hasErrors(logs)).toBe(false);
 
@@ -35,21 +39,27 @@ test.describe('RPC', () => {
   });
 
   test('add RPC returns computed sum', async ({ page }, testInfo) => {
-    const result = await page.evaluate(() => window.__rpc('add', { a: 3, b: 7 }));
+    const result = await page.evaluate(({ m, p }) => window.__rpc(m, p), {
+      m: TestRpc.Add,
+      p: { a: 3, b: 7 },
+    });
     expect(result).toEqual({ sum: 10 });
 
     await snap(page, testInfo, 'rpc-add');
   });
 
   test('concurrent RPC calls', async ({ page }, testInfo) => {
-    const results = await page.evaluate(async () => {
-      const [r1, r2, r3] = await Promise.all([
-        window.__rpc('echo', { n: 1 }),
-        window.__rpc('add', { a: 10, b: 20 }),
-        window.__rpc('echo', { n: 3 }),
-      ]);
-      return [r1, r2, r3];
-    });
+    const results = await page.evaluate(
+      async ({ echo, add }) => {
+        const [r1, r2, r3] = await Promise.all([
+          window.__rpc(echo, { n: 1 }),
+          window.__rpc(add, { a: 10, b: 20 }),
+          window.__rpc(echo, { n: 3 }),
+        ]);
+        return [r1, r2, r3];
+      },
+      { echo: TestRpc.Echo, add: TestRpc.Add },
+    );
     expect(results[0]).toEqual({ n: 1 });
     expect(results[1]).toEqual({ sum: 30 });
     expect(results[2]).toEqual({ n: 3 });
@@ -58,14 +68,14 @@ test.describe('RPC', () => {
   });
 
   test('error RPC rejects', async ({ page }, testInfo) => {
-    const error = await page.evaluate(async () => {
+    const error = await page.evaluate(async (m) => {
       try {
-        await window.__rpc('error');
+        await window.__rpc(m);
         return null;
       } catch (e: unknown) {
         return e instanceof Error ? e.message : String(e);
       }
-    });
+    }, TestRpc.Error);
     expect(error).toContain('Intentional test error');
 
     await snap(page, testInfo, 'rpc-error');

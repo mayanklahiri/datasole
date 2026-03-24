@@ -1,17 +1,11 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed } from 'vue';
 import { useDatasoleState, useDatasoleClient } from '../composables/useDatasole';
+import { Event, StateKey, type ChatMessage } from '../../shared/contract';
 
-interface ChatMessage {
-  id: string;
-  text: string;
-  username: string;
-  ts: number;
-}
-
-// Server state → reactive ref. The server calls setState('chat:messages', [...]),
+// Server state → reactive ref. The server calls setState(StateKey.ChatMessages, [...]),
 // datasole diffs it, compresses it, ships it via Web Worker, and this ref just updates.
-const messages = useDatasoleState<ChatMessage[]>('chat:messages');
+const messages = useDatasoleState<ChatMessage[]>(StateKey.ChatMessages);
 const ds = useDatasoleClient();
 const input = ref('');
 const bottomEl = ref<HTMLDivElement | null>(null);
@@ -34,7 +28,7 @@ watch(messages, () => {
 function send() {
   const text = input.value.trim();
   if (!text || !ds.value) return;
-  ds.value.emit('chat:send', { text, username });
+  ds.value.emit(Event.ChatSend, { text, username });
   input.value = '';
 }
 </script>
@@ -45,8 +39,8 @@ function send() {
       Chat <span v-if="messageCount" class="msg-count">{{ messageCount }}</span>
     </div>
     <div class="panel-help">
-      <code>const messages = useDatasoleState('chat:messages')</code> — the server IS the store.
-      State syncs via JSON Patch over the wire. Open two tabs to see it live.
+      <code>const messages = useDatasoleState(StateKey.ChatMessages)</code> — the server IS the
+      store. State syncs via JSON Patch over the wire. Open two tabs to see it live.
     </div>
     <div class="chat-messages">
       <div v-if="!messages || messages.length === 0" class="chat-empty">No messages yet</div>

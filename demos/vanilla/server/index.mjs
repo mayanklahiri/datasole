@@ -8,6 +8,7 @@ import { createSeededRandom } from '../../seeded-random.mjs';
 import { RpcMethod, Event, StateKey } from '../shared/contract.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const SHARED_ROOT = resolve(__dirname, '../shared');
 const PORT = parseInt(process.env.PORT || '4000', 10);
 
 const MIME = {
@@ -70,6 +71,25 @@ setInterval(() => {
 function serveStatic(req, res) {
   if (res.headersSent || res.writableEnded) return;
   const url = req.url.split('?')[0];
+
+  if (url.startsWith('/shared/')) {
+    const rel = url.slice('/shared/'.length);
+    const filePath = resolve(SHARED_ROOT, rel);
+    if (!filePath.startsWith(SHARED_ROOT)) {
+      res.writeHead(403);
+      res.end('Forbidden');
+      return;
+    }
+    if (!existsSync(filePath)) {
+      res.writeHead(404);
+      res.end('Not found');
+      return;
+    }
+    const mime = MIME[extname(filePath)] || 'application/octet-stream';
+    res.writeHead(200, { 'Content-Type': mime });
+    res.end(readFileSync(filePath));
+    return;
+  }
 
   const filePath = resolve(__dirname, '../client', url === '/' ? 'index.html' : url.slice(1));
   if (!filePath.startsWith(resolve(__dirname, '../client'))) {

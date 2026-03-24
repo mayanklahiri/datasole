@@ -4,6 +4,7 @@
  */
 import { expect, test } from '@playwright/test';
 
+import { TestRpc, TestEvent, TestState } from '../../helpers/test-contract';
 import {
   collectSystemInfo,
   runBench,
@@ -58,7 +59,7 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
       while (performance.now() < deadline) {
         var t0 = performance.now();
         try {
-          await window.__rpc('echo', { ts: Date.now() });
+          await window.__rpc(${JSON.stringify(TestRpc.Echo)}, { ts: Date.now() });
           latencies.push(performance.now() - t0);
         } catch { errors++; }
       }
@@ -86,7 +87,7 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
         var t0 = performance.now();
         var promises = [];
         for (var i = 0; i < BATCH; i++) {
-          promises.push(window.__rpc('echo', { i: i }).catch(function() { errors++; }));
+          promises.push(window.__rpc(${JSON.stringify(TestRpc.Echo)}, { i: i }).catch(function() { errors++; }));
         }
         await Promise.all(promises);
         var elapsed = performance.now() - t0;
@@ -109,8 +110,8 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
       BENCH_DURATION_SEC,
       `
       window.__benchEventCount = 0;
-      window.__client.on('bench:event', function() { window.__benchEventCount++; });
-      await window.__rpc('startBroadcastFlood', { durationMs: ${BENCH_DURATION_SEC * 1000} });
+      window.__client.on(${JSON.stringify(TestEvent.BenchEvent)}, function() { window.__benchEventCount++; });
+      await window.__rpc(${JSON.stringify(TestRpc.StartBroadcastFlood)}, { durationMs: ${BENCH_DURATION_SEC * 1000} });
       `,
       'window.__benchEventCount',
     );
@@ -128,8 +129,8 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
       BENCH_DURATION_SEC,
       `
       window.__benchPatchCount = 0;
-      window.__client.subscribeState('benchState', function() { window.__benchPatchCount++; });
-      await window.__rpc('startStateMutationFlood', { durationMs: ${BENCH_DURATION_SEC * 1000} });
+      window.__client.subscribeState(${JSON.stringify(TestState.BenchState)}, function() { window.__benchPatchCount++; });
+      await window.__rpc(${JSON.stringify(TestRpc.StartStateMutationFlood)}, { durationMs: ${BENCH_DURATION_SEC * 1000} });
       `,
       'window.__benchPatchCount',
     );
@@ -152,7 +153,7 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
       while (performance.now() < deadline) {
         var t0 = performance.now();
         try {
-          window.__client.emit('client-ping', { ts: Date.now() });
+          window.__client.emit(${JSON.stringify(TestEvent.ClientPing)}, { ts: Date.now() });
           latencies.push(performance.now() - t0);
         } catch { errors++; }
       }
@@ -200,11 +201,11 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
       `
       window.__benchBinaryCount = 0;
       window.__benchBinaryBytes = 0;
-      window.__client.on('bench:binary-frame', function(ev) {
+      window.__client.on(${JSON.stringify(TestEvent.BenchBinaryFrame)}, function(ev) {
         window.__benchBinaryCount++;
         window.__benchBinaryBytes += ev.data.size;
       });
-      await window.__rpc('startBinaryFrameFlood', { durationMs: ${BENCH_DURATION_SEC * 1000}, frameSizeBytes: 1024 });
+      await window.__rpc(${JSON.stringify(TestRpc.StartBinaryFrameFlood)}, { durationMs: ${BENCH_DURATION_SEC * 1000}, frameSizeBytes: 1024 });
       `,
       'window.__benchBinaryCount',
     );
@@ -227,7 +228,7 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
       while (performance.now() < deadline) {
         var t0 = performance.now();
         try {
-          await window.__rpc('echo', { x: 42, y: 'hi' });
+          await window.__rpc(${JSON.stringify(TestRpc.Echo)}, { x: 42, y: 'hi' });
           latencies.push(performance.now() - t0);
         } catch { errors++; }
       }
@@ -266,7 +267,7 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
       while (performance.now() < deadline) {
         var t0 = performance.now();
         try {
-          await window.__rpc('echoLargeJson', { payload: makePayload() });
+          await window.__rpc(${JSON.stringify(TestRpc.EchoLargeJson)}, { payload: makePayload() });
           latencies.push(performance.now() - t0);
         } catch { errors++; }
       }
@@ -287,7 +288,7 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
       BENCH_DURATION_SEC,
       `
       window.__benchAckCount = 0;
-      window.__client.on('bench:game-state', function() { window.__benchAckCount++; });
+      window.__client.on(${JSON.stringify(TestEvent.BenchGameState)}, function() { window.__benchAckCount++; });
       `,
       `
       var latencies = [];
@@ -297,7 +298,7 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
         var t0 = performance.now();
         try {
           var ackBefore = window.__benchAckCount;
-          window.__client.emit('bench:game-tick', { seq: seq++, ts: Date.now(), dx: 1, dy: -1 });
+          window.__client.emit(${JSON.stringify(TestEvent.BenchGameTick)}, { seq: seq++, ts: Date.now(), dx: 1, dy: -1 });
           // Wait for server ack (poll with microtask yield)
           var waited = 0;
           while (window.__benchAckCount === ackBefore && waited < 100) {
@@ -324,8 +325,8 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
       BENCH_DURATION_SEC,
       `
       window.__benchMixedEvents = 0;
-      window.__client.on('server-pong', function() { window.__benchMixedEvents++; });
-      window.__client.subscribeState('benchState', function() {});
+      window.__client.on(${JSON.stringify(TestEvent.ServerPong)}, function() { window.__benchMixedEvents++; });
+      window.__client.subscribeState(${JSON.stringify(TestState.BenchState)}, function() {});
       `,
       `
       var latencies = [];
@@ -335,11 +336,11 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
         var t0 = performance.now();
         try {
           if (i % 3 === 0) {
-            await window.__rpc('echo', { i: i });
+            await window.__rpc(${JSON.stringify(TestRpc.Echo)}, { i: i });
           } else if (i % 3 === 1) {
-            window.__client.emit('client-ping', { i: i });
+            window.__client.emit(${JSON.stringify(TestEvent.ClientPing)}, { i: i });
           } else {
-            await window.__rpc('add', { a: i, b: i + 1 });
+            await window.__rpc(${JSON.stringify(TestRpc.Add)}, { a: i, b: i + 1 });
           }
           latencies.push(performance.now() - t0);
         } catch { errors++; }
@@ -383,12 +384,12 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
         BENCH_DURATION_SEC,
         `
         window.__benchHeavyCount = 0;
-        window.__client.on('bench:heavy-payload', function(ev) {
+        window.__client.on(${JSON.stringify(TestEvent.BenchHeavyPayload)}, function(ev) {
           window.__benchHeavyCount++;
           var el = document.getElementById('vis-log');
           if (el) el.setAttribute('data-bench', String(window.__benchHeavyCount));
         });
-        await window.__rpc('startHeavyPayloadFlood', { durationMs: ${BENCH_DURATION_SEC * 1000}, payloadSizeKb: 5 });
+        await window.__rpc(${JSON.stringify(TestRpc.StartHeavyPayloadFlood)}, { durationMs: ${BENCH_DURATION_SEC * 1000}, payloadSizeKb: 5 });
         `,
         'window.__benchHeavyCount',
         true,
@@ -408,8 +409,8 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
         BENCH_DURATION_SEC,
         `
         window.__benchEventCount = 0;
-        window.__client.on('bench:event', function() { window.__benchEventCount++; });
-        await window.__rpc('startBroadcastFlood', { durationMs: ${BENCH_DURATION_SEC * 1000} });
+        window.__client.on(${JSON.stringify(TestEvent.BenchEvent)}, function() { window.__benchEventCount++; });
+        await window.__rpc(${JSON.stringify(TestRpc.StartBroadcastFlood)}, { durationMs: ${BENCH_DURATION_SEC * 1000} });
         `,
         'window.__benchEventCount',
         true,
@@ -434,7 +435,7 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
         while (performance.now() < deadline) {
           var t0 = performance.now();
           try {
-            await window.__rpc('echo', { ts: Date.now() });
+            await window.__rpc(${JSON.stringify(TestRpc.Echo)}, { ts: Date.now() });
             latencies.push(performance.now() - t0);
           } catch { errors++; }
         }

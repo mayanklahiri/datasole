@@ -19,7 +19,7 @@ describe('RpcDispatcher', () => {
   it('register + dispatch returns result', async () => {
     const d = new RpcDispatcher<TestContract>();
     d.register(TestRpc.Add, async (params) => ({ sum: params.a + params.b }));
-    const req: RpcRequest = { method: 'add', params: { a: 2, b: 3 }, correlationId: 10 };
+    const req: RpcRequest = { method: TestRpc.Add, params: { a: 2, b: 3 }, correlationId: 10 };
     const res = await d.dispatch(req, mockCtx());
     expect(res.correlationId).toBe(10);
     expect(res.result).toEqual({ sum: 5 });
@@ -28,7 +28,7 @@ describe('RpcDispatcher', () => {
 
   it('unknown method returns JSON-RPC method not found (-32601)', async () => {
     const d = new RpcDispatcher<TestContract>();
-    const req: RpcRequest = { method: 'nope', params: null, correlationId: 1 };
+    const req: RpcRequest = { method: '__rpc_unknown__', params: null, correlationId: 1 };
     const res = await d.dispatch(req, mockCtx());
     expect(res.error?.code).toBe(-32601);
     expect(res.error?.message).toMatch(/not found/);
@@ -39,7 +39,7 @@ describe('RpcDispatcher', () => {
     d.register(TestRpc.Boom, async () => {
       throw new Error('kaboom');
     });
-    const req: RpcRequest = { method: 'boom', params: null, correlationId: 2 };
+    const req: RpcRequest = { method: TestRpc.Boom, params: null, correlationId: 2 };
     const res = await d.dispatch(req, mockCtx());
     expect(res.error?.code).toBe(-32000);
     expect(res.error?.message).toBe('kaboom');

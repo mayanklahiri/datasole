@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { DatasoleClient } from 'datasole/client';
 import type { ConnectionState } from 'datasole/client';
-import type { EventPayload } from 'datasole';
+import type { EventPayload, EventName, StateKeyName } from 'datasole';
 import type { AppContract } from '../../shared/contract';
 
 // ── Context ──────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ export function DatasoleProvider({ children }: { children: ReactNode }) {
  * Reactive state from a datasole broadcast event.
  * No useEffect, no cleanup, no props needed in the consuming component.
  *
- *   const metrics = useDatasoleEvent<Metrics>('system-metrics');
+ *   const metrics = useDatasoleEvent<Metrics>(Event.SystemMetrics);
  *   // metrics updates automatically — no Redux, no Zustand
  */
 export function useDatasoleEvent<K extends keyof AppContract['events'] & string>(
@@ -73,10 +73,10 @@ export function useDatasoleEvent<K extends keyof AppContract['events'] & string>
  * Reactive state that auto-syncs from datasole server-side state.
  * The server calls ds.setState(key, value) and this hook re-renders.
  *
- *   const messages = useDatasoleState<ChatMessage[]>('chat:messages');
+ *   const messages = useDatasoleState<ChatMessage[]>(StateKey.ChatMessages);
  *   // messages auto-replaces on every server state change — the server IS the store
  */
-export function useDatasoleState<K extends keyof AppContract['state'] & string>(
+export function useDatasoleState<K extends StateKeyName<AppContract>>(
   key: K,
 ): AppContract['state'][K] | null {
   const { client } = useContext(DatasoleContext);

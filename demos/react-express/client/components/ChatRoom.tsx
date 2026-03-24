@@ -1,12 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDatasoleState, useDatasoleClient } from '../hooks/useDatasole';
-
-interface ChatMessage {
-  id: string;
-  text: string;
-  username: string;
-  ts: number;
-}
+import { Event, StateKey, type ChatMessage } from '../../shared/contract';
 
 function formatTime(ts: number): string {
   const d = new Date(ts);
@@ -18,9 +12,9 @@ function formatTime(ts: number): string {
 const username = 'demo-user';
 
 export function ChatRoom() {
-  // Server state → React state. The server calls setState('chat:messages', [...]),
+  // Server state → React state. The server calls setState(StateKey.ChatMessages, [...]),
   // datasole diffs it, compresses it, ships it via Web Worker, and this re-renders.
-  const messages = useDatasoleState<ChatMessage[]>('chat:messages');
+  const messages = useDatasoleState<ChatMessage[]>(StateKey.ChatMessages);
   const ds = useDatasoleClient();
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -45,8 +39,8 @@ export function ChatRoom() {
         Chat {count > 0 && <span className="msg-count">{count}</span>}
       </div>
       <div className="panel-help" style={{ padding: '8px 20px 0' }}>
-        <code>useDatasoleState('chat:messages')</code> — the server IS the store. State syncs via
-        JSON Patch over the wire. Open two tabs to see it live.
+        <code>useDatasoleState(StateKey.ChatMessages)</code> — the server IS the store. State syncs
+        via JSON Patch over the wire. Open two tabs to see it live.
       </div>
       <div className="chat-messages">
         {count === 0 && <div className="chat-empty">No messages yet</div>}

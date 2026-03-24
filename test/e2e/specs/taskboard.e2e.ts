@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 
+import { TestRpc, TestState, TestEvent } from '../../helpers/test-contract';
 import { snap } from '../helpers/screenshots';
 import { ServerHarness } from '../helpers/server-harness';
 
@@ -30,8 +31,8 @@ test.describe('Task Board', () => {
     await snap(page, testInfo, 'taskboard-task-added');
 
     const moveResult = (await page.evaluate(
-      (id: string) => window.__rpc('moveTask', { taskId: id, column: 'done' }),
-      addResult.id,
+      ({ m, id }) => window.__rpc(m, { taskId: id, column: 'done' }),
+      { m: TestRpc.MoveTask, id: addResult.id },
     )) as { ok: boolean };
     expect(moveResult.ok).toBe(true);
 
@@ -47,27 +48,29 @@ test.describe('Task Board', () => {
     await page.evaluate(() => window.__connect());
     await page.waitForFunction(() => window.__getConnectionState() === 'connected');
 
-    await page.evaluate(() => window.__subscribeState('taskboard'));
+    await page.evaluate((k) => window.__subscribeState(k), TestState.E2ETaskboard);
 
-    await harness.getDatasoleServer().setState('taskboard', {
+    await harness.getDatasoleServer().setState(TestState.E2ETaskboard, {
       columns: ['todo', 'in-progress', 'done'],
       tasks: [{ id: 'task-1', title: 'E2E task', column: 'todo' }],
     });
 
     await page.waitForFunction(
-      () =>
+      (key) =>
         window.__stateUpdates.some(
-          (u: { key: string; state: Record<string, unknown> }) => u.key === 'taskboard',
+          (u: { key: string; state: Record<string, unknown> }) => u.key === key,
         ),
-      null,
+      TestState.E2ETaskboard,
       { timeout: 5000 },
     );
 
     const updates = await page.evaluate(() => window.__stateUpdates);
-    const boardUpdate = updates.find(
-      (u: { key: string; state: Record<string, unknown> | undefined }) =>
-        u.key === 'taskboard' && u.state != null && 'tasks' in u.state,
-    );
+    const boardUpdate = [...updates]
+      .reverse()
+      .find(
+        (u: { key: string; state?: { tasks?: Array<{ title: string }> } }) =>
+          u.key === TestState.E2ETaskboard && u.state?.tasks?.some((t) => t.title === 'E2E task'),
+      );
     expect(boardUpdate).toBeDefined();
     const tasks = boardUpdate!.state!['tasks'] as Array<{ title: string }>;
     expect(tasks.length).toBe(1);
@@ -85,10 +88,13 @@ test.describe('Task Board', () => {
     await page.evaluate(() => window.__connect());
     await page.waitForFunction(() => window.__getConnectionState() === 'connected');
 
-    await page.evaluate(() => window.__subscribeEvent('chat:message'));
+    await page.evaluate((ev) => window.__subscribeEvent(ev), TestEvent.ChatMessage);
     await page.waitForTimeout(200);
 
-    await page.evaluate(() => window.__emitEvent('chat:send', { text: 'board msg' }));
+    await page.evaluate(([ev, data]) => window.__emitEvent(ev, data), [
+      TestEvent.ChatSend,
+      { text: 'board msg' },
+    ] as [typeof TestEvent.ChatSend, { text: string }]);
 
     await page.waitForFunction(() => window.__events.length > 0, null, {
       timeout: 5000,

@@ -71,7 +71,7 @@ describe('FallbackTransport (live server)', () => {
       transport.onMessage((frame) => received.push(frame));
       await transport.connect(liveSrv().wsUrl);
 
-      const payload = serialize({ method: 'echo', params: 'hello', correlationId: 1 });
+      const payload = serialize({ method: TestRpc.Echo, params: 'hello', correlationId: 1 });
       transport.sendFrame({ opcode: Opcode.RPC_REQ, correlationId: 1, payload });
       await tick(100);
 
@@ -98,7 +98,7 @@ describe('FallbackTransport (live server)', () => {
 
       // High-entropy data that stays > 256 bytes even after compression
       const items = Array.from({ length: 50 }, (_, i) => `k${i}:${(i * 31337).toString(36)}`);
-      const bigPayload = { method: 'echo', params: items, correlationId: 2 };
+      const bigPayload = { method: TestRpc.Echo, params: items, correlationId: 2 };
       transport.sendFrame({
         opcode: Opcode.RPC_REQ,
         correlationId: 2,

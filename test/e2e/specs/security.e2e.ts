@@ -13,6 +13,9 @@ import { serialize } from '../../../src/shared/codec/serialization';
 import { ServerHarness } from '../helpers/server-harness';
 import { TestRpc, type TestContract } from '../../helpers/test-contract';
 
+/** Intentionally not registered — negative test only. */
+const E2E_UNKNOWN_RPC_METHOD = 'nonexistent_method';
+
 const harness = new ServerHarness();
 
 test.beforeAll(async () => {
@@ -59,7 +62,10 @@ test.describe('Security', () => {
     await page.waitForFunction(() => window.__getConnectionState() === 'connected', undefined, {
       timeout: 5000,
     });
-    const result = await page.evaluate(() => window.__rpc('echo', { alive: true }));
+    const result = await page.evaluate(({ m, p }) => window.__rpc(m, p), {
+      m: TestRpc.Echo,
+      p: { alive: true },
+    });
     expect(result).toEqual({ alive: true });
   });
 
@@ -81,7 +87,10 @@ test.describe('Security', () => {
     await new Promise((r) => setTimeout(r, 300));
 
     // Server is still alive
-    const result = await page.evaluate(() => window.__rpc('echo', { still: 'alive' }));
+    const result = await page.evaluate(({ m, p }) => window.__rpc(m, p), {
+      m: TestRpc.Echo,
+      p: { still: 'alive' },
+    });
     expect(result).toEqual({ still: 'alive' });
   });
 
@@ -93,7 +102,7 @@ test.describe('Security', () => {
       timeout: 5000,
     });
 
-    await expect(page.evaluate(() => window.__rpc('nonexistent_method', {}))).rejects.toThrow(
+    await expect(page.evaluate((m) => window.__rpc(m, {}), E2E_UNKNOWN_RPC_METHOD)).rejects.toThrow(
       /Method not found/,
     );
   });

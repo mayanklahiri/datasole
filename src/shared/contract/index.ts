@@ -1,1 +1,10 @@
-export type { DatasoleContract, RpcParams, RpcResult, EventData, StateValue } from './types';
+export type {
+  DatasoleContract,
+  RpcParams,
+  RpcResult,
+  EventData,
+  StateValue,
+  RpcMethodKey,
+  EventName,
+  StateKeyName,
+} from './types';
