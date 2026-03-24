@@ -251,7 +251,7 @@
     ]
   },
   {
-    "timestamp": "2026-03-24T06:13:47.644Z",
+    "timestamp": "2026-03-24T06:40:16.418Z",
     "system": {
       "platform": "linux",
       "osRelease": "6.8.0-106-generic",
@@ -272,7 +272,7 @@
     "sharedEsmGzip": 67722,
     "serverEsmGzip": 77882,
     "unitTests": 477,
-    "e2eTests": 47,
+    "e2eTests": 46,
     "benchmarks": [
       {
         "name": "rpc-echo",
