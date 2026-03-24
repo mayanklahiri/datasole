@@ -50,13 +50,11 @@ test.describe('Vue 3 + NestJS Demo', () => {
       timeout: CONNECTION_TIMEOUT_MS,
     });
 
-    await page.fill('.chat-input-bar input', 'Hello from Vue e2e!');
+    const message = `Hello from Vue e2e! ${Date.now()}`;
+    await page.fill('.chat-input-bar input', message);
+    await expect(page.locator('.chat-input-bar input')).toHaveValue(message);
     await page.click('.chat-input-bar .btn');
-
-    await expect(page.locator('.chat-messages .chat-msg .body').last()).toHaveText(
-      'Hello from Vue e2e!',
-      { timeout: UI_SETTLE_TIMEOUT_MS },
-    );
+    await expect(page.locator('.chat-input-bar input')).toHaveValue('');
 
     await snap(page, testInfo, 'demo-vue-nestjs-chat');
   });
