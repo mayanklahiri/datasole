@@ -540,8 +540,9 @@
 
     <script>
       // --- Visual helpers ---
+      var __seqCounter = 0;
       function ts() {
-        return new Date().toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 3 });
+        return String(++__seqCounter).padStart(4, '0');
       }
 
       function addLog(msg, type) {
@@ -679,7 +680,7 @@
       window.__connect = async function (opts) {
         performance.mark('ws-connect-start');
         updateConnVisual('connecting');
-        addLog('Connecting to ' + window.location.origin + '…');
+        addLog('Connecting…');
         var serverUrl = window.location.origin;
         var client = new Datasole.DatasoleClient({
           url: serverUrl,
@@ -696,7 +697,7 @@
             rejectInfo.text = 'Auth rejected (invalid token)';
           }
           updateConnVisual('rejected', rejectInfo);
-          addLog('Connection failed: ' + e.message, 'error');
+          addLog('Connection failed', 'error');
           throw e;
         }
         performance.mark('ws-connect-end');

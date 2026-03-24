@@ -15,7 +15,7 @@ function formatTime(ts: number): string {
     .join(':');
 }
 
-const username = 'user-' + Math.random().toString(36).slice(2, 7);
+const username = 'demo-user';
 
 export function ChatRoom() {
   // Server state → React state. The server calls setState('chat:messages', [...]),

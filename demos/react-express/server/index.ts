@@ -1,11 +1,11 @@
 import { createServer } from 'http';
-import { randomInt, randomUUID } from 'crypto';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
 import os from 'os';
 import express from 'express';
 import { DatasoleServer } from 'datasole/server';
+import { createSeededRandom } from '../../seeded-random.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '4001', 10);
@@ -36,6 +36,7 @@ const httpServer = createServer(app);
 
 // ─── Datasole ──────────────────────────────────────────────────────
 const ds = new DatasoleServer();
+const rng = createSeededRandom();
 ds.attach(httpServer);
 
 // ─── Chat ──────────────────────────────────────────────────────────
@@ -50,7 +51,7 @@ const chatHistory: ChatMessage[] = [];
 
 ds.on('chat:send', (payload: { data: { text: string; username: string } }) => {
   const { text, username } = payload.data;
-  const msg: ChatMessage = { id: randomUUID(), text, username, ts: Date.now() };
+  const msg: ChatMessage = { id: rng.uuid(), text, username, ts: Date.now() };
   chatHistory.push(msg);
   if (chatHistory.length > 50) chatHistory.shift();
   ds.setState('chat:messages', [...chatHistory]);
@@ -61,7 +62,7 @@ ds.setState('chat:messages', chatHistory);
 
 // ─── RPC ───────────────────────────────────────────────────────────
 ds.rpc('randomNumber', async ({ min, max }: { min: number; max: number }) => {
-  return { value: randomInt(Math.floor(min), Math.floor(max) + 1), generatedAt: Date.now() };
+  return { value: rng.int(Math.floor(min), Math.floor(max)), generatedAt: Date.now() };
 });
 
 // ─── System metrics broadcast ──────────────────────────────────────

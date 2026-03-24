@@ -259,7 +259,7 @@ function appendToHistory(metrics: BuildMetrics): void {
   if (history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY);
 
   mkdirSync(join(ROOT, 'docs', 'public'), { recursive: true });
-  writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+  writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2) + '\n');
 }
 
 function main() {
@@ -273,7 +273,7 @@ function main() {
     docs: collectDocsMetrics(),
   };
 
-  writeFileSync(join(REPORTS, 'build-metrics.json'), JSON.stringify(metrics, null, 2));
+  writeFileSync(join(REPORTS, 'build-metrics.json'), JSON.stringify(metrics, null, 2) + '\n');
   writeFileSync(join(REPORTS, 'build-metrics.md'), generateMarkdown(metrics));
   appendToHistory(metrics);
 

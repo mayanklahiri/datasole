@@ -271,9 +271,10 @@ export async function startTestServer(): Promise<TestServerResult> {
     ds.broadcast('server-pong', { echo: payload.data });
   });
 
+  let chatSeq = 0;
   ds.on('chat:send', (payload) => {
     log(`Event chat:send: ${JSON.stringify(payload.data)}`);
-    ds.broadcast('chat:message', { text: payload.data.text, timestamp: Date.now() });
+    ds.broadcast('chat:message', { text: payload.data.text, seq: ++chatSeq });
   });
 
   // Server logs endpoint

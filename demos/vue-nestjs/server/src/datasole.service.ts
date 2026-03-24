@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { randomInt, randomUUID } from 'crypto';
 import os from 'os';
 import { DatasoleServer } from 'datasole/server';
+import { createSeededRandom } from '../../../seeded-random.js';
 
 interface ChatMessage {
   id: string;
@@ -14,6 +14,7 @@ interface ChatMessage {
 @Injectable()
 export class DatasoleService implements OnModuleDestroy {
   readonly ds = new DatasoleServer();
+  private readonly rng = createSeededRandom();
   private metricsInterval: ReturnType<typeof setInterval> | null = null;
   private readonly chatHistory: ChatMessage[] = [];
 
@@ -22,7 +23,7 @@ export class DatasoleService implements OnModuleDestroy {
 
     this.ds.on('chat:send', (payload: { data: { text: string; username: string } }) => {
       const { text, username } = payload.data;
-      const msg: ChatMessage = { id: randomUUID(), text, username, ts: Date.now() };
+      const msg: ChatMessage = { id: this.rng.uuid(), text, username, ts: Date.now() };
       this.chatHistory.push(msg);
       if (this.chatHistory.length > 50) this.chatHistory.shift();
       this.ds.setState('chat:messages', [...this.chatHistory]);
@@ -30,7 +31,7 @@ export class DatasoleService implements OnModuleDestroy {
     });
 
     this.ds.rpc('randomNumber', async ({ min, max }: { min: number; max: number }) => {
-      return { value: randomInt(Math.floor(min), Math.floor(max) + 1), generatedAt: Date.now() };
+      return { value: this.rng.int(Math.floor(min), Math.floor(max)), generatedAt: Date.now() };
     });
 
     this.metricsInterval = setInterval(() => {

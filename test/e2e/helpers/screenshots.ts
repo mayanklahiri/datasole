@@ -1,6 +1,10 @@
 /**
  * E2E screenshot capture with pixelmatch baseline comparison; writes to `.screenshots/` and copies
  * desktop viewport shots into the docs tree for tutorials.
+ *
+ * Baselines are write-once: they are only written when no baseline exists or when viewport
+ * dimensions change. Sub-threshold rendering drift is tolerated without rewriting, so that
+ * screenshots remain stable across runs on the same machine.
  */
 import type { Page, TestInfo } from '@playwright/test';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
@@ -20,10 +24,10 @@ function viewportTag(testInfo: TestInfo): string {
 }
 
 /**
- * Capture a keyed screenshot. If a baseline exists, compare pixels and fail
- * if the diff exceeds MAX_DIFF_RATIO. If no baseline exists, write it and pass.
- *
- * Also copies to docs/public/screenshots/ for tutorial embedding (desktop only).
+ * Capture a keyed screenshot with animations frozen. If a baseline exists,
+ * compare pixels and fail if the diff exceeds MAX_DIFF_RATIO. If no baseline
+ * exists, write it and pass. Sub-threshold drift is tolerated without
+ * rewriting the baseline or docs copy.
  */
 export async function snap(page: Page, testInfo: TestInfo, key: string): Promise<void> {
   const tag = viewportTag(testInfo);
@@ -31,11 +35,14 @@ export async function snap(page: Page, testInfo: TestInfo, key: string): Promise
   ensureDir(SCREENSHOT_DIR);
   const baselinePath = path.join(SCREENSHOT_DIR, filename);
 
-  const buffer = await page.screenshot({ fullPage: true });
+  const buffer = await page.screenshot({
+    fullPage: true,
+    animations: 'disabled',
+    caret: 'hide',
+  });
 
   if (!existsSync(baselinePath)) {
     writeFileSync(baselinePath, buffer);
-    // Also write to docs for tutorial pages (desktop only)
     if (tag === 'desktop') {
       copyToDocsScreenshots(key, buffer);
     }
@@ -45,7 +52,6 @@ export async function snap(page: Page, testInfo: TestInfo, key: string): Promise
   const baseline = PNG.sync.read(readFileSync(baselinePath));
   const current = PNG.sync.read(buffer);
 
-  // If dimensions changed, update baseline
   if (baseline.width !== current.width || baseline.height !== current.height) {
     writeFileSync(baselinePath, buffer);
     if (tag === 'desktop') {
@@ -73,11 +79,8 @@ export async function snap(page: Page, testInfo: TestInfo, key: string): Promise
     );
   }
 
-  // Baseline matches — update it to absorb sub-threshold drift
-  writeFileSync(baselinePath, buffer);
-  if (tag === 'desktop') {
-    copyToDocsScreenshots(key, buffer);
-  }
+  // Sub-threshold or zero diff: baseline and docs copy remain untouched.
+  // To regenerate baselines, delete .screenshots/ and re-run.
 }
 
 function copyToDocsScreenshots(key: string, buffer: Buffer): void {
@@ -100,6 +103,6 @@ export async function saveScreenshot(
   const docsDir = path.resolve(__dirname, '../../../docs/public/screenshots');
   ensureDir(docsDir);
   const filePath = path.join(docsDir, `${name}.png`);
-  await page.screenshot({ path: filePath, fullPage: true });
+  await page.screenshot({ path: filePath, fullPage: true, animations: 'disabled', caret: 'hide' });
   return filePath;
 }

@@ -15,7 +15,7 @@ const messages = useDatasoleState<ChatMessage[]>('chat:messages');
 const ds = useDatasoleClient();
 const input = ref('');
 const bottomEl = ref<HTMLDivElement | null>(null);
-const username = 'user-' + Math.random().toString(36).slice(2, 7);
+const username = 'demo-user';
 
 const messageCount = computed(() => messages.value?.length ?? 0);
 
