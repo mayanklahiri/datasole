@@ -18,11 +18,14 @@ function formatTime(ts: number): string {
 const username = 'user-' + Math.random().toString(36).slice(2, 7);
 
 export function ChatRoom() {
+  // Server state → React state. The server calls setState('chat:messages', [...]),
+  // datasole diffs it, compresses it, ships it via Web Worker, and this re-renders.
   const messages = useDatasoleState<ChatMessage[]>('chat:messages');
   const ds = useDatasoleClient();
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll is the only useEffect — and it's a UI concern, not state management.
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -34,17 +37,21 @@ export function ChatRoom() {
     setInput('');
   };
 
+  const count = messages?.length ?? 0;
+
   return (
-    <div className="panel" style={{ display: 'flex', flexDirection: 'column' }}>
-      <div className="panel-header">Chat</div>
+    <div className="panel chat-panel">
+      <div className="panel-header">
+        Chat {count > 0 && <span className="msg-count">{count}</span>}
+      </div>
       <div className="panel-help" style={{ padding: '8px 20px 0' }}>
-        <code>useDatasoleState('chat:messages')</code> &mdash; the server IS the store. No dedup, no
-        manual subscribe. Open a second tab to try.
+        <code>useDatasoleState('chat:messages')</code> — the server IS the store. State syncs via
+        JSON Patch over the wire. Open two tabs to see it live.
       </div>
       <div className="chat-messages">
-        {(!messages || messages.length === 0) && <div className="chat-empty">No messages yet</div>}
+        {count === 0 && <div className="chat-empty">No messages yet</div>}
         {(messages ?? []).map((msg) => (
-          <div key={msg.id} className="chat-msg">
+          <div key={msg.id} className="chat-msg msg-slide-in">
             <div className="author">
               {msg.username}
               <span className="time">{formatTime(msg.ts)}</span>

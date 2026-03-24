@@ -266,53 +266,70 @@ proxy: {
 }
 ```
 
-### Client Walkthrough — `useDatasole` Hook
+### Client Walkthrough — Hooks
 
-```typescript
-// src/hooks/useDatasole.ts
-import { useEffect, useRef, useState } from 'react';
-import { DatasoleClient } from 'datasole/client';
-import type { ConnectionState } from 'datasole/client';
+The hook layer replaces any need for Redux, Zustand, or other state stores. Wrap your app in `DatasoleProvider`, and all descendants get reactive access to server data via hooks:
 
-export function useDatasole() {
-  const dsRef = useRef<DatasoleClient | null>(null);
-  const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
+```tsx
+// App.tsx — one-time setup
+import { DatasoleProvider } from './hooks/useDatasole';
 
-  useEffect(() => {
-    const client = new DatasoleClient({
-      url: `ws://${window.location.host}`,
-    });
-    dsRef.current = client;
-    client.connect();
-
-    const interval = setInterval(() => {
-      setConnectionState(client.getConnectionState());
-    }, 500);
-
-    return () => {
-      clearInterval(interval);
-      client.disconnect();
-      dsRef.current = null;
-    };
-  }, []);
-
-  return { ds: dsRef.current, connectionState };
+export function App() {
+  return (
+    <DatasoleProvider>
+      <Layout>
+        <MetricsDashboard />
+        <ChatRoom />
+        <RpcDemo />
+      </Layout>
+    </DatasoleProvider>
+  );
 }
 ```
 
-Components receive `ds` as a prop and use standard React patterns:
+Child components consume server data with zero boilerplate:
 
 ```tsx
-// MetricsDashboard.tsx — key pattern
-useEffect(() => {
-  if (!ds) return;
-  const handler = (ev) => setMetrics(ev.data);
-  ds.on('system-metrics', handler);
-  return () => {
-    ds.off('system-metrics', handler);
-  };
-}, [ds]);
+// MetricsDashboard.tsx — entire hook usage
+import { useMemo } from 'react';
+import { useDatasoleEvent } from '../hooks/useDatasole';
+
+export function MetricsDashboard() {
+  // One line — re-renders when the server broadcasts new data
+  const metrics = useDatasoleEvent<Metrics>('system-metrics');
+
+  // Derived values with useMemo, no selectors or reducers
+  const memoryPct = useMemo(
+    () => (metrics ? Math.round((metrics.memoryMB / (metrics.totalMemoryGB * 1024)) * 100) : 0),
+    [metrics?.memoryMB, metrics?.totalMemoryGB],
+  );
+
+  return (
+    <p>
+      {metrics?.memoryMB} MB ({memoryPct}%)
+    </p>
+  );
+}
 ```
+
+Three hook flavors cover every datasole pattern:
+
+```tsx
+// Server broadcast events → React state
+const metrics = useDatasoleEvent<Metrics>('system-metrics');
+
+// Server-managed state → React state (synced via JSON Patch)
+const messages = useDatasoleState<ChatMessage[]>('chat:messages');
+
+// Raw client for imperative calls (emit, rpc)
+const ds = useDatasoleClient();
+await ds?.rpc('randomNumber', { min: 1, max: 100 });
+
+// Connection state
+const conn = useConnectionState(); // 'connected' | 'disconnected' | ...
+```
+
+No prop drilling, no store modules, no actions/reducers. The server is the store.
 
 ### Screenshots
 

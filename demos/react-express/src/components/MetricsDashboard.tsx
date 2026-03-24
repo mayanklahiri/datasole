@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useDatasoleEvent } from '../hooks/useDatasole';
 
 interface Metrics {
@@ -23,15 +24,31 @@ function formatUptime(ms: number): string {
 }
 
 export function MetricsDashboard() {
+  // One line. This re-renders only when the server broadcasts new data.
   const metrics = useDatasoleEvent<Metrics>('system-metrics');
+
+  // Derived values — just useMemo, no store selectors, no reducers.
+  const uptimeDisplay = useMemo(
+    () => (metrics ? formatUptime(metrics.uptime) : ''),
+    [metrics?.uptime],
+  );
+  const memoryPct = useMemo(
+    () => (metrics ? Math.round((metrics.memoryMB / (metrics.totalMemoryGB * 1024)) * 100) : 0),
+    [metrics?.memoryMB, metrics?.totalMemoryGB],
+  );
+  const totalMessages = useMemo(
+    () => (metrics ? metrics.messagesIn + metrics.messagesOut : 0),
+    [metrics?.messagesIn, metrics?.messagesOut],
+  );
 
   return (
     <div className="panel">
       <div className="panel-header">Server Metrics</div>
       <div className="panel-body">
         <div className="panel-help">
-          <code>useDatasoleEvent('system-metrics')</code> &mdash; one line, no Redux, no{' '}
-          <code>useEffect</code>. Data arrives reactively from the Web Worker.
+          <code>useDatasoleEvent('system-metrics')</code> — one line, no Redux, no Zustand, no{' '}
+          <code>useEffect</code>. Data arrives reactively from the Web Worker. Derive with{' '}
+          <code>useMemo</code>.
         </div>
         {!metrics ? (
           <div className="metrics-waiting">Waiting for metrics&hellip;</div>
@@ -39,7 +56,7 @@ export function MetricsDashboard() {
           <div className="metrics-grid">
             <div className="metric-card">
               <div className="metric-label">Uptime</div>
-              <div className="metric-value accent">{formatUptime(metrics.uptime)}</div>
+              <div className="metric-value accent">{uptimeDisplay}</div>
             </div>
             <div className="metric-card">
               <div className="metric-label">Connections</div>
@@ -53,10 +70,10 @@ export function MetricsDashboard() {
               </div>
             </div>
             <div className="metric-card">
-              <div className="metric-label">Memory</div>
+              <div className="metric-label">Heap / RAM</div>
               <div className="metric-value">
                 {metrics.memoryMB}
-                <span className="metric-unit">MB</span>
+                <span className="metric-unit">MB ({memoryPct}%)</span>
               </div>
             </div>
             <div className="metric-card">
@@ -71,16 +88,17 @@ export function MetricsDashboard() {
               </div>
             </div>
             <div className="metric-card">
-              <div className="metric-label">Messages In</div>
-              <div className="metric-value">{metrics.messagesIn}</div>
+              <div className="metric-label">Messages</div>
+              <div className="metric-value">
+                {totalMessages}
+                <span className="metric-unit">
+                  ({metrics.messagesIn}↓ {metrics.messagesOut}↑)
+                </span>
+              </div>
             </div>
             <div className="metric-card">
-              <div className="metric-label">Messages Out</div>
-              <div className="metric-value">{metrics.messagesOut}</div>
-            </div>
-            <div className="metric-card span-2">
               <div className="metric-label">Server Time</div>
-              <div className="metric-value">
+              <div className="metric-value time-value">
                 {metrics.serverTime}
                 <span className="metric-unit">{metrics.timezone}</span>
               </div>

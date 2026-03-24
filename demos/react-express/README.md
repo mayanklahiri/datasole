@@ -1,6 +1,48 @@
 # React + Express Demo
 
-React 19 frontend with Vite, Express backend, connected via datasole WebSocket.
+React 19 frontend with Vite 8, Express 5 backend — connected via datasole WebSocket with Web Worker transport and Pako compression.
+
+## The React Hook Experience
+
+This demo showcases how datasole's reactive data model integrates natively with React hooks — **no Redux, no Zustand, no state store at all.** The server is the store.
+
+Three hooks replace an entire state layer:
+
+```tsx
+// Server broadcast events → React state (re-renders on update)
+const metrics = useDatasoleEvent<Metrics>('system-metrics');
+
+// Server-managed state → React state (synced via JSON Patch)
+const messages = useDatasoleState<ChatMessage[]>('chat:messages');
+
+// Raw client for imperative calls (emit, rpc)
+const ds = useDatasoleClient();
+```
+
+Derived values compose naturally with `useMemo`:
+
+```tsx
+const memoryPct = useMemo(
+  () => Math.round((metrics.memoryMB / (metrics.totalMemoryGB * 1024)) * 100),
+  [metrics?.memoryMB, metrics?.totalMemoryGB],
+);
+```
+
+Render directly in JSX — no selectors, no actions, no dispatch:
+
+```tsx
+return (
+  <>
+    <p>{metrics?.connections} connected</p>
+    {messages?.map((msg) => (
+      <div key={msg.id}>{msg.text}</div>
+    ))}
+    <button onClick={() => ds?.rpc('randomNumber', { min: 1, max: 100 })}>Roll</button>
+  </>
+);
+```
+
+Everything works because datasole updates state from the Web Worker thread — React re-renders only what changed and the main thread stays free for smooth 60 fps animations.
 
 ## Quickstart
 
@@ -30,11 +72,11 @@ Then open [http://localhost:4001](http://localhost:4001).
 | Layer   | Technology                   |
 | ------- | ---------------------------- |
 | Server  | Express 5 + `DatasoleServer` |
-| Client  | React 19 + Vite              |
-| Bundler | Vite 6                       |
-| Types   | TypeScript 5 (strict)        |
+| Client  | React 19 + Vite 8            |
+| Bundler | Vite 8                       |
+| Types   | TypeScript 6 (strict)        |
 
-## Port
+## Ports
 
 - **Dev**: Vite on `5173`, Express on `4001` (proxied via Vite)
 - **Prod**: Express on `4001` serves built client
@@ -51,10 +93,6 @@ import { DatasoleServer } from 'datasole/server';
 const app = express();
 
 // Serve the datasole worker IIFE for web worker transport
-const dsWorkerPath = resolve(
-  __dirname,
-  '../node_modules/datasole/dist/client/datasole-worker.iife.min.js',
-);
 app.get('/datasole-worker.iife.min.js', (_req, res) => {
   res.sendFile(dsWorkerPath);
 });
@@ -64,7 +102,6 @@ app.use(express.static('dist/client'));
 
 const httpServer = createServer(app);
 const ds = new DatasoleServer();
-// Default: thread-pool concurrency (4 Node.js worker_threads)
 ds.attach(httpServer);
 ```
 
@@ -76,24 +113,36 @@ Key points:
 
 ## Client-Side Integration
 
-```typescript
-import { DatasoleClient } from 'datasole/client';
+The `DatasoleProvider` component (wrapping your app root) creates the client, connects, and makes it available to all descendants via React context:
 
-const client = new DatasoleClient({
-  url: `ws://${window.location.host}`,
-  // useWorker: true (default) — WebSocket runs in Web Worker
-  // workerUrl: '/datasole-worker.iife.min.js' (default)
-});
-client.connect();
+```tsx
+// App.tsx
+import { DatasoleProvider } from './hooks/useDatasole';
+
+export function App() {
+  return (
+    <DatasoleProvider>
+      <Layout>
+        <MetricsDashboard />
+        <ChatRoom />
+        <RpcDemo />
+      </Layout>
+    </DatasoleProvider>
+  );
+}
 ```
 
-The `useDatasole` hook manages the client lifecycle:
+Child components consume data with zero boilerplate:
 
-```typescript
-const { ds, connectionState } = useDatasole();
-// ds is the DatasoleClient instance, available after mount
-// connectionState tracks 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
+```tsx
+// Any child component
+const metrics = useDatasoleEvent<Metrics>('system-metrics'); // server broadcasts → state
+const messages = useDatasoleState<ChatMsg[]>('chat:messages'); // server state → state
+const ds = useDatasoleClient(); // raw client for emit/rpc
+const conn = useConnectionState(); // 'connected' | 'disconnected' | ...
 ```
+
+No context wrapper boilerplate beyond `DatasoleProvider`, no store modules, no actions/reducers. The hook returns current state and re-renders the component when the server pushes data. Render it in JSX and forget about it.
 
 ## Vite Dev Proxy
 
@@ -111,7 +160,7 @@ proxy: {
 
 ## Notes
 
-- `useDatasole` hook connects on mount, disconnects on unmount
+- `DatasoleProvider` connects on mount, disconnects on unmount (StrictMode safe)
 - Production build: `vite build` outputs to `dist/client/`, Express serves it as static files
 - Web Worker transport keeps the main thread free for React rendering
 - Express 5 uses `/{*splat}` syntax for catch-all routes (not `*`)

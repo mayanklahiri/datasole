@@ -3,6 +3,7 @@ import { useConnectionState } from '../hooks/useDatasole';
 
 export function Layout({ children }: { children: ReactNode }) {
   const connectionState = useConnectionState();
+  const isConnected = connectionState === 'connected';
 
   return (
     <div className="app">
@@ -18,7 +19,7 @@ export function Layout({ children }: { children: ReactNode }) {
           GitHub
         </a>
         <div className="conn-badge">
-          <span className={`conn-dot${connectionState === 'connected' ? ' connected' : ''}`} />
+          <span className={`conn-dot${isConnected ? ' connected' : ''}`} />
           <span>{connectionState}</span>
         </div>
       </header>

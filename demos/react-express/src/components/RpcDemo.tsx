@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useDatasoleClient } from '../hooks/useDatasole';
 
 interface RpcResult {
@@ -16,8 +16,15 @@ export function RpcDemo() {
   const [history, setHistory] = useState<RpcResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pop, setPop] = useState(false);
 
-  const generate = async () => {
+  const avgLatency = useMemo(() => {
+    if (history.length === 0) return null;
+    const sum = history.reduce((a, r) => a + parseFloat(r.ms), 0);
+    return (sum / history.length).toFixed(1);
+  }, [history]);
+
+  const generate = useCallback(async () => {
     if (!ds) return;
     setLoading(true);
     setError(null);
@@ -33,19 +40,24 @@ export function RpcDemo() {
       const entry: RpcResult = { value: data.value, min: lo, max: hi, ms: elapsed };
       setResult(entry);
       setHistory((prev) => [entry, ...prev].slice(0, 10));
+      setPop(true);
+      setTimeout(() => setPop(false), 300);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
     setLoading(false);
-  };
+  }, [ds, min, max]);
 
   return (
     <div className="panel">
       <div className="panel-header">RPC &mdash; Random Number</div>
       <div className="panel-body">
         <div className="panel-help">
-          <code>useDatasoleClient()</code> for imperative calls. <code>ds.rpc()</code> returns a
-          typed response; latency includes the full round trip.
+          <code>
+            await ds.rpc('randomNumber', {'{'} min, max {'}'})
+          </code>{' '}
+          — typed request/response over the WebSocket. Latency is the full round trip. No REST
+          endpoint needed.
         </div>
         <div className="rpc-section">
           <div className="rpc-controls">
@@ -67,9 +79,9 @@ export function RpcDemo() {
               </div>
             ) : result ? (
               <>
-                <div className="rpc-result-value">{result.value}</div>
+                <div className={`rpc-result-value${pop ? ' pop' : ''}`}>{result.value}</div>
                 <div className="rpc-result-meta">
-                  Range [{result.min}, {result.max}] &middot; {result.ms} ms
+                  Range [{result.min}, {result.max}] &middot; {result.ms}&thinsp;ms
                 </div>
               </>
             ) : (
@@ -79,12 +91,15 @@ export function RpcDemo() {
 
           {history.length > 0 && (
             <div className="rpc-history">
-              <div className="rpc-history-title">History</div>
+              <div className="rpc-history-title">
+                History{' '}
+                {avgLatency && <span className="avg-badge">avg {avgLatency}&thinsp;ms</span>}
+              </div>
               {history.map((h, i) => (
-                <div key={i} className="rpc-history-item">
+                <div key={`${h.value}-${h.ms}-${i}`} className="rpc-history-item hist-slide-in">
                   <span className="val">{h.value}</span>
                   <span className="meta">
-                    [{h.min}–{h.max}] {h.ms} ms
+                    [{h.min}–{h.max}] {h.ms}&thinsp;ms
                   </span>
                 </div>
               ))}
