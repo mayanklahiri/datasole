@@ -4,7 +4,12 @@
  */
 import { expect, test } from '@playwright/test';
 
-import { runBench, runReceiveBench, saveBenchResults } from '../helpers/bench-utils';
+import {
+  collectSystemInfo,
+  runBench,
+  runReceiveBench,
+  saveBenchResults,
+} from '../helpers/bench-utils';
 import type { BenchScenarioResult, BenchSuiteResult } from '../helpers/bench-utils';
 import { ServerHarness } from '../helpers/server-harness';
 
@@ -21,6 +26,7 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   const suite: BenchSuiteResult = {
     timestamp: new Date().toISOString(),
+    system: collectSystemInfo(),
     scenarios: results,
   };
   saveBenchResults(suite);

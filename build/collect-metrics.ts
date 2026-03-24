@@ -167,8 +167,19 @@ interface BenchScenarioSummary {
   mainThread?: MainThreadSummary;
 }
 
+interface SystemInfoSummary {
+  platform: string;
+  osRelease: string;
+  arch: string;
+  cpuModel: string;
+  cpuCount: number;
+  totalMemoryBytes: number;
+  nodeVersion: string;
+}
+
 interface HistoryEntry {
   timestamp: string;
+  system?: SystemInfoSummary;
   coverage: { lines: number; branches: number; functions: number; statements: number } | null;
   clientIifeGzip: number | null;
   workerIifeGzip: number | null;
@@ -203,7 +214,7 @@ function appendToHistory(metrics: BuildMetrics): void {
 
   const benchFile = readJsonSafe(
     join(ROOT, 'test', 'e2e', 'reports', 'perf', 'benchmark-results.json'),
-  ) as { scenarios?: BenchScenarioSummary[] } | null;
+  ) as { system?: SystemInfoSummary; scenarios?: BenchScenarioSummary[] } | null;
 
   const benchmarks: BenchScenarioSummary[] | null = benchFile?.scenarios
     ? benchFile.scenarios.map((s) => ({
@@ -220,6 +231,7 @@ function appendToHistory(metrics: BuildMetrics): void {
 
   const entry: HistoryEntry = {
     timestamp: metrics.timestamp,
+    ...(benchFile?.system ? { system: benchFile.system } : {}),
     coverage: total
       ? {
           lines: total['lines']?.pct ?? 0,

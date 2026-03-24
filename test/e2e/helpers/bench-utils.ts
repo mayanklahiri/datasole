@@ -4,6 +4,7 @@
  */
 import type { Page } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'fs';
+import os from 'os';
 import path from 'path';
 
 export interface MainThreadMetrics {
@@ -49,8 +50,39 @@ export interface BenchScenarioResult {
   mainThread?: MainThreadMetrics;
 }
 
+export interface SystemInfo {
+  /** OS platform (e.g. 'linux', 'darwin', 'win32'). */
+  platform: string;
+  /** OS release version string. */
+  osRelease: string;
+  /** CPU architecture (e.g. 'x64', 'arm64'). */
+  arch: string;
+  /** CPU model name (first core). */
+  cpuModel: string;
+  /** Number of logical CPU cores. */
+  cpuCount: number;
+  /** Total system memory in bytes. */
+  totalMemoryBytes: number;
+  /** Node.js version string (e.g. '22.12.0'). */
+  nodeVersion: string;
+}
+
+export function collectSystemInfo(): SystemInfo {
+  const cpus = os.cpus();
+  return {
+    platform: os.platform(),
+    osRelease: os.release(),
+    arch: os.arch(),
+    cpuModel: cpus.length > 0 ? cpus[0].model.trim() : 'unknown',
+    cpuCount: cpus.length,
+    totalMemoryBytes: os.totalmem(),
+    nodeVersion: process.version.replace(/^v/, ''),
+  };
+}
+
 export interface BenchSuiteResult {
   timestamp: string;
+  system: SystemInfo;
   scenarios: BenchScenarioResult[];
 }
 

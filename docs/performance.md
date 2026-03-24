@@ -58,6 +58,7 @@ const latest = computed(() => {
 })
 
 const benchmarks = computed(() => latest.value?.benchmarks ?? [])
+const system = computed(() => latest.value?.system ?? null)
 
 function fmtOps(n) {
   if (n == null) return '—'
@@ -78,6 +79,18 @@ function fmtDate(ts) {
 
 function consoleCount(b, field) {
   return b.console ? b.console[field] : 0
+}
+
+function fmtBytes(bytes) {
+  if (bytes == null) return '—'
+  const gb = bytes / (1024 * 1024 * 1024)
+  if (gb >= 1) return gb.toFixed(1) + ' GB'
+  return (bytes / (1024 * 1024)).toFixed(0) + ' MB'
+}
+
+function fmtPlatform(p) {
+  const map = { linux: 'Linux', darwin: 'macOS', win32: 'Windows' }
+  return map[p] || p
 }
 
 const scenarioLabels = {
@@ -331,6 +344,22 @@ watch([loaded, history], async () => {
 </script>
 
 <div v-if="loaded && benchmarks.length > 0">
+
+<div v-if="system" class="bench-table" style="margin-bottom: 2rem;">
+
+| Parameter     | Value                                                                         |
+| :------------ | :---------------------------------------------------------------------------- |
+| **OS**        | {{ fmtPlatform(system.platform) }} {{ system.osRelease }} ({{ system.arch }}) |
+| **CPU**       | {{ system.cpuModel }}                                                         |
+| **CPU cores** | {{ system.cpuCount }} logical                                                 |
+| **Memory**    | {{ fmtBytes(system.totalMemoryBytes) }} total                                 |
+| **Node.js**   | v{{ system.nodeVersion }}                                                     |
+| **Browser**   | Headless Chromium (Playwright)                                                |
+| **Transport** | Web Worker + pako compression (defaults)                                      |
+| **Duration**  | 3 s sustained load per scenario                                               |
+| **Isolation** | Separate process, dedicated browser instance                                  |
+
+</div>
 
 <div class="bench-table">
 
