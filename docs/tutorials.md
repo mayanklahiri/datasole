@@ -12,19 +12,70 @@ Each tutorial includes screenshots from the automated e2e test suite, captured a
 
 ---
 
+## Contract-first (same as the demos)
+
+Every tutorial uses a shared **`shared/contract.ts`**: `AppContract` extends `DatasoleContract`, and string **`enum`s** (`RpcMethod`, `Event`, `StateKey`) hold every RPC name, event name, and state key so call sites use `RpcMethod.Add`, not `'add'`. That matches [`demos/*/shared/contract.ts`](../demos/react-express/shared/contract.ts) and the [Developer Guide](developer-guide.md).
+
+```typescript
+import type { DatasoleContract } from 'datasole';
+
+export enum RpcMethod {
+  /* added per tutorial */
+}
+export enum Event {
+  /* added per tutorial */
+}
+export enum StateKey {
+  /* added per tutorial */
+}
+
+export interface AppContract extends DatasoleContract {
+  rpc: {
+    /* [RpcMethod.Foo]: { params: P; result: R } */
+  };
+  events: {
+    /* [Event.Bar]: Payload */
+  };
+  state: {
+    /* [StateKey.Baz]: Value */
+  };
+}
+```
+
+Server and client are always typed: `new DatasoleServer<AppContract>()` and `new DatasoleClient<AppContract>({ ... })`. Helper types: `RpcParams`, `RpcResult`, `EventData`, `StateValue`.
+
+HTML snippets below use the IIFE global (`Datasole.DatasoleClient`). In TypeScript/React/Vue, import from `datasole/client` and pass `<AppContract>`.
+
+---
+
 ## 1. Hello World — Your First Connection
 
 **What you'll learn:** Install datasole, connect a client to a server, confirm the WebSocket works.
 
 **Time:** 2 minutes
 
+### Shared — `shared/contract.ts` (no RPC/events/state yet)
+
+Until you add handlers, use empty maps so `DatasoleServer<AppContract>` type-checks:
+
+```typescript
+import type { DatasoleContract } from 'datasole';
+
+export interface AppContract extends DatasoleContract {
+  rpc: Record<never, never>;
+  events: Record<never, never>;
+  state: Record<never, never>;
+}
+```
+
 ### Server — `server.ts`
 
 ```typescript
 import { createServer } from 'http';
 import { DatasoleServer } from 'datasole/server';
+import type { AppContract } from './shared/contract.js';
 
-const ds = new DatasoleServer();
+const ds = new DatasoleServer<AppContract>();
 const http = createServer();
 ds.attach(http);
 http.listen(3000, () => console.log('listening on :3000'));
@@ -55,16 +106,34 @@ That's it. No config, no adapters, no plugins. The server listens for WebSocket 
 
 **Building on:** Tutorial 1
 
+### Shared — extend `shared/contract.ts`
+
+```typescript
+import type { DatasoleContract } from 'datasole';
+
+export enum RpcMethod {
+  Add = 'add',
+}
+
+export interface AppContract extends DatasoleContract {
+  rpc: {
+    [RpcMethod.Add]: { params: { a: number; b: number }; result: { sum: number } };
+  };
+  events: Record<never, never>;
+  state: Record<never, never>;
+}
+```
+
 ### Server — add RPC handler
 
 ```typescript
 import { createServer } from 'http';
 import { DatasoleServer } from 'datasole/server';
+import { RpcMethod, type AppContract } from './shared/contract.js';
 
-const ds = new DatasoleServer();
+const ds = new DatasoleServer<AppContract>();
 
-// Register a handler: client sends two numbers, server returns the sum
-ds.rpc.register<{ a: number; b: number }, { sum: number }>('add', async (params) => {
+ds.rpc.register(RpcMethod.Add, async (params) => {
   return { sum: params.a + params.b };
 });
 
@@ -81,7 +150,7 @@ http.listen(3000);
   const ds = new Datasole.DatasoleClient({ url: 'ws://localhost:3000' });
   ds.connect();
 
-  // Wait for connection, then call the RPC
+  // Wait for connection, then call the RPC (string value matches RpcMethod.Add)
   setTimeout(async () => {
     const result = await ds.rpc('add', { a: 17, b: 25 });
     console.log('17 + 25 =', result.sum); // 42
@@ -89,14 +158,17 @@ http.listen(3000);
 </script>
 ```
 
+In TypeScript, import `RpcMethod` from `./shared/contract.ts` and call `ds.rpc(RpcMethod.Add, { a: 17, b: 25 })`.
+
 ### Same thing in TypeScript + React
 
 ```tsx
 import { DatasoleClient } from 'datasole/client';
+import { RpcMethod, type AppContract } from './shared/contract';
 import { useEffect, useRef, useState } from 'react';
 
 function Calculator() {
-  const ds = useRef(new DatasoleClient({ url: 'ws://localhost:3000' }));
+  const ds = useRef(new DatasoleClient<AppContract>({ url: 'ws://localhost:3000' }));
   const [result, setResult] = useState<number | null>(null);
 
   useEffect(() => {
@@ -107,7 +179,7 @@ function Calculator() {
   }, []);
 
   const add = async (a: number, b: number) => {
-    const res = await ds.current.rpc<{ sum: number }>('add', { a, b });
+    const res = await ds.current.rpc(RpcMethod.Add, { a, b });
     setResult(res.sum);
   };
 
@@ -132,20 +204,44 @@ function Calculator() {
 
 **Building on:** Tutorial 1
 
+### Shared — `shared/contract.ts`
+
+```typescript
+import type { DatasoleContract } from 'datasole';
+
+export enum Event {
+  Price = 'price',
+}
+
+export interface PricePayload {
+  symbol: string;
+  price: number;
+  timestamp: number;
+}
+
+export interface AppContract extends DatasoleContract {
+  rpc: Record<never, never>;
+  events: {
+    [Event.Price]: PricePayload;
+  };
+  state: Record<never, never>;
+}
+```
+
 ### Server — broadcast a price every second
 
 ```typescript
 import { createServer } from 'http';
 import { DatasoleServer } from 'datasole/server';
+import { Event, type AppContract } from './shared/contract.js';
 
-const ds = new DatasoleServer();
+const ds = new DatasoleServer<AppContract>();
 const http = createServer();
 ds.attach(http);
 http.listen(3000);
 
-// Simulate a stock price feed
 setInterval(() => {
-  ds.broadcast('price', {
+  ds.broadcast(Event.Price, {
     symbol: 'TSLA',
     price: 250 + Math.random() * 10,
     timestamp: Date.now(),
@@ -172,14 +268,15 @@ setInterval(() => {
 ```vue
 <script setup lang="ts">
 import { DatasoleClient } from 'datasole/client';
+import { Event, type AppContract, type PricePayload } from './shared/contract';
 import { onMounted, onUnmounted, ref } from 'vue';
 
-const client = new DatasoleClient({ url: 'ws://localhost:3000' });
+const client = new DatasoleClient<AppContract>({ url: 'ws://localhost:3000' });
 const price = ref<string>('—');
 
 onMounted(() => {
   client.connect();
-  client.on<{ symbol: string; price: number }>('price', ({ data }) => {
+  client.on<PricePayload>(Event.Price, ({ data }) => {
     price.value = `$${data.price.toFixed(2)}`;
   });
 });
@@ -208,13 +305,39 @@ This is the simplest possible pattern for one-way server pushes: dashboards, not
 
 This is the **most common datasole pattern** for building reactive frontends: the server mutates its model, and your React/Vue template automatically re-renders. No manual event mapping. No client-side state management library.
 
+### Shared — `shared/contract.ts`
+
+```typescript
+import type { DatasoleContract } from 'datasole';
+
+export enum StateKey {
+  Dashboard = 'dashboard',
+}
+
+export interface Dashboard {
+  visitors: number;
+  activeNow: number;
+  serverUptime: number;
+  lastUpdated: string;
+}
+
+export interface AppContract extends DatasoleContract {
+  rpc: Record<never, never>;
+  events: Record<never, never>;
+  state: {
+    [StateKey.Dashboard]: Dashboard;
+  };
+}
+```
+
 ### Server — a dashboard that updates every second
 
 ```typescript
 import { createServer } from 'http';
 import { DatasoleServer } from 'datasole/server';
+import { StateKey, type AppContract } from './shared/contract.js';
 
-const ds = new DatasoleServer();
+const ds = new DatasoleServer<AppContract>();
 const http = createServer();
 ds.attach(http);
 http.listen(3000);
@@ -223,7 +346,7 @@ let visitors = 0;
 
 setInterval(async () => {
   visitors += Math.floor(Math.random() * 5);
-  await ds.setState('dashboard', {
+  await ds.setState(StateKey.Dashboard, {
     visitors,
     activeNow: Math.floor(Math.random() * 100),
     serverUptime: process.uptime(),
@@ -236,22 +359,16 @@ setInterval(async () => {
 
 ```tsx
 import { DatasoleClient } from 'datasole/client';
+import { StateKey, type AppContract, type Dashboard } from './shared/contract';
 import { useEffect, useRef, useState } from 'react';
 
-interface Dashboard {
-  visitors: number;
-  activeNow: number;
-  serverUptime: number;
-  lastUpdated: string;
-}
-
 function LiveDashboard() {
-  const ds = useRef(new DatasoleClient({ url: 'ws://localhost:3000' }));
+  const ds = useRef(new DatasoleClient<AppContract>({ url: 'ws://localhost:3000' }));
   const [data, setData] = useState<Dashboard | null>(null);
 
   useEffect(() => {
     ds.current.connect();
-    ds.current.subscribeState<Dashboard>('dashboard', setData);
+    ds.current.subscribeState(StateKey.Dashboard, setData);
     return () => {
       ds.current.disconnect();
     };
@@ -276,10 +393,11 @@ function LiveDashboard() {
 ```vue
 <script setup lang="ts">
 import { DatasoleClient } from 'datasole/client';
+import { StateKey, type AppContract, type Dashboard } from './shared/contract';
 import { onMounted, onUnmounted, reactive } from 'vue';
 
-const client = new DatasoleClient({ url: 'ws://localhost:3000' });
-const dashboard = reactive({
+const client = new DatasoleClient<AppContract>({ url: 'ws://localhost:3000' });
+const dashboard = reactive<Dashboard>({
   visitors: 0,
   activeNow: 0,
   serverUptime: 0,
@@ -288,7 +406,7 @@ const dashboard = reactive({
 
 onMounted(() => {
   client.connect();
-  client.subscribeState('dashboard', (s) => Object.assign(dashboard, s));
+  client.subscribeState(StateKey.Dashboard, (s) => Object.assign(dashboard, s));
 });
 
 onUnmounted(() => client.disconnect());
@@ -317,17 +435,53 @@ Notice: no event handlers, no state reducers, no polling. The `subscribeState` c
 
 **Building on:** Tutorials 1–3
 
+Same pattern as the [demos](demos.md): clients **`emit`** `Event.ChatSend` (payload: text + username); the server **`broadcast`s** `Event.ChatMessage` (full message with id + timestamp) and can mirror history in **`StateKey.ChatMessages`**.
+
+### Shared — `shared/contract.ts`
+
+```typescript
+import type { DatasoleContract } from 'datasole';
+
+export enum Event {
+  ChatSend = 'chat:send',
+  ChatMessage = 'chat:message',
+}
+
+export enum StateKey {
+  ChatMessages = 'chat:messages',
+}
+
+export interface ChatMessage {
+  id: string;
+  text: string;
+  username: string;
+  ts: number;
+}
+
+export interface AppContract extends DatasoleContract {
+  rpc: Record<never, never>;
+  events: {
+    [Event.ChatSend]: { text: string; username: string };
+    [Event.ChatMessage]: ChatMessage;
+  };
+  state: {
+    [StateKey.ChatMessages]: ChatMessage[];
+  };
+}
+```
+
 ### Server — authenticated chat with user tracking
 
 ```typescript
 import express from 'express';
 import { createServer } from 'http';
 import { DatasoleServer } from 'datasole/server';
+import { Event, StateKey, type AppContract, type ChatMessage } from './shared/contract.js';
 
 const app = express();
 app.use(express.static('public'));
 
-const ds = new DatasoleServer({
+const ds = new DatasoleServer<AppContract>({
   authHandler: async (req) => {
     const url = new URL(req.url || '', 'http://localhost');
     const name = url.searchParams.get('token');
@@ -339,15 +493,19 @@ const ds = new DatasoleServer({
 const http = createServer(app);
 ds.attach(http);
 
-// Listen for chat messages from clients
-ds.events.on<{ text: string }>('chat:message', ({ data }) => {
-  // ctx.connection gives you the sender's identity
-  // Broadcast to all connected clients
-  ds.broadcast('chat:message', {
-    from: 'server', // In full impl, this comes from ctx
+const chatHistory: ChatMessage[] = [];
+
+ds.events.on(Event.ChatSend, ({ data }) => {
+  const msg: ChatMessage = {
+    id: crypto.randomUUID(),
     text: data.text,
-    timestamp: Date.now(),
-  });
+    username: data.username,
+    ts: Date.now(),
+  };
+  chatHistory.push(msg);
+  if (chatHistory.length > 50) chatHistory.shift();
+  void ds.setState(StateKey.ChatMessages, [...chatHistory]);
+  ds.broadcast(Event.ChatMessage, msg);
 });
 
 http.listen(3000);
@@ -369,17 +527,17 @@ http.listen(3000);
   });
   ds.connect();
 
-  // Receive messages
-  ds.on('chat:message', ({ data: msg }) => {
-    const div = document.createElement('div');
-    div.textContent = `[${msg.from}] ${msg.text}`;
-    document.getElementById('messages').appendChild(div);
+  ds.subscribeState('chat:messages', function (messages) {
+    document.getElementById('messages').innerHTML = messages
+      .map(function (m) {
+        return '<div>[' + m.username + '] ' + m.text + '</div>';
+      })
+      .join('');
   });
 
-  // Send messages
   document.getElementById('send').onclick = () => {
     const input = document.getElementById('input');
-    ds.emit('chat:message', { text: input.value });
+    ds.emit('chat:send', { text: input.value, username: username });
     input.value = '';
   };
 </script>
@@ -389,17 +547,12 @@ http.listen(3000);
 
 ```tsx
 import { DatasoleClient } from 'datasole/client';
+import { StateKey, type AppContract, type ChatMessage } from './shared/contract';
 import { useEffect, useRef, useState } from 'react';
-
-interface ChatMessage {
-  from: string;
-  text: string;
-  timestamp: number;
-}
 
 function ChatRoom({ username }: { username: string }) {
   const ds = useRef(
-    new DatasoleClient({
+    new DatasoleClient<AppContract>({
       url: 'ws://localhost:3000',
       auth: { token: username },
     }),
@@ -408,26 +561,25 @@ function ChatRoom({ username }: { username: string }) {
   const [input, setInput] = useState('');
 
   useEffect(() => {
-    ds.current.connect();
-    ds.current.on<ChatMessage>('chat:message', ({ data: msg }) => {
-      setMessages((prev) => [...prev, msg]);
-    });
+    const client = ds.current;
+    client.connect();
+    client.subscribeState(StateKey.ChatMessages, setMessages);
     return () => {
-      ds.current.disconnect();
+      client.disconnect();
     };
   }, []);
 
   const send = () => {
-    ds.current.emit('chat:message', { text: input });
+    ds.current.emit(Event.ChatSend, { text: input, username });
     setInput('');
   };
 
   return (
     <div>
       <div>
-        {messages.map((m, i) => (
-          <p key={i}>
-            [{m.from}] {m.text}
+        {messages.map((m) => (
+          <p key={m.id}>
+            [{m.username}] {m.text}
           </p>
         ))}
       </div>
@@ -448,29 +600,54 @@ function ChatRoom({ username }: { username: string }) {
 
 **Building on:** Tutorials 1–4
 
+### Shared — `shared/contract.ts`
+
+```typescript
+import type { DatasoleContract } from 'datasole';
+
+export enum RpcMethod {
+  CrdtGetState = 'crdt:getState',
+}
+
+export enum Event {
+  CrdtOp = 'crdt:op',
+  CrdtState = 'crdt:state',
+}
+
+/** Narrow these to your CRDT op / serialized state types as you harden the app */
+export interface AppContract extends DatasoleContract {
+  rpc: {
+    [RpcMethod.CrdtGetState]: { params: void; result: unknown };
+  };
+  events: {
+    [Event.CrdtOp]: unknown;
+    [Event.CrdtState]: unknown;
+  };
+  state: Record<never, never>;
+}
+```
+
 ### Server — host a shared CRDT counter
 
 ```typescript
 import { createServer } from 'http';
 import { DatasoleServer } from 'datasole/server';
 import { PNCounter } from 'datasole';
+import { Event, RpcMethod, type AppContract } from './shared/contract.js';
 
-const ds = new DatasoleServer();
+const ds = new DatasoleServer<AppContract>();
 const http = createServer();
 ds.attach(http);
 http.listen(3000);
 
-// Server-side CRDT state
 const counter = new PNCounter('server');
 
-// When a client sends a CRDT operation, apply it and broadcast the merged state
-ds.events.on('crdt:op', ({ data: op }) => {
+ds.events.on(Event.CrdtOp, ({ data: op }) => {
   counter.apply(op);
-  ds.broadcast('crdt:state', counter.state());
+  ds.broadcast(Event.CrdtState, counter.state());
 });
 
-// Expose current state so new clients can fetch it on connect
-ds.rpc.register('crdt:getState', async () => counter.state());
+ds.rpc.register(RpcMethod.CrdtGetState, async () => counter.state());
 ```
 
 ### Client — increment from anywhere, state converges
@@ -478,10 +655,11 @@ ds.rpc.register('crdt:getState', async () => counter.state());
 ```tsx
 import { DatasoleClient, CrdtStore } from 'datasole/client';
 import { PNCounter } from 'datasole';
+import { Event, RpcMethod, type AppContract } from './shared/contract';
 import { useEffect, useRef, useState } from 'react';
 
 function SharedCounter() {
-  const ds = useRef(new DatasoleClient({ url: 'ws://localhost:3000' }));
+  const ds = useRef(new DatasoleClient<AppContract>({ url: 'ws://localhost:3000' }));
   const store = useRef(new CrdtStore('client-' + Math.random().toString(36).slice(2)));
   const [count, setCount] = useState(0);
 
@@ -489,14 +667,12 @@ function SharedCounter() {
     const counter = store.current.register('votes', 'pn-counter');
     ds.current.connect();
 
-    // Apply server state updates
-    ds.current.on('crdt:state', ({ data: state }) => {
+    ds.current.on(Event.CrdtState, ({ data: state }) => {
       store.current.mergeRemoteState('votes', state);
       setCount(counter.value());
     });
 
-    // Fetch initial state on connect
-    ds.current.rpc('crdt:getState').then((state) => {
+    ds.current.rpc(RpcMethod.CrdtGetState).then((state) => {
       store.current.mergeRemoteState('votes', state);
       setCount(counter.value());
     });
@@ -509,14 +685,14 @@ function SharedCounter() {
   const increment = () => {
     const counter = store.current.get<PNCounter>('votes')!;
     const op = counter.increment();
-    ds.current.emit('crdt:op', op); // Send to server
-    setCount(counter.value()); // Optimistic local update
+    ds.current.emit(Event.CrdtOp, op);
+    setCount(counter.value());
   };
 
   const decrement = () => {
     const counter = store.current.get<PNCounter>('votes')!;
     const op = counter.decrement();
-    ds.current.emit('crdt:op', op);
+    ds.current.emit(Event.CrdtOp, op);
     setCount(counter.value());
   };
 
@@ -543,42 +719,60 @@ function SharedCounter() {
 
 **Building on:** Tutorials 1, 4
 
+Sync channel **`key`** strings should match the same naming discipline as state keys — use a small **`enum`** so they stay consistent with `setState` / `subscribeState` if you later route the same logical data through live state.
+
+### Shared — `shared/contract.ts` (minimal; channels are orthogonal to RPC/events)
+
+```typescript
+import type { DatasoleContract } from 'datasole';
+
+/** Keys passed to `createSyncChannel({ key })` — same string values everywhere */
+export enum SyncChannelKey {
+  Alerts = 'alerts',
+  Metrics = 'metrics',
+  SearchResults = 'search-results',
+}
+
+export interface AppContract extends DatasoleContract {
+  rpc: Record<never, never>;
+  events: Record<never, never>;
+  state: Record<never, never>;
+}
+```
+
 ### Server — three channels, three strategies
 
 ```typescript
 import { createServer } from 'http';
 import { DatasoleServer } from 'datasole/server';
+import { SyncChannelKey, type AppContract } from './shared/contract.js';
 
-const ds = new DatasoleServer();
+const ds = new DatasoleServer<AppContract>();
 const http = createServer();
 ds.attach(http);
 http.listen(3000);
 
-// Immediate: every update pushes instantly (e.g., price alerts)
 const alerts = ds.createSyncChannel({
-  key: 'alerts',
+  key: SyncChannelKey.Alerts,
   direction: 'server-to-client',
   mode: 'json-patch',
   flush: { flushStrategy: 'immediate' },
 });
 
-// Batched: accumulate updates, flush every 200ms (e.g., dashboard metrics)
 const metrics = ds.createSyncChannel({
-  key: 'metrics',
+  key: SyncChannelKey.Metrics,
   direction: 'server-to-client',
   mode: 'json-patch',
   flush: { flushStrategy: 'batched', batchIntervalMs: 200 },
 });
 
-// Debounced: wait for 500ms of inactivity before flushing (e.g., search results)
 const search = ds.createSyncChannel({
-  key: 'search-results',
+  key: SyncChannelKey.SearchResults,
   direction: 'server-to-client',
   mode: 'json-patch',
   flush: { flushStrategy: 'debounced', debounceMs: 500 },
 });
 
-// Simulate high-frequency metric updates
 setInterval(() => {
   metrics.enqueue([
     {
@@ -587,7 +781,7 @@ setInterval(() => {
       value: Math.random() * 100,
     },
   ]);
-}, 50); // 20 updates/sec, but client sees batched flushes every 200ms
+}, 50);
 ```
 
 The same server can mix immediate, batched, and debounced channels on different keys — each tuned for its use case.
@@ -602,47 +796,68 @@ The same server can mix immediate, batched, and debounced channels on different 
 
 **Building on:** Tutorials 4–5
 
+### Shared — `shared/contract.ts`
+
+```typescript
+import type { DatasoleContract } from 'datasole';
+
+export enum RpcMethod {
+  SaveProgress = 'saveProgress',
+  GetProgress = 'getProgress',
+}
+
+export interface AppContract extends DatasoleContract {
+  rpc: {
+    [RpcMethod.SaveProgress]: {
+      params: { level: number; score: number };
+      result: { ok: boolean };
+    };
+    [RpcMethod.GetProgress]: {
+      params: void;
+      result: { level: number; score: number };
+    };
+  };
+  events: Record<never, never>;
+  state: Record<never, never>;
+}
+```
+
 ### Server — persist user progress
 
 ```typescript
 import express from 'express';
 import { createServer } from 'http';
 import { DatasoleServer } from 'datasole/server';
+import { RpcMethod, type AppContract } from './shared/contract.js';
 
 const app = express();
-const ds = new DatasoleServer({
+const ds = new DatasoleServer<AppContract>({
   authHandler: async (req) => {
     const url = new URL(req.url || '', 'http://localhost');
     const userId = url.searchParams.get('token');
     return userId ? { authenticated: true, userId } : { authenticated: false };
   },
   session: {
-    flushThreshold: 5, // Persist after 5 mutations
-    flushIntervalMs: 3000, // Or every 3 seconds
+    flushThreshold: 5,
+    flushIntervalMs: 3000,
   },
 });
 
 const http = createServer(app);
 ds.attach(http);
 
-// RPC: save user progress (stored in session, auto-flushed to backend)
-ds.rpc.register<{ level: number; score: number }, { ok: boolean }>(
-  'saveProgress',
-  async (params, ctx) => {
-    ds.sessions.set(ctx.connection.userId!, 'level', params.level);
-    ds.sessions.set(ctx.connection.userId!, 'score', params.score);
-    return { ok: true };
-  },
-);
+ds.rpc.register(RpcMethod.SaveProgress, async (params, ctx) => {
+  ds.sessions.set(ctx.connection.userId!, 'level', params.level);
+  ds.sessions.set(ctx.connection.userId!, 'score', params.score);
+  return { ok: true };
+});
 
-// RPC: get user progress (restored from persistence on reconnect)
-ds.rpc.register<void, { level: number; score: number }>('getProgress', async (_params, ctx) => {
+ds.rpc.register(RpcMethod.GetProgress, async (_params, ctx) => {
   const level = ds.sessions.get<number>(ctx.connection.userId!, 'level') ?? 1;
   const score = ds.sessions.get<number>(ctx.connection.userId!, 'score') ?? 0;
   return { level, score };
 });
 
-// Listen for session changes (e.g., for a leaderboard)
 ds.sessions.onChange((userId, key, value, version) => {
   console.log(`${userId} changed ${key} to ${value} (v${version})`);
 });
@@ -654,11 +869,12 @@ http.listen(3000);
 
 ```tsx
 import { DatasoleClient } from 'datasole/client';
+import { RpcMethod, type AppContract } from './shared/contract';
 import { useEffect, useRef, useState } from 'react';
 
 function Game({ userId }: { userId: string }) {
   const ds = useRef(
-    new DatasoleClient({
+    new DatasoleClient<AppContract>({
       url: 'ws://localhost:3000',
       auth: { token: userId },
     }),
@@ -669,8 +885,7 @@ function Game({ userId }: { userId: string }) {
   useEffect(() => {
     ds.current.connect();
 
-    // Restore progress on (re)connect
-    ds.current.rpc<{ level: number; score: number }>('getProgress').then((p) => {
+    ds.current.rpc(RpcMethod.GetProgress).then((p) => {
       setLevel(p.level);
       setScore(p.score);
     });
@@ -685,7 +900,7 @@ function Game({ userId }: { userId: string }) {
     const newScore = score + 100;
     setLevel(newLevel);
     setScore(newScore);
-    await ds.current.rpc('saveProgress', { level: newLevel, score: newScore });
+    await ds.current.rpc(RpcMethod.SaveProgress, { level: newLevel, score: newScore });
   };
 
   return (
@@ -712,20 +927,42 @@ function Game({ userId }: { userId: string }) {
 
 **Building on:** All previous tutorials
 
+### Shared — `shared/contract.ts`
+
+```typescript
+import type { DatasoleContract } from 'datasole';
+
+export enum RpcMethod {
+  Ping = 'ping',
+  HeavyWork = 'heavy-rpc',
+}
+
+export interface AppContract extends DatasoleContract {
+  rpc: {
+    [RpcMethod.Ping]: { params: void; result: { pong: number } };
+    [RpcMethod.HeavyWork]: { params: { payload: string }; result: { ok: boolean } };
+  };
+  events: Record<never, never>;
+  state: Record<never, never>;
+}
+```
+
+Rate-limit **`rules`** keys must match the **RPC method string** — use `RpcMethod.HeavyWork` (or `RpcMethod.HeavyWork.toString()` is unnecessary; the enum value is the wire name).
+
 ### Server — production configuration
 
 ```typescript
 import express from 'express';
 import { createServer } from 'http';
 import { DatasoleServer, RedisBackend, PrometheusExporter } from 'datasole/server';
+import { RpcMethod, type AppContract } from './shared/contract.js';
 
 const app = express();
 
 const redisBackend = new RedisBackend({ url: 'redis://localhost:6379', prefix: 'ds:' });
 await redisBackend.connect();
 
-const ds = new DatasoleServer({
-  // Pluggable auth
+const ds = new DatasoleServer<AppContract>({
   authHandler: async (req) => {
     const url = new URL(req.url || '', 'http://localhost');
     const token = url.searchParams.get('token');
@@ -733,39 +970,33 @@ const ds = new DatasoleServer({
     return { authenticated: true, userId: token, roles: ['user'] };
   },
 
-  // Thread-pool executor: 4 worker threads handle connection logic
   executor: { model: 'thread-pool', poolSize: 4 },
 
-  // Redis for state persistence (enables multi-process pub/sub)
   stateBackend: redisBackend,
 
-  // Rate limiting: 200 requests/minute per connection
   rateLimit: {
     defaultRule: { windowMs: 60_000, maxRequests: 200 },
     rules: {
-      'heavy-rpc': { windowMs: 60_000, maxRequests: 10 },
+      [RpcMethod.HeavyWork]: { windowMs: 60_000, maxRequests: 10 },
     },
   },
 
-  // Session persistence: flush every 10 mutations or 5 seconds
   session: { flushThreshold: 10, flushIntervalMs: 5000 },
 
-  // Prometheus metrics
   metricsExporter: new PrometheusExporter('datasole'),
 });
 
 const http = createServer(app);
 ds.attach(http);
 
-// Expose Prometheus metrics endpoint
 app.get('/metrics', async (_req, res) => {
   const exporter = new PrometheusExporter('datasole');
   const text = await exporter.export(ds.metrics.snapshot());
   res.type('text/plain').send(text);
 });
 
-// Register your RPC handlers, state, events...
-ds.rpc.register('ping', async () => ({ pong: Date.now() }));
+ds.rpc.register(RpcMethod.Ping, async () => ({ pong: Date.now() }));
+ds.rpc.register(RpcMethod.HeavyWork, async () => ({ ok: true }));
 
 http.listen(3000);
 console.log('Production datasole server on :3000');
@@ -825,6 +1056,58 @@ This is a simplified Trello-like board where:
 - Session persistence **restores your view** on reconnect
 - **Rate limiting** prevents spam
 
+### Shared — `shared/contract.ts`
+
+```typescript
+import type { DatasoleContract } from 'datasole';
+
+export enum RpcMethod {
+  AddTask = 'addTask',
+  MoveTask = 'moveTask',
+}
+
+export enum Event {
+  UserJoin = 'user:join',
+  UserLeave = 'user:leave',
+  Presence = 'presence',
+  ChatSend = 'chat:send',
+  ChatMessage = 'chat:message',
+}
+
+export enum StateKey {
+  Board = 'board',
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  column: string;
+  assignee?: string;
+}
+
+export interface Board {
+  tasks: Task[];
+  columns: string[];
+}
+
+export interface AppContract extends DatasoleContract {
+  rpc: {
+    [RpcMethod.AddTask]: { params: { title: string }; result: { id: string } };
+    [RpcMethod.MoveTask]: { params: { taskId: string; column: string }; result: { ok: boolean } };
+  };
+  events: {
+    [Event.UserJoin]: Record<string, never>;
+    [Event.UserLeave]: Record<string, never>;
+    [Event.Presence]: unknown;
+    [Event.ChatSend]: { text: string };
+    [Event.ChatMessage]: { text: string; timestamp: number };
+  };
+  state: {
+    [StateKey.Board]: Board;
+  };
+}
+```
+
 ### Server
 
 ```typescript
@@ -832,11 +1115,12 @@ import express from 'express';
 import { createServer } from 'http';
 import { DatasoleServer } from 'datasole/server';
 import { PNCounter } from 'datasole';
+import { Event, RpcMethod, StateKey, type AppContract, type Board } from './shared/contract.js';
 
 const app = express();
 app.use(express.static('public'));
 
-const ds = new DatasoleServer({
+const ds = new DatasoleServer<AppContract>({
   authHandler: async (req) => {
     const url = new URL(req.url || '', 'http://localhost');
     const name = url.searchParams.get('token');
@@ -851,61 +1135,44 @@ const ds = new DatasoleServer({
 const http = createServer(app);
 ds.attach(http);
 
-// ------ Live State: the board ------
-interface Task {
-  id: string;
-  title: string;
-  column: string;
-  assignee?: string;
-}
-interface Board {
-  tasks: Task[];
-  columns: string[];
-}
-
 const board: Board = {
   columns: ['todo', 'in-progress', 'done'],
   tasks: [],
 };
 
-// Push the full board every time it changes
 async function syncBoard() {
-  await ds.setState('board', board);
+  await ds.setState(StateKey.Board, board);
 }
-syncBoard();
+void syncBoard();
 
-// ------ RPC: add task ------
-ds.rpc.register<{ title: string }, { id: string }>('addTask', async (params) => {
+ds.rpc.register(RpcMethod.AddTask, async (params) => {
   const id = `task-${Date.now()}`;
   board.tasks.push({ id, title: params.title, column: 'todo' });
   await syncBoard();
   return { id };
 });
 
-// ------ RPC: move task ------
-ds.rpc.register<{ taskId: string; column: string }, { ok: boolean }>('moveTask', async (params) => {
+ds.rpc.register(RpcMethod.MoveTask, async (params) => {
   const task = board.tasks.find((t) => t.id === params.taskId);
   if (task) task.column = params.column;
   await syncBoard();
   return { ok: !!task };
 });
 
-// ------ CRDT: online user count ------
 const onlineCounter = new PNCounter('server');
 
-ds.events.on('user:join', () => {
+ds.events.on(Event.UserJoin, () => {
   onlineCounter.increment();
-  ds.broadcast('presence', onlineCounter.state());
+  ds.broadcast(Event.Presence, onlineCounter.state());
 });
 
-ds.events.on('user:leave', () => {
+ds.events.on(Event.UserLeave, () => {
   onlineCounter.decrement();
-  ds.broadcast('presence', onlineCounter.state());
+  ds.broadcast(Event.Presence, onlineCounter.state());
 });
 
-// ------ Events: chat ------
-ds.events.on<{ text: string }>('chat', ({ data }) => {
-  ds.broadcast('chat', { text: data.text, timestamp: Date.now() });
+ds.events.on(Event.ChatSend, ({ data }) => {
+  ds.broadcast(Event.ChatMessage, { text: data.text, timestamp: Date.now() });
 });
 
 http.listen(3000, () => console.log('Task board on :3000'));
@@ -916,21 +1183,12 @@ http.listen(3000, () => console.log('Task board on :3000'));
 ```tsx
 import { DatasoleClient, CrdtStore } from 'datasole/client';
 import { PNCounter } from 'datasole';
+import { Event, RpcMethod, StateKey, type AppContract, type Board } from './shared/contract';
 import { useEffect, useRef, useState } from 'react';
-
-interface Task {
-  id: string;
-  title: string;
-  column: string;
-}
-interface Board {
-  tasks: Task[];
-  columns: string[];
-}
 
 function TaskBoard({ username }: { username: string }) {
   const ds = useRef(
-    new DatasoleClient({
+    new DatasoleClient<AppContract>({
       url: 'ws://localhost:3000',
       auth: { token: username },
     }),
@@ -944,37 +1202,34 @@ function TaskBoard({ username }: { username: string }) {
     const client = ds.current;
     client.connect();
 
-    // Live board state
-    client.subscribeState<Board>('board', setBoard);
+    client.subscribeState(StateKey.Board, setBoard);
 
-    // Presence via CRDT
     const store = new CrdtStore('client-' + username);
     store.register('online', 'pn-counter');
-    client.emit('user:join', {});
-    client.on('presence', ({ data: state }) => {
+    client.emit(Event.UserJoin, {});
+    client.on(Event.Presence, ({ data: state }) => {
       store.mergeRemoteState('online', state);
       setOnline(store.get<PNCounter>('online')!.value());
     });
 
-    // Chat
-    client.on<{ text: string }>('chat', ({ data: msg }) => {
+    client.on(Event.ChatMessage, ({ data: msg }) => {
       setMessages((prev) => [...prev.slice(-49), msg.text]);
     });
 
     return () => {
-      client.emit('user:leave', {});
+      client.emit(Event.UserLeave, {});
       client.disconnect();
     };
   }, [username]);
 
   const addTask = async () => {
     if (!newTask.trim()) return;
-    await ds.current.rpc('addTask', { title: newTask });
+    await ds.current.rpc(RpcMethod.AddTask, { title: newTask });
     setNewTask('');
   };
 
   const moveTask = (taskId: string, column: string) => {
-    ds.current.rpc('moveTask', { taskId, column });
+    void ds.current.rpc(RpcMethod.MoveTask, { taskId, column });
   };
 
   return (

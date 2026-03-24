@@ -16,29 +16,29 @@ Three independent demo applications ship with datasole, each implementing the **
 
 ## What Each Demo Shows
 
-Every demo is a full-screen, dark-themed, responsive three-panel layout:
+Every demo is a full-screen, dark-themed, responsive three-panel layout. All three share a single **`shared/contract.ts`** (`AppContract` + `RpcMethod` / `Event` / `StateKey` enums) — the same contract-first pattern as the [Developer Guide](developer-guide.md) and [Tutorials](tutorials.md).
 
-1. **Server Metrics** — live-updating dashboard (uptime, connections, CPU, memory, message throughput), pushed from the server every 2 seconds via `ds.broadcast()`.
-2. **Global Chat Room** — client emits `chat:send`, server maintains a 50-message history in state and broadcasts each new message for instant delivery.
-3. **RPC Random Number** — client calls `ds.rpc('randomNumber', { min, max })`, server returns a cryptographically random integer with timing metadata.
+1. **Server Metrics** — live-updating dashboard (uptime, connections, CPU, memory, message throughput), pushed from the server every 2 seconds via `ds.broadcast(Event.SystemMetrics, …)`.
+2. **Global Chat Room** — client emits `Event.ChatSend`, server maintains a 50-message history under `StateKey.ChatMessages` and broadcasts `Event.ChatMessage` for instant delivery.
+3. **RPC Random Number** — client calls `ds.rpc(RpcMethod.RandomNumber, { min, max })`, server returns a cryptographically random integer with timing metadata.
 
 ```mermaid
 flowchart LR
   subgraph server [Server]
     metrics["setInterval 2s"]
-    chatHandler["ds.events.on('chat:send')"]
-    rpcHandler["ds.rpc.register('randomNumber')"]
+    chatHandler["ds.events.on(Event.ChatSend)"]
+    rpcHandler["ds.rpc.register(RpcMethod.RandomNumber)"]
   end
   subgraph client [Client]
     metricsDash[Metrics Dashboard]
     chatRoom[Chat Room]
     rpcDemo[RPC Panel]
   end
-  metrics -->|"ds.broadcast('system-metrics')"| metricsDash
-  chatRoom -->|"ds.emit('chat:send')"| chatHandler
-  chatHandler -->|"ds.broadcast('chat:message')"| chatRoom
-  chatHandler -->|"ds.setState('chat:messages')"| chatRoom
-  rpcDemo -->|"ds.rpc('randomNumber')"| rpcHandler
+  metrics -->|"ds.broadcast(Event.SystemMetrics)"| metricsDash
+  chatRoom -->|"ds.emit(Event.ChatSend)"| chatHandler
+  chatHandler -->|"ds.broadcast(Event.ChatMessage)"| chatRoom
+  chatHandler -->|"ds.setState(StateKey.ChatMessages)"| chatRoom
+  rpcDemo -->|"ds.rpc(RpcMethod.RandomNumber)"| rpcHandler
   rpcHandler -->|"{ value, generatedAt }"| rpcDemo
 ```
 
@@ -47,10 +47,12 @@ flowchart LR
 All three demos implement identical business logic — the only difference is how it's wired into the framework:
 
 ```typescript
+import { Event, RpcMethod, StateKey, type ChatMessage } from './shared/contract.js';
+
 // Metrics broadcast every 2s
 setInterval(() => {
   const snap = ds.metrics.snapshot();
-  ds.broadcast('system-metrics', {
+  ds.broadcast(Event.SystemMetrics, {
     uptime: snap.uptime,
     connections: snap.connections,
     messagesIn: snap.messagesIn,
@@ -62,17 +64,17 @@ setInterval(() => {
 }, 2000);
 
 // Chat — receive, store, broadcast
-ds.events.on('chat:send', ({ data }) => {
+ds.events.on(Event.ChatSend, ({ data }) => {
   const { text, username } = data;
-  const msg = { id: crypto.randomUUID(), text, username, ts: Date.now() };
+  const msg: ChatMessage = { id: crypto.randomUUID(), text, username, ts: Date.now() };
   chatHistory.push(msg);
   if (chatHistory.length > 50) chatHistory.shift();
-  void ds.setState('chat:messages', [...chatHistory]);
-  ds.broadcast('chat:message', msg);
+  void ds.setState(StateKey.ChatMessages, [...chatHistory]);
+  ds.broadcast(Event.ChatMessage, msg);
 });
 
 // RPC — random number
-ds.rpc.register('randomNumber', async ({ min, max }) => {
+ds.rpc.register(RpcMethod.RandomNumber, async ({ min, max }) => {
   return {
     value: crypto.randomInt(Math.floor(min), Math.floor(max) + 1),
     generatedAt: Date.now(),
@@ -138,31 +140,25 @@ httpServer.listen(4000);
 The client loads the IIFE bundle via `<script>` tag, giving a `window.Datasole` global. No bundler needed.
 
 ```javascript
-// client/app.js — key parts
+// client/app.mjs — key parts (imports RpcMethod, Event, StateKey from /shared/contract.mjs)
 const ds = new Datasole.DatasoleClient({
   url: 'ws://' + location.host,
-  // useWorker: true (default) — WebSocket runs in a Web Worker
-  // workerUrl: '/__ds/datasole-worker.iife.min.js' (default)
 });
 ds.connect();
 
-// Live metrics via broadcast events
-ds.on('system-metrics', function (ev) {
+ds.on(Event.SystemMetrics, function (ev) {
   // Update DOM with ev.data.uptime, ev.data.connections, etc.
 });
 
-// Chat via state subscription + broadcast events
-ds.subscribeState('chat:messages', function (messages) {
+ds.subscribeState(StateKey.ChatMessages, function (messages) {
   /* render history */
 });
-ds.on('chat:message', function (ev) {
+ds.on(Event.ChatMessage, function (ev) {
   /* append new message */
 });
-ds.emit('chat:send', { text, username });
+ds.emit(Event.ChatSend, { text, username });
 
-// RPC
-const data = await ds.rpc('randomNumber', { min: 1, max: 100 });
-// data.value, data.generatedAt
+const data = await ds.rpc(RpcMethod.RandomNumber, { min: 1, max: 100 });
 ```
 
 DatasoleServer serves runtime files automatically:
@@ -284,11 +280,12 @@ Child components consume server data with zero boilerplate:
 ```tsx
 // MetricsDashboard.tsx — entire hook usage
 import { useMemo } from 'react';
+import { Event } from '../../shared/contract';
 import { useDatasoleEvent } from '../hooks/useDatasole';
 
 export function MetricsDashboard() {
   // One line — re-renders when the server broadcasts new data
-  const metrics = useDatasoleEvent<Metrics>('system-metrics');
+  const metrics = useDatasoleEvent<Metrics>(Event.SystemMetrics);
 
   // Derived values with useMemo, no selectors or reducers
   const memoryPct = useMemo(
@@ -307,15 +304,17 @@ export function MetricsDashboard() {
 Three hook flavors cover every datasole pattern:
 
 ```tsx
+import { Event, RpcMethod, StateKey } from '../shared/contract';
+
 // Server broadcast events → React state
-const metrics = useDatasoleEvent<Metrics>('system-metrics');
+const metrics = useDatasoleEvent<Metrics>(Event.SystemMetrics);
 
 // Server-managed state → React state (synced via JSON Patch)
-const messages = useDatasoleState<ChatMessage[]>('chat:messages');
+const messages = useDatasoleState<ChatMessage[]>(StateKey.ChatMessages);
 
 // Raw client for imperative calls (emit, rpc)
 const ds = useDatasoleClient();
-await ds?.rpc('randomNumber', { min: 1, max: 100 });
+await ds?.rpc(RpcMethod.RandomNumber, { min: 1, max: 100 });
 
 // Connection state
 const conn = useConnectionState(); // 'connected' | 'disconnected' | ...
@@ -380,6 +379,7 @@ The `DatasoleService` wraps all datasole logic in an injectable service with pro
 // server/src/datasole.service.ts — key parts
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { DatasoleServer } from 'datasole/server';
+import { Event, RpcMethod, type AppContract } from '../../shared/contract.js';
 
 @Injectable()
 export class DatasoleService implements OnModuleDestroy {
@@ -388,8 +388,8 @@ export class DatasoleService implements OnModuleDestroy {
 
   async init(): Promise<void> {
     // Register chat, RPC, metrics (see shared logic above)
-    this.ds.events.on('chat:send', handler);
-    this.ds.rpc.register('randomNumber', handler);
+    this.ds.events.on(Event.ChatSend, handler);
+    this.ds.rpc.register(RpcMethod.RandomNumber, handler);
     this.metricsInterval = setInterval(broadcastMetrics, 2000);
   }
 
@@ -433,6 +433,7 @@ Child components consume server data with zero boilerplate:
 <!-- MetricsDashboard.vue — entire script section -->
 <script setup lang="ts">
 import { computed } from 'vue';
+import { Event } from '../../shared/contract';
 import { useDatasoleEvent } from '../composables/useDatasole';
 
 interface Metrics {
@@ -443,7 +444,7 @@ interface Metrics {
 }
 
 // One line — this ref auto-updates from the Web Worker
-const metrics = useDatasoleEvent<Metrics>('system-metrics');
+const metrics = useDatasoleEvent<Metrics>(Event.SystemMetrics);
 
 // Computed properties compose naturally
 const memoryPct = computed(() =>
@@ -461,15 +462,17 @@ const memoryPct = computed(() =>
 Three composable flavors cover every datasole pattern:
 
 ```typescript
+import { Event, RpcMethod, StateKey } from '../shared/contract';
+
 // Server broadcast events → reactive ref
-const metrics = useDatasoleEvent<Metrics>('system-metrics');
+const metrics = useDatasoleEvent<Metrics>(Event.SystemMetrics);
 
 // Server-managed state → reactive ref (synced via JSON Patch)
-const messages = useDatasoleState<ChatMessage[]>('chat:messages');
+const messages = useDatasoleState<ChatMessage[]>(StateKey.ChatMessages);
 
 // Raw client for imperative calls (emit, rpc)
 const ds = useDatasoleClient();
-await ds.value?.rpc('randomNumber', { min: 1, max: 100 });
+await ds.value?.rpc(RpcMethod.RandomNumber, { min: 1, max: 100 });
 
 // Connection state
 const conn = useConnectionState(); // 'connected' | 'disconnected' | ...

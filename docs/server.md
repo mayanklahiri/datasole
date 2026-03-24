@@ -517,19 +517,18 @@ http.listen(3000);
 
 ## RPC Handlers
 
-Register typed request/response handlers. The client calls them with `client.rpc()`.
+Register typed request/response handlers. The client calls them with `client.rpc(RpcMethod.Foo, params)` — use **`RpcMethod` string enums** in `shared/contract.ts`, not raw string literals.
 
 ```typescript
-ds.rpc.register<{ userId: string }, { name: string; email: string }>(
-  'getUser',
-  async (params, ctx) => {
-    // ctx.auth — the authenticated user's identity
-    // ctx.connectionId — unique connection ID
-    // ctx.connection — full ConnectionContext (metadata, tags, get/set)
-    console.log(`User ${ctx.auth?.userId} is looking up ${params.userId}`);
-    return { name: 'Alice', email: 'alice@example.com' };
-  },
-);
+import { RpcMethod } from './shared/contract';
+
+ds.rpc.register(RpcMethod.GetUser, async (params, ctx) => {
+  // ctx.auth — the authenticated user's identity
+  // ctx.connectionId — unique connection ID
+  // ctx.connection — full ConnectionContext (metadata, tags, get/set)
+  console.log(`User ${ctx.auth?.userId} is looking up ${params.userId}`);
+  return { name: 'Alice', email: 'alice@example.com' };
+});
 ```
 
 > **Tutorial:** [RPC — Call the Server, Get a Response](tutorials.md#2-rpc--call-the-server-get-a-response)
@@ -539,30 +538,34 @@ ds.rpc.register<{ userId: string }, { name: string; email: string }>(
 The most powerful pattern: mutate a data structure on the server, and every connected client sees a live mirror. Only the JSON Patch diff is sent.
 
 ```typescript
-await ds.setState('dashboard', { visitors: 0, active: 0 });
+import { StateKey } from './shared/contract';
+
+await ds.setState(StateKey.Dashboard, { visitors: 0, active: 0 });
 
 setInterval(async () => {
-  await ds.setState('dashboard', {
+  await ds.setState(StateKey.Dashboard, {
     visitors: getVisitorCount(),
     active: getActiveCount(),
   });
 }, 1000);
 ```
 
-Clients subscribe with `client.subscribeState('dashboard', handler)` — no polling, no event mapping, no client-side state management.
+Clients subscribe with `client.subscribeState(StateKey.Dashboard, handler)` — no polling, no event mapping, no client-side state management.
 
 > **Tutorial:** [Live State — A Server-Synced Dashboard](tutorials.md#4-live-state--a-server-synced-dashboard)
 
 ## Events
 
 ```typescript
-ds.events.on<{ text: string }>('chat:message', ({ data }) => {
+import { Event } from './shared/contract';
+
+ds.events.on(Event.ChatMessage, ({ data }) => {
   console.log('Received:', data.text);
 });
 
-ds.broadcast('notification', { title: 'Server restarting in 5 minutes' });
+ds.broadcast(Event.Notification, { title: 'Server restarting in 5 minutes' });
 
-ds.events.off('chat:message', handler);
+ds.events.off(Event.ChatMessage, handler);
 ```
 
 > **Tutorial:** [Server Events — A Live Stock Ticker](tutorials.md#3-server-events--a-live-stock-ticker)
@@ -653,7 +656,9 @@ const ds = new DatasoleServer<AppContract>({
 The auth result is available everywhere via `ConnectionContext`:
 
 ```typescript
-ds.rpc.register('protectedMethod', async (params, ctx) => {
+import { RpcMethod } from './shared/contract';
+
+ds.rpc.register(RpcMethod.ProtectedMethod, async (params, ctx) => {
   if (!ctx.auth?.roles?.includes('admin')) {
     throw new Error('Forbidden');
   }

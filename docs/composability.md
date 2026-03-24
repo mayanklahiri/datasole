@@ -8,6 +8,8 @@ description: How datasole's seven patterns compose freely on a single connection
 
 datasole's core design principle is **composability**: every pattern works independently, and any combination of patterns shares a single WebSocket connection without configuration overhead.
 
+Define one **`AppContract`** plus **`RpcMethod`**, **`Event`**, and **`StateKey`** enums (see [Developer Guide](developer-guide.md) and [Demos](demos.md)) so every call site stays nominal — the snippets below assume those imports.
+
 ## The seven primitives
 
 ```mermaid
@@ -31,28 +33,31 @@ All primitives multiplex over the same binary WebSocket connection via opcodes i
 
 ```typescript
 import { PNCounter } from 'datasole';
+import { Event, RpcMethod, StateKey, SyncChannelKey } from './shared/contract';
 
-// Server — all on the same DatasoleServer instance
-ds.rpc.register('addTask', handler); // RPC
-ds.broadcast('notification', data); // Server event
-ds.events.on('typing', handler); // Client event
-await ds.setState('board', board); // Live state
-ds.crdt.registerByType('votes', new PNCounter('server')); // CRDT
+// Server — all on the same DatasoleServer<AppContract> instance
+ds.rpc.register(RpcMethod.AddTask, handler);
+ds.broadcast(Event.Notification, data);
+ds.events.on(Event.Typing, handler);
+await ds.setState(StateKey.Board, board);
+ds.crdt.registerByType('votes', new PNCounter('server'));
 ds.createSyncChannel({
-  key: 'cursors',
+  key: SyncChannelKey.Cursors,
   direction: 'server-to-client',
   mode: 'json-patch',
   flush: { flushStrategy: 'debounced', debounceMs: 50 },
-}); // Sync channel
+});
 ```
 
 ```typescript
-// Client — all on the same DatasoleClient instance
-await ds.rpc('addTask', { text: 'Ship it' }); // RPC
-ds.on('notification', ({ data }) => show(data)); // Server event
-ds.emit('typing', { user: 'alice' }); // Client event
-ds.subscribeState('board', setBoard); // Live state
-const store = ds.registerCrdt('node1'); // CRDT
+import { Event, RpcMethod, StateKey } from './shared/contract';
+
+// Client — all on the same DatasoleClient<AppContract> instance
+await ds.rpc(RpcMethod.AddTask, { text: 'Ship it' });
+ds.on(Event.Notification, ({ data }) => show(data));
+ds.emit(Event.Typing, { user: 'alice' });
+ds.subscribeState(StateKey.Board, setBoard);
+const store = ds.registerCrdt('node1');
 const counter = store.register('votes', 'pn-counter');
 counter.increment(1);
 ```
@@ -69,15 +74,21 @@ The server owns a state tree. The client subscribes to diffs. When the user acts
 
 ```typescript
 // Server
-ds.rpc.register('toggleDone', async ({ id }) => {
+import { RpcMethod, StateKey } from './shared/contract';
+
+ds.rpc.register(RpcMethod.ToggleDone, async ({ id }) => {
   const todo = todos.find((t) => t.id === id);
   if (todo) todo.done = !todo.done;
-  await ds.setState('todos', todos);
+  await ds.setState(StateKey.Todos, todos);
 });
+```
 
-// Client
-ds.subscribeState('todos', render);
-button.onclick = () => ds.rpc('toggleDone', { id: 42 });
+```typescript
+// Browser
+import { RpcMethod, StateKey } from './shared/contract';
+
+client.subscribeState(StateKey.Todos, render);
+button.onclick = () => void client.rpc(RpcMethod.ToggleDone, { id: 42 });
 ```
 
 ### Chat room with presence
@@ -87,14 +98,20 @@ button.onclick = () => ds.rpc('toggleDone', { id: 42 });
 Clients fire chat messages as events. The server broadcasts them to everyone. Session persistence means reconnected users get their nickname back.
 
 ```typescript
-// Server
-ds.events.on('chat', ({ data }) => {
-  ds.broadcast('chat', { user: data.user, text: data.text });
-});
+import { Event } from './shared/contract';
 
-// Client
-ds.emit('chat', { text: 'hello' });
-ds.on('chat', ({ data }) => appendMessage(data));
+// Server
+ds.events.on(Event.ChatSend, ({ data }) => {
+  ds.broadcast(Event.ChatMessage, { user: data.user, text: data.text });
+});
+```
+
+```typescript
+// Browser
+import { Event } from './shared/contract';
+
+client.emit(Event.ChatSend, { text: 'hello', username: 'alice' });
+client.on(Event.ChatMessage, ({ data }) => appendMessage(data));
 ```
 
 ### Collaborative editing with voting
@@ -105,24 +122,21 @@ Shared counters for voting (CRDT convergence), a server-owned task board (live s
 
 ```typescript
 import { PNCounter } from 'datasole';
+import { RpcMethod, StateKey } from './shared/contract';
 
-// Server
 ds.crdt.registerByType('votes:task-1', new PNCounter('server'));
-ds.rpc.register('moveTask', async ({ id, column }) => {
+ds.rpc.register(RpcMethod.MoveTask, async ({ id, column }) => {
   board[id].column = column;
-  await ds.setState('board', board);
+  await ds.setState(StateKey.Board, board);
 });
 
-// Client A
-const storeA = ds.registerCrdt('clientA');
+const storeA = client.registerCrdt('clientA');
 const votesA = storeA.register('votes:task-1', 'pn-counter');
-votesA.increment(1); // vote
+votesA.increment(1);
 
-// Client B (simultaneously)
-const storeB = ds.registerCrdt('clientB');
+const storeB = client.registerCrdt('clientB');
 const votesB = storeB.register('votes:task-1', 'pn-counter');
-votesB.increment(1); // also votes
-// Both converge to 2 — no conflicts
+votesB.increment(1);
 ```
 
 ### Real-time analytics pipeline
@@ -133,20 +147,26 @@ Clients stream analytics events. The server aggregates them into a dashboard sta
 
 ```typescript
 // Server
+import { Event, StateKey, SyncChannelKey } from './shared/contract';
+
 ds.createSyncChannel({
-  key: 'analytics',
+  key: SyncChannelKey.Analytics,
   direction: 'server-to-client',
   mode: 'json-patch',
   flush: { flushStrategy: 'batched', batchIntervalMs: 1000, maxBatchSize: 50 },
 });
-ds.events.on('pageview', async ({ data }) => {
+ds.events.on(Event.PageView, async () => {
   stats.pageviews++;
-  await ds.setState('analytics', stats); // routed through sync channel
+  await ds.setState(StateKey.Analytics, stats);
 });
+```
 
-// Client
-ds.emit('pageview', { path: '/pricing' });
-ds.subscribeState('analytics', updateDashboard);
+```typescript
+// Browser
+import { Event, StateKey } from './shared/contract';
+
+client.emit(Event.PageView, { path: '/pricing' });
+client.subscribeState(StateKey.Analytics, updateDashboard);
 ```
 
 ## Why this matters
@@ -164,4 +184,4 @@ datasole gives you all seven primitives as first-class APIs on a single connecti
 
 ## The composability guarantee
 
-Any combination of the seven primitives works on the same `DatasoleServer` + `DatasoleClient` pair. There are no conflicts, no ordering constraints, and no performance penalties for using multiple patterns simultaneously. The binary frame envelope handles multiplexing at the protocol level — each opcode identifies which subsystem handles the frame.
+Any combination of the seven primitives works on the same `DatasoleServer<AppContract>` + `DatasoleClient<AppContract>` pair. There are no conflicts, no ordering constraints, and no performance penalties for using multiple patterns simultaneously. The binary frame envelope handles multiplexing at the protocol level — each opcode identifies which subsystem handles the frame.

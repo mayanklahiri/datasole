@@ -71,8 +71,8 @@ client.on(Event.Price, ({ data }) => {
 // Unsubscribe
 client.off(Event.Price, handler);
 
-// Send event to server
-client.emit(Event.ChatMessage, { text: 'hello' });
+// Send event to server (typically a client-originated name like Event.ChatSend)
+client.emit(Event.ChatSend, { text: 'hello', username: 'alice' });
 ```
 
 > **Tutorial:** [Server Events — A Live Stock Ticker](tutorials.md#3-server-events--a-live-stock-ticker)
@@ -97,6 +97,7 @@ const current = client.getState(StateKey.Dashboard);
 ```typescript
 import { CrdtStore } from 'datasole/client';
 import { PNCounter, LWWMap } from 'datasole';
+import { Event } from './shared/contract';
 
 const store = new CrdtStore('unique-client-id');
 
@@ -108,10 +109,10 @@ const doc = store.register<string>('document', 'lww-map');
 const op = counter.increment();
 
 // Send op to server
-client.emit('crdt:op', op);
+client.emit(Event.CrdtOp, op);
 
 // Apply remote state
-client.on('crdt:state', ({ data }) => {
+client.on(Event.CrdtState, ({ data }) => {
   store.mergeRemoteState('votes', data);
   console.log('Counter:', counter.value());
 });

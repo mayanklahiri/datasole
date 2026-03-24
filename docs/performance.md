@@ -542,7 +542,7 @@ Each benchmark connects a real browser client (datasole IIFE bundle in headless 
 
 | Scenario                     | Description                                                                                       |
 | :--------------------------- | :------------------------------------------------------------------------------------------------ |
-| **RPC echo**                 | Sequential `ds.rpc('echo', payload)` — full round-trip latency                                    |
+| **RPC echo**                 | Sequential `ds.rpc(TestRpc.Echo, payload)` — full round-trip latency (wire name still `echo`)     |
 | **RPC concurrent**           | 10 concurrent `ds.rpc()` calls per batch — multiplexed throughput                                 |
 | **RPC small payload**        | `ds.rpc()` with a tiny JSON body (<256 B, below compression threshold)                            |
 | **RPC large JSON**           | `ds.rpc()` with randomized JSON (~1 KB, above compression threshold) — exercises pako             |

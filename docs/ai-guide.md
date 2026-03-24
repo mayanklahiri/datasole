@@ -51,7 +51,7 @@ Runs the developer gate: clean → format:check → lint → build:all → test 
 
 ## Integration patterns
 
-The RPC method is `client.rpc(method, params)` (not `call()`). State: `client.subscribeState(key, handler)`. Events: `client.on(event, handler)`, `client.emit(event, data)`.
+Define `AppContract` with `RpcMethod` / `Event` / `StateKey` enums in `shared/contract.ts`; use `new DatasoleClient<AppContract>(...)`. The RPC method is `client.rpc(RpcMethod.Foo, params)` (not `call()`). State: `client.subscribeState(StateKey.Bar, handler)`. Events: `client.on(Event.Baz, handler)`, `client.emit(Event.Baz, data)`.
 
 See [AGENTS.md](https://github.com/mayanklahiri/datasole/blob/main/AGENTS.md) for full stack-specific wiring (NestJS, Next.js, Express, AdonisJS) and common pitfalls.
 
