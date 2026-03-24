@@ -123,6 +123,7 @@ watch([loaded, history], async () => {
         ],
       },
       options: {
+        animation: false,
         responsive: true,
         interaction: { mode: 'index', intersect: false },
         scales: {
@@ -152,6 +153,7 @@ watch([loaded, history], async () => {
         ],
       },
       options: {
+        animation: false,
         responsive: true,
         interaction: { mode: 'index', intersect: false },
         scales: {

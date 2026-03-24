@@ -182,6 +182,7 @@ watch([loaded, history], async () => {
       type: 'line',
       data: { labels, datasets },
       options: {
+        animation: false,
         responsive: true,
         interaction: { mode: 'index', intersect: false },
         scales: {
@@ -221,6 +222,7 @@ watch([loaded, history], async () => {
       type: 'line',
       data: { labels, datasets: latencyDatasets },
       options: {
+        animation: false,
         responsive: true,
         interaction: { mode: 'index', intersect: false },
         scales: {
@@ -272,6 +274,7 @@ watch([loaded, history], async () => {
         type: 'line',
         data: { labels, datasets: threadDatasets },
         options: {
+          animation: false,
           responsive: true,
           interaction: { mode: 'index', intersect: false },
           scales: {
@@ -321,6 +324,7 @@ watch([loaded, history], async () => {
           ],
         },
         options: {
+          animation: false,
           responsive: true,
           interaction: { mode: 'index', intersect: false },
           scales: {
