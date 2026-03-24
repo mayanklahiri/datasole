@@ -12,11 +12,11 @@ npm run build
 
 ## Demos
 
-| Demo                             | Client            | Server         | Dev Port | Prod Port |
-| -------------------------------- | ----------------- | -------------- | -------- | --------- |
-| [vanilla/](vanilla/)             | Vanilla JS (IIFE) | Node.js `http` | 4000     | 4000      |
-| [react-express/](react-express/) | React 19 + Vite   | Express 5      | 5173     | 4001      |
-| [vue-nestjs/](vue-nestjs/)       | Vue 3 SFC + Vite  | NestJS 11      | 5174     | 4002      |
+| Demo                             | Client             | Server         | Dev Port | Prod Port |
+| -------------------------------- | ------------------ | -------------- | -------- | --------- |
+| [vanilla/](vanilla/)             | Vanilla JS (IIFE)  | Node.js `http` | 4000     | 4000      |
+| [react-express/](react-express/) | React 19 + Vite 8  | Express 5      | 5173     | 4001      |
+| [vue-nestjs/](vue-nestjs/)       | Vue 3 SFC + Vite 8 | NestJS 11      | 5174     | 4002      |
 
 ## Quick Start
 
