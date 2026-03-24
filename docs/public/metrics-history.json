@@ -3740,5 +3740,431 @@
         }
       }
     ]
+  },
+  {
+    "timestamp": "2026-03-24T01:32:44.044Z",
+    "coverage": {
+      "lines": 89.65,
+      "branches": 78.59,
+      "functions": 88.99,
+      "statements": 88.8
+    },
+    "clientIifeGzip": 22729,
+    "workerIifeGzip": 15635,
+    "sharedEsmGzip": 67722,
+    "serverEsmGzip": 78288,
+    "unitTests": 525,
+    "e2eTests": 63,
+    "benchmarks": [
+      {
+        "name": "rpc-echo",
+        "opsPerSec": 33,
+        "p50Ms": 0.44,
+        "p95Ms": 1.04,
+        "p99Ms": 4.68,
+        "totalOps": 100
+      },
+      {
+        "name": "rpc-concurrent",
+        "opsPerSec": 37,
+        "p50Ms": 0.39,
+        "p95Ms": 3001.23,
+        "p99Ms": 3001.23,
+        "totalOps": 110
+      },
+      {
+        "name": "server-event-receive",
+        "opsPerSec": 934,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 2803
+      },
+      {
+        "name": "state-sync-receive",
+        "opsPerSec": 195,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 584
+      },
+      {
+        "name": "client-event-emit",
+        "opsPerSec": 230117,
+        "p50Ms": 0,
+        "p95Ms": 0.01,
+        "p99Ms": 0.01,
+        "totalOps": 690352
+      },
+      {
+        "name": "crdt-increment",
+        "opsPerSec": 1311,
+        "p50Ms": 0.73,
+        "p95Ms": 1.32,
+        "p99Ms": 2.5,
+        "totalOps": 3933
+      },
+      {
+        "name": "binary-frame-1kb",
+        "opsPerSec": 6955,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 20865
+      },
+      {
+        "name": "rpc-small-payload",
+        "opsPerSec": 33,
+        "p50Ms": 0.38,
+        "p95Ms": 0.93,
+        "p99Ms": 4.49,
+        "totalOps": 100
+      },
+      {
+        "name": "rpc-large-json",
+        "opsPerSec": 33,
+        "p50Ms": 17.34,
+        "p95Ms": 33.11,
+        "p99Ms": 34.3,
+        "totalOps": 100
+      },
+      {
+        "name": "two-way-latency",
+        "opsPerSec": 36,
+        "p50Ms": 4.12,
+        "p95Ms": 415.13,
+        "p99Ms": 417.19,
+        "totalOps": 107
+      },
+      {
+        "name": "mixed-workload",
+        "opsPerSec": 50,
+        "p50Ms": 0.36,
+        "p95Ms": 0.79,
+        "p99Ms": 4.75,
+        "totalOps": 150
+      },
+      {
+        "name": "main-thread-heavy-flood-worker",
+        "opsPerSec": 7064,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 21191,
+        "mainThread": {
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "rafMedianMs": 16.65,
+          "rafP99Ms": 40.45,
+          "rafJankFrames": 0,
+          "rafDroppedFrames": 3,
+          "rafTotalFrames": 181
+        }
+      },
+      {
+        "name": "main-thread-event-flood-worker",
+        "opsPerSec": 939,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 2818,
+        "mainThread": {
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "rafMedianMs": 16.68,
+          "rafP99Ms": 17.43,
+          "rafJankFrames": 0,
+          "rafDroppedFrames": 0,
+          "rafTotalFrames": 181
+        }
+      },
+      {
+        "name": "main-thread-rpc-echo-worker",
+        "opsPerSec": 33,
+        "p50Ms": 2.44,
+        "p95Ms": 18.08,
+        "p99Ms": 19.79,
+        "totalOps": 100,
+        "mainThread": {
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "rafMedianMs": 16.67,
+          "rafP99Ms": 17.73,
+          "rafJankFrames": 0,
+          "rafDroppedFrames": 0,
+          "rafTotalFrames": 1843
+        }
+      },
+      {
+        "name": "main-thread-heavy-flood-no-worker",
+        "opsPerSec": 4307,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 12921,
+        "mainThread": {
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "rafMedianMs": 100.52,
+          "rafP99Ms": 109.89,
+          "rafJankFrames": 35,
+          "rafDroppedFrames": 35,
+          "rafTotalFrames": 35
+        }
+      },
+      {
+        "name": "main-thread-event-flood-no-worker",
+        "opsPerSec": 930,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 2791,
+        "mainThread": {
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "rafMedianMs": 16.67,
+          "rafP99Ms": 17.41,
+          "rafJankFrames": 0,
+          "rafDroppedFrames": 0,
+          "rafTotalFrames": 180
+        }
+      },
+      {
+        "name": "main-thread-rpc-echo-no-worker",
+        "opsPerSec": 33,
+        "p50Ms": 2.08,
+        "p95Ms": 18.06,
+        "p99Ms": 21.14,
+        "totalOps": 100,
+        "mainThread": {
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "rafMedianMs": 16.67,
+          "rafP99Ms": 17.77,
+          "rafJankFrames": 0,
+          "rafDroppedFrames": 0,
+          "rafTotalFrames": 1842
+        }
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-03-24T01:38:21.517Z",
+    "coverage": {
+      "lines": 89.65,
+      "branches": 78.59,
+      "functions": 88.99,
+      "statements": 88.8
+    },
+    "clientIifeGzip": 22729,
+    "workerIifeGzip": 15635,
+    "sharedEsmGzip": 67722,
+    "serverEsmGzip": 78288,
+    "unitTests": 525,
+    "e2eTests": 63,
+    "benchmarks": [
+      {
+        "name": "rpc-echo",
+        "opsPerSec": 33,
+        "p50Ms": 0.43,
+        "p95Ms": 1.16,
+        "p99Ms": 4.75,
+        "totalOps": 100
+      },
+      {
+        "name": "rpc-concurrent",
+        "opsPerSec": 37,
+        "p50Ms": 0.31,
+        "p95Ms": 3001.37,
+        "p99Ms": 3001.37,
+        "totalOps": 110
+      },
+      {
+        "name": "server-event-receive",
+        "opsPerSec": 916,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 2748
+      },
+      {
+        "name": "state-sync-receive",
+        "opsPerSec": 192,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 577
+      },
+      {
+        "name": "client-event-emit",
+        "opsPerSec": 234985,
+        "p50Ms": 0,
+        "p95Ms": 0.01,
+        "p99Ms": 0.01,
+        "totalOps": 704954
+      },
+      {
+        "name": "crdt-increment",
+        "opsPerSec": 1325,
+        "p50Ms": 0.75,
+        "p95Ms": 1.33,
+        "p99Ms": 2.43,
+        "totalOps": 3975
+      },
+      {
+        "name": "binary-frame-1kb",
+        "opsPerSec": 6869,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 20608
+      },
+      {
+        "name": "rpc-small-payload",
+        "opsPerSec": 33,
+        "p50Ms": 0.39,
+        "p95Ms": 0.86,
+        "p99Ms": 4.56,
+        "totalOps": 100
+      },
+      {
+        "name": "rpc-large-json",
+        "opsPerSec": 33,
+        "p50Ms": 18.93,
+        "p95Ms": 34.07,
+        "p99Ms": 36.61,
+        "totalOps": 100
+      },
+      {
+        "name": "two-way-latency",
+        "opsPerSec": 36,
+        "p50Ms": 4.09,
+        "p95Ms": 416.16,
+        "p99Ms": 417.39,
+        "totalOps": 107
+      },
+      {
+        "name": "mixed-workload",
+        "opsPerSec": 50,
+        "p50Ms": 0.34,
+        "p95Ms": 0.8,
+        "p99Ms": 4.76,
+        "totalOps": 150
+      },
+      {
+        "name": "main-thread-heavy-flood-worker",
+        "opsPerSec": 7219,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 21656,
+        "mainThread": {
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "rafMedianMs": 16.65,
+          "rafP99Ms": 41.26,
+          "rafJankFrames": 0,
+          "rafDroppedFrames": 3,
+          "rafTotalFrames": 181
+        }
+      },
+      {
+        "name": "main-thread-event-flood-worker",
+        "opsPerSec": 924,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 2771,
+        "mainThread": {
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "rafMedianMs": 16.66,
+          "rafP99Ms": 18.72,
+          "rafJankFrames": 0,
+          "rafDroppedFrames": 0,
+          "rafTotalFrames": 180
+        }
+      },
+      {
+        "name": "main-thread-rpc-echo-worker",
+        "opsPerSec": 33,
+        "p50Ms": 2.21,
+        "p95Ms": 19.27,
+        "p99Ms": 19.97,
+        "totalOps": 100,
+        "mainThread": {
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "rafMedianMs": 16.67,
+          "rafP99Ms": 17.73,
+          "rafJankFrames": 0,
+          "rafDroppedFrames": 0,
+          "rafTotalFrames": 1843
+        }
+      },
+      {
+        "name": "main-thread-heavy-flood-no-worker",
+        "opsPerSec": 4412,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 13235,
+        "mainThread": {
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "rafMedianMs": 100.47,
+          "rafP99Ms": 105.93,
+          "rafJankFrames": 34,
+          "rafDroppedFrames": 34,
+          "rafTotalFrames": 35
+        }
+      },
+      {
+        "name": "main-thread-event-flood-no-worker",
+        "opsPerSec": 933,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 2799,
+        "mainThread": {
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "rafMedianMs": 16.66,
+          "rafP99Ms": 17.36,
+          "rafJankFrames": 0,
+          "rafDroppedFrames": 0,
+          "rafTotalFrames": 181
+        }
+      },
+      {
+        "name": "main-thread-rpc-echo-no-worker",
+        "opsPerSec": 33,
+        "p50Ms": 2.28,
+        "p95Ms": 18.2,
+        "p99Ms": 18.72,
+        "totalOps": 100,
+        "mainThread": {
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "rafMedianMs": 16.67,
+          "rafP99Ms": 17.95,
+          "rafJankFrames": 0,
+          "rafDroppedFrames": 0,
+          "rafTotalFrames": 1843
+        }
+      }
+    ]
   }
 ]
