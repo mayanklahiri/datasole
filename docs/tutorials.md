@@ -717,12 +717,7 @@ function Game({ userId }: { userId: string }) {
 ```typescript
 import express from 'express';
 import { createServer } from 'http';
-import {
-  DatasoleServer,
-  RedisBackend,
-  BackendRateLimiter,
-  PrometheusExporter,
-} from 'datasole/server';
+import { DatasoleServer, RedisBackend, PrometheusExporter } from 'datasole/server';
 
 const app = express();
 
@@ -745,7 +740,6 @@ const ds = new DatasoleServer({
   stateBackend: redisBackend,
 
   // Rate limiting: 200 requests/minute per connection
-  rateLimiter: new BackendRateLimiter(redisBackend),
   rateLimit: {
     defaultRule: { windowMs: 60_000, maxRequests: 200 },
     rules: {

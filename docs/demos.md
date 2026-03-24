@@ -62,11 +62,12 @@ setInterval(() => {
 }, 2000);
 
 // Chat — receive, store, broadcast
-ds.events.on('chat:send', ({ text, username }) => {
+ds.events.on('chat:send', ({ data }) => {
+  const { text, username } = data;
   const msg = { id: crypto.randomUUID(), text, username, ts: Date.now() };
   chatHistory.push(msg);
   if (chatHistory.length > 50) chatHistory.shift();
-  ds.setState('chat:messages', [...chatHistory]);
+  void ds.setState('chat:messages', [...chatHistory]);
   ds.broadcast('chat:message', msg);
 });
 
@@ -138,14 +139,11 @@ The client loads the IIFE bundle via `<script>` tag, giving a `window.Datasole` 
 
 ```javascript
 // client/app.js — key parts
-const ds =
-  new Datasole.DatasoleClient() <
-  AppContract >
-  {
-    url: 'ws://' + location.host,
-    // useWorker: true (default) — WebSocket runs in a Web Worker
-    // workerUrl: '/__ds/datasole-worker.iife.min.js' (default)
-  };
+const ds = new Datasole.DatasoleClient({
+  url: 'ws://' + location.host,
+  // useWorker: true (default) — WebSocket runs in a Web Worker
+  // workerUrl: '/__ds/datasole-worker.iife.min.js' (default)
+});
 ds.connect();
 
 // Live metrics via broadcast events
@@ -242,7 +240,7 @@ if (existsSync(clientDist)) {
 
 const httpServer = createServer(app);
 const ds = new DatasoleServer<AppContract>();
-// Default: thread-pool executor (4 Node.js worker_threads)
+// Default executor model is async; set executor options explicitly if needed.
 ds.attach(httpServer);
 
 // Register chat, RPC, metrics (see shared logic above)
@@ -486,6 +484,7 @@ No props drilling, no store modules, no actions/mutations. The server is the sto
 proxy: {
   '/__ds': { target: 'http://localhost:4002', ws: true },
   '/__ds/datasole-worker.iife.min.js': { target: 'http://localhost:4002' },
+  '/datasole-worker.iife.min.js': { target: 'http://localhost:4002' },
 }
 ```
 
@@ -495,7 +494,7 @@ proxy: {
 - `tsconfig.server.json` enables `experimentalDecorators` and `emitDecoratorMetadata` (the base tsconfig doesn't include these)
 - Production static serving uses `@nestjs/serve-static` with `ServeStaticModule.forRoot()`
 - Datasole attaches directly to `app.getHttpServer()` — no NestJS WebSocket gateway is needed
-- Datasole runtime assets are auto-served under `/__ds`
+- Vue demo uses `workerUrl: '/datasole-worker.iife.min.js'` to align with Nest static middleware precedence
 
 ### Screenshots
 

@@ -254,7 +254,7 @@ client.connect();
 
 ## Worker Architecture
 
-When `useWorker: true` (the default), the WebSocket connection runs in a [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API), keeping the main thread free for rendering. The worker script is loaded from `workerUrl` (default: `/datasole-worker.iife.min.js`). The server must serve this file — see the [Demos](demos.md) for framework-specific examples.
+When `useWorker: true` (the default), the WebSocket connection runs in a [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API), keeping the main thread free for rendering. The worker script is loaded from `workerUrl` (default: `${path}/datasole-worker.iife.min.js`, with default path `/__ds`). The server must serve this file — see the [Demos](demos.md) for framework-specific examples.
 
 Set `useWorker: false` for environments without Web Workers (React Native, SSR, Node.js).
 

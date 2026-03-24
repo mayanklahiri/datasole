@@ -186,6 +186,8 @@ onUnmounted(() => {
 });
 ```
 
+For the Vue+NestJS demo specifically, the composable sets `workerUrl: '/datasole-worker.iife.min.js'` to match Nest static middleware routing during dev/prod. In generic integrations, keep the default `workerUrl` (`${path}/datasole-worker.iife.min.js`).
+
 #### Vanilla JS
 
 ```html

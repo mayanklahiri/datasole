@@ -84,7 +84,7 @@ Then open [http://localhost:4001](http://localhost:4001).
 | Server  | Express 5 + `DatasoleServer` |
 | Client  | React 19 + Vite 8            |
 | Bundler | Vite 8                       |
-| Types   | TypeScript 6 (strict)        |
+| Types   | TypeScript 5.9 (strict)      |
 
 ## Ports
 

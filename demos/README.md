@@ -33,11 +33,11 @@ cd demos/vue-nestjs && npm install && npm run dev
 
 ## What Each Demo Shows
 
-| Feature               | datasole API                                                                    |
-| --------------------- | ------------------------------------------------------------------------------- |
-| **Server Metrics**    | `ds.broadcast('system-metrics', data)` → `ds.on('system-metrics', handler)`     |
-| **Chat Room**         | `ds.emit('chat:send', msg)` → `ds.on(...)` → `ds.setState()` + `ds.broadcast()` |
-| **RPC Random Number** | `ds.rpc('randomNumber', handler)` → `await ds.rpc('randomNumber', params)`      |
+| Feature               | datasole API                                                                               |
+| --------------------- | ------------------------------------------------------------------------------------------ |
+| **Server Metrics**    | `ds.broadcast('system-metrics', data)` → `client.on('system-metrics', handler)`            |
+| **Chat Room**         | `client.emit('chat:send', msg)` → `ds.events.on(...)` → `ds.setState()` + `ds.broadcast()` |
+| **RPC Random Number** | `ds.rpc.register('randomNumber', handler)` → `await client.rpc('randomNumber', params)`    |
 
 ## Scripts (each demo)
 

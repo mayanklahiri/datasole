@@ -36,7 +36,7 @@ features:
   - icon:
       src: /features/binary-protocol.jpg
     title: Binary wire protocol
-    details: '9-byte binary frame headers with pako compression. 60–80% smaller than JSON text on the wire. The entire client + worker is 37 KB gzip.'
+    details: '9-byte binary frame headers with pako compression. 60–80% smaller than JSON text on the wire. The entire client + worker is ~37.5 KB gzip.'
   - icon:
       src: /features/battle-tested.jpg
     title: Battle-tested in production
@@ -136,10 +136,10 @@ Client bundles inline everything for zero-dependency browser use. Server and sha
 
 | Bundle                | Loaded by             |     Raw |        Gzip |
 | --------------------- | --------------------- | ------: | ----------: |
-| **Client IIFE** (min) | `<script>` tag        | 69.9 KB | **21.5 KB** |
-| **Worker IIFE** (min) | Web Worker            | 47.7 KB | **15.0 KB** |
-| **Shared** (CJS)      | `import` from bundler | 11.2 KB |      2.8 KB |
-| **Server** (CJS)      | Node.js `require`     | 65.3 KB |     13.0 KB |
+| **Client IIFE** (min) | `<script>` tag        | 72.0 KB | **22.2 KB** |
+| **Worker IIFE** (min) | Web Worker            | 48.3 KB | **15.3 KB** |
+| **Shared** (CJS)      | `import` from bundler | 15.3 KB |      4.0 KB |
+| **Server** (CJS)      | Node.js `require`     | 72.1 KB |     16.1 KB |
 
 ## Use cases
 

@@ -8,11 +8,11 @@ This demo proves that datasole works without any build tooling or UI framework �
 
 Three panels demonstrate datasole's core data-flow patterns:
 
-| Panel          | Pattern                       | API Used                               |
-| -------------- | ----------------------------- | -------------------------------------- |
-| Server Metrics | Server → client broadcast     | `ds.on('system-metrics', handler)`     |
-| Chat Room      | Client ↔ server state sync    | `ds.subscribeState()` + `ds.emit()`    |
-| RPC Random     | Client → server request/reply | `ds.rpc('randomNumber', { min, max })` |
+| Panel          | Pattern                       | API Used                                                 |
+| -------------- | ----------------------------- | -------------------------------------------------------- |
+| Server Metrics | Server → client broadcast     | `ds.broadcast(...)` + `ds.on('system-metrics', handler)` |
+| Chat Room      | Client ↔ server state sync    | `ds.subscribeState()` + `ds.emit()`                      |
+| RPC Random     | Client → server request/reply | `ds.rpc('randomNumber', { min, max })`                   |
 
 All communication runs over a single WebSocket via a Web Worker (off the main thread).
 

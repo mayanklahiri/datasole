@@ -102,7 +102,7 @@ All ADRs are in `docs/decisions.md`. **Read them before making structural change
 If your change involves an architectural decision:
 
 1. Add a new ADR section to `docs/decisions.md`
-2. Use the next sequential number (e.g., ADR-018)
+2. Use the next sequential number (e.g., ADR-016)
 3. Include: Status, Date, Context, Decision, Consequences
 4. Reference the ADR number in your commit message
 

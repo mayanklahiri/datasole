@@ -53,19 +53,16 @@ On success, the gate prints a summary:
 ║  DATASOLE QUALITY GATE                                     ║
 ╠════════════════════════════════════════════════════════════╣
 ║  📦 Bundles                                                ║
-║  client/datasole-worker.iife.min.js  47.6 KB / 15.0 KB gz ║
-║  client/datasole.iife.min.js         69.8 KB / 21.5 KB gz ║
-║  server/index.cjs                    65.0 KB / 12.9 KB gz ║
+║  client/datasole-worker.iife.min.js  48.3 KB / 15.3 KB gz ║
+║  client/datasole.iife.min.js         72.0 KB / 22.2 KB gz ║
+║  server/index.cjs                    72.1 KB / 16.1 KB gz ║
 ║  ...                                                       ║
 ╟────────────────────────────────────────────────────────────╢
 ║  📊 Coverage                                               ║
-║  Lines: 90%    Branches: 80%    Funcs: 89%                 ║
+║  Lines: 87.9%  Branches: 75.1%  Funcs: 85.4%               ║
 ╟────────────────────────────────────────────────────────────╢
 ║  🌐 E2E Tests                                              ║
-║  Passed: 45  Failed: 0  Total: 45                          ║
-╟────────────────────────────────────────────────────────────╢
-║  📖 Documentation Site                                     ║
-║  Pages: 22   Total size: 8.7 MB                            ║
+║  Passed: 48  Failed: 0  Total: 48                          ║
 ╟────────────────────────────────────────────────────────────╢
 ║  ✅ GATE PASSED                                             ║
 ╚════════════════════════════════════════════════════════════╝

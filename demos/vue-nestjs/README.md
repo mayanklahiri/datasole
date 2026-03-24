@@ -78,7 +78,7 @@ Then open [http://localhost:4002](http://localhost:4002).
 | Server  | NestJS 11 + `DatasoleServer` |
 | Client  | Vue 3 SFC + Vite 8           |
 | Bundler | Vite 8                       |
-| Types   | TypeScript 6 (strict)        |
+| Types   | TypeScript 5.9 (strict)      |
 
 ## Ports
 
@@ -215,6 +215,7 @@ In `vite.config.ts`, datasole path traffic is proxied to the NestJS backend:
 proxy: {
   '/__ds': { target: 'http://localhost:4002', ws: true },
   '/__ds/datasole-worker.iife.min.js': { target: 'http://localhost:4002' },
+  '/datasole-worker.iife.min.js': { target: 'http://localhost:4002' },
 }
 ```
 
@@ -244,5 +245,5 @@ The Playwright e2e test:
 - `tsconfig.server.json` enables `experimentalDecorators` and `emitDecoratorMetadata` (required by NestJS decorators)
 - `@nestjs/serve-static` serves the Vite-built client from `dist/client/` in production
 - Datasole attaches directly to the raw `http.Server` via `app.getHttpServer()` — no NestJS WebSocket gateway needed
-- Datasole runtime assets are auto-served by `ds.attach(app.getHttpServer())`
+- Vue composable pins `workerUrl: '/datasole-worker.iife.min.js'` to match Nest static middleware behavior
 - Vue's `<script setup lang="ts">` is the recommended SFC syntax — all components in this demo use it

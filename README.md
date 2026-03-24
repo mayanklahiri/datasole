@@ -114,7 +114,7 @@ datasole gives you seven composable patterns. Use one, or combine them on a sing
 
 ```typescript
 // server
-ds.rpc('getUser', async ({ id }) => {
+ds.rpc.register('getUser', async ({ id }) => {
   return await db.users.findById(id);
 });
 
@@ -140,7 +140,7 @@ The most common pattern. The server mutates state, datasole diffs it, and all cl
 
 ```typescript
 // server
-ds.rpc('addTodo', async ({ text }) => {
+ds.rpc.register('addTodo', async ({ text }) => {
   todos.push({ id: Date.now(), text, done: false });
   await ds.setState('todos', todos);
   return { ok: true };
@@ -173,7 +173,7 @@ function TodoList() {
 ds.emit('analytics', { action: 'click', target: 'buy-button' });
 
 // server
-ds.on('analytics', ({ data }) => {
+ds.events.on('analytics', ({ data }) => {
   telemetry.track(data);
 });
 ```
@@ -253,7 +253,6 @@ flowchart TB
       ASYNC[async]
       THR[thread]
       POOL[pool]
-      PROC[process]
     end
   end
 ```
@@ -264,12 +263,12 @@ The shared and server bundles externalize runtime dependencies (`pako`, `fast-js
 
 | Bundle                | Loaded by             |     Raw |        Gzip |
 | --------------------- | --------------------- | ------: | ----------: |
-| **Client IIFE** (min) | `<script>` tag        | 69.9 KB | **21.5 KB** |
-| **Worker IIFE** (min) | Web Worker            | 47.7 KB | **15.0 KB** |
-| **Shared** (CJS)      | `import` from bundler | 11.2 KB |      2.8 KB |
-| **Server** (CJS)      | Node.js `require`     | 65.3 KB |     13.0 KB |
+| **Client IIFE** (min) | `<script>` tag        | 72.0 KB | **22.2 KB** |
+| **Worker IIFE** (min) | Web Worker            | 48.3 KB | **15.3 KB** |
+| **Shared** (CJS)      | `import` from bundler | 15.3 KB |      4.0 KB |
+| **Server** (CJS)      | Node.js `require`     | 72.1 KB |     16.1 KB |
 
-A browser downloads the client IIFE + worker for a total of **~36 KB gzip** — that includes compression, binary framing, JSON Patch diffing, CRDTs, and the Web Worker transport.
+A browser downloads the client IIFE + worker for a total of **~37.5 KB gzip** — that includes compression, binary framing, JSON Patch diffing, CRDTs, and the Web Worker transport.
 
 ## How datasole compares
 
@@ -316,7 +315,7 @@ Numbers vary by machine. Live data: [Performance Benchmarks](https://mayanklahir
 
 ## Test coverage
 
-477 unit tests plus core and demo Playwright coverage across desktop/mobile viewports. `npm run gate` is the non-performance developer gate; `npm run gate:full` is the exhaustive CI/nightly gate that adds benchmarks, metrics, docs, and bot-authored `[skip ci]` artifact refresh commits on `main`.
+485 unit tests plus core and demo Playwright coverage across desktop/mobile viewports. `npm run gate` is the non-performance developer gate; `npm run gate:full` is the exhaustive CI/nightly gate that adds benchmarks, metrics, docs, and bot-authored `[skip ci]` artifact refresh commits on `main`.
 
 ## Architecture Diagram
 

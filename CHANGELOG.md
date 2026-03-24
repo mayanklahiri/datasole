@@ -37,7 +37,7 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 - Web Worker transport (WebSocket runs off the main thread by default; no UI jank)
 - SharedArrayBuffer zero-copy path with automatic `postMessage` fallback
 - pako compression (60–80% smaller than raw JSON) running in the worker thread; zlib magic-byte detection for robust compression identification
-- `workerUrl` option on `DatasoleClientOptions` — configurable path for the Web Worker script (default: `/datasole-worker.iife.min.js`)
+- `workerUrl` option on `DatasoleClientOptions` — configurable path for the Web Worker script (default: `${path}/datasole-worker.iife.min.js`)
 
 #### State Synchronization
 
@@ -54,7 +54,7 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 
 #### Server Infrastructure
 
-- Four concurrency models: async (event loop), thread (worker_threads), thread pool (default), process (child_process)
+- Three concurrency models: async (event loop), thread (worker_threads), thread pool (default)
 - In-memory and Redis rate limiters with sliding-window counters (configurable per-method rules, default 100 req/min/connection)
 - Prometheus and OpenTelemetry metric exporters (connection counts, message rates, latencies)
 - Per-connection session persistence with save/restore across reconnections
@@ -102,8 +102,8 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 
 #### Testing & Quality
 
-- 525 Vitest unit tests across 52 test files with v8 coverage (~90% line coverage)
-- 65 Playwright e2e tests across 10 spec files (desktop 1280×720 + Pixel 7 mobile viewports)
+- 485 Vitest unit tests across 50 test files with v8 coverage
+- 60 Playwright e2e tests (48 core + 12 demos) across desktop/mobile viewports
 - E2e benchmark framework measuring throughput, latency, and main-thread impact:
   - Server→client broadcast flood
   - Server→client state mutation flood
@@ -124,7 +124,7 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 
 #### Documentation
 
-- VitePress documentation site with 22 pages
+- VitePress documentation site with 21 pages
 - Progressive 10-step tutorial from hello-world to collaborative task board
 - Copy-paste examples organized by pattern
 - Full client and server API reference with Mermaid architecture diagrams
@@ -134,7 +134,7 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 - Performance dashboard with historical benchmark trends (throughput, latency, main-thread impact)
 - Composability documentation showing mix-and-match data-flow patterns
 - Competitive analysis (vs Socket.IO, Liveblocks, PartyKit, Yjs, Automerge)
-- 17 Architecture Decision Records (ADRs)
+- 15 Architecture Decision Records (ADRs)
 - `AGENTS.md` for AI coding assistants with integration patterns and codebase-health skill
 - File-level docblocks on all source, test, and build modules
 - `.prettierignore` to exclude build artifacts, lockfiles, and binaries from formatting
@@ -151,7 +151,7 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 - Metrics history deduplicates by calendar date (one entry per day, latest wins)
 - `format` / `format:check` scripts widened from narrow `src/test` globs to `prettier --write .` (covers entire project via `.prettierignore`)
 - `lint-staged` expanded to cover `build/`, `test/e2e/`, `demos/`, `docs/` file types in addition to `src/` and `test/unit/`
-- Demo dependencies upgraded to latest versions (React 19, Vue 3, Express 5, NestJS 11, Vite 8, TypeScript 6)
+- Demo dependencies upgraded to latest versions (React 19, Vue 3, Express 5, NestJS 11, Vite 8, TypeScript 5.9)
 - React demo client walkthrough in docs replaced `useDatasole` prop-drilling pattern with `DatasoleProvider` + hooks
 - Vue demo client walkthrough in docs replaced manual `onMounted`/`onUnmounted` with composable-based pattern
 - Docs onboarding IA refreshed: new Developer Guide landing path, Getting Started sidebar now prioritizes Developer Guide and removes Examples, and homepage CTAs were shortened (`Get started`, `Protocol Spec`)
