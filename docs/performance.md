@@ -365,16 +365,32 @@ watch([loaded, history], async () => {
 
 </div>
 
-<div class="bench-table">
-
-| Scenario | Throughput | P50 | P95 | P99 | Total ops | Errors | Warns |
-| :------- | ---------: | --: | --: | --: | --------: | -----: | ----: |
-
-<template v-for="b in benchmarks" :key="b.name">
-| {{ label(b.name) }} | **{{ fmtOps(b.opsPerSec) }} ops/s** | {{ fmtMs(b.p50Ms) }} | {{ fmtMs(b.p95Ms) }} | {{ fmtMs(b.p99Ms) }} | {{ fmtOps(b.totalOps) }} | {{ consoleCount(b, 'consoleErrors') }} | {{ consoleCount(b, 'consoleWarnings') }} |
-</template>
-
-</div>
+<table class="bench-table">
+<thead>
+<tr>
+<th style="text-align:left">Scenario</th>
+<th style="text-align:right">Throughput</th>
+<th style="text-align:right">P50</th>
+<th style="text-align:right">P95</th>
+<th style="text-align:right">P99</th>
+<th style="text-align:right">Total ops</th>
+<th style="text-align:right">Errors</th>
+<th style="text-align:right">Warns</th>
+</tr>
+</thead>
+<tbody>
+<tr v-for="b in benchmarks" :key="b.name">
+<td>{{ label(b.name) }}</td>
+<td style="text-align:right"><strong>{{ fmtOps(b.opsPerSec) }} ops/s</strong></td>
+<td style="text-align:right">{{ fmtMs(b.p50Ms) }}</td>
+<td style="text-align:right">{{ fmtMs(b.p95Ms) }}</td>
+<td style="text-align:right">{{ fmtMs(b.p99Ms) }}</td>
+<td style="text-align:right">{{ fmtOps(b.totalOps) }}</td>
+<td style="text-align:right">{{ consoleCount(b, 'consoleErrors') }}</td>
+<td style="text-align:right">{{ consoleCount(b, 'consoleWarnings') }}</td>
+</tr>
+</tbody>
+</table>
 
 <p style="color: var(--vp-c-text-3); font-size: 0.85rem; margin-top: 1rem;">
 Measured: {{ new Date(latest.timestamp).toLocaleString() }} — 3 s sustained load per scenario, headless Chromium, single Node.js process, Web Worker + pako compression enabled. <strong>Errors / Warns</strong>: browser console errors and warnings observed during the benchmark (0 = clean).
@@ -432,17 +448,47 @@ P50 (median) latency in milliseconds for round-trip scenarios. Lower is better.
 
 One of datasole's key features is off-main-thread WebSocket transport via Web Workers. The table below compares identical workloads with workers enabled vs disabled, measuring main-thread blocking via the **Long Tasks API** (tasks >50 ms) and **requestAnimationFrame jitter**.
 
-<div class="bench-table">
-
-| Workload | Mode | Throughput | Long Tasks | Total blocked | rAF P99 | Jank frames | Errors | Warns |
-| :------- | :--- | ---------: | ---------: | ------------: | ------: | ----------: | -----: | ----: |
-
+<table class="bench-table">
+<thead>
+<tr>
+<th style="text-align:left">Workload</th>
+<th style="text-align:left">Mode</th>
+<th style="text-align:right">Throughput</th>
+<th style="text-align:right">Long Tasks</th>
+<th style="text-align:right">Total blocked</th>
+<th style="text-align:right">rAF P99</th>
+<th style="text-align:right">Jank frames</th>
+<th style="text-align:right">Errors</th>
+<th style="text-align:right">Warns</th>
+</tr>
+</thead>
+<tbody>
 <template v-for="pair in mainThreadPairs" :key="pair.base">
-| {{ pair.label.replace(' (worker)', '') }} | **Worker** | {{ fmtOps(pair.worker.opsPerSec) }} ops/s | {{ pair.worker.mainThread.longTaskCount }} | {{ pair.worker.mainThread.longTaskTotalMs.toFixed(0) }} ms | {{ pair.worker.mainThread.rafP99Ms.toFixed(1) }} ms | {{ pair.worker.mainThread.rafJankFrames }} / {{ pair.worker.mainThread.rafTotalFrames }} | {{ consoleCount(pair.worker, 'consoleErrors') }} | {{ consoleCount(pair.worker, 'consoleWarnings') }} |
-| | No worker | {{ fmtOps(pair.noWorker.opsPerSec) }} ops/s | {{ pair.noWorker.mainThread.longTaskCount }} | {{ pair.noWorker.mainThread.longTaskTotalMs.toFixed(0) }} ms | {{ pair.noWorker.mainThread.rafP99Ms.toFixed(1) }} ms | {{ pair.noWorker.mainThread.rafJankFrames }} / {{ pair.noWorker.mainThread.rafTotalFrames }} | {{ consoleCount(pair.noWorker, 'consoleErrors') }} | {{ consoleCount(pair.noWorker, 'consoleWarnings') }} |
+<tr>
+<td>{{ pair.label.replace(' (worker)', '') }}</td>
+<td><strong>Worker</strong></td>
+<td style="text-align:right">{{ fmtOps(pair.worker.opsPerSec) }} ops/s</td>
+<td style="text-align:right">{{ pair.worker.mainThread.longTaskCount }}</td>
+<td style="text-align:right">{{ pair.worker.mainThread.longTaskTotalMs.toFixed(0) }} ms</td>
+<td style="text-align:right">{{ pair.worker.mainThread.rafP99Ms.toFixed(1) }} ms</td>
+<td style="text-align:right">{{ pair.worker.mainThread.rafJankFrames }} / {{ pair.worker.mainThread.rafTotalFrames }}</td>
+<td style="text-align:right">{{ consoleCount(pair.worker, 'consoleErrors') }}</td>
+<td style="text-align:right">{{ consoleCount(pair.worker, 'consoleWarnings') }}</td>
+</tr>
+<tr>
+<td></td>
+<td>No worker</td>
+<td style="text-align:right">{{ fmtOps(pair.noWorker.opsPerSec) }} ops/s</td>
+<td style="text-align:right">{{ pair.noWorker.mainThread.longTaskCount }}</td>
+<td style="text-align:right">{{ pair.noWorker.mainThread.longTaskTotalMs.toFixed(0) }} ms</td>
+<td style="text-align:right">{{ pair.noWorker.mainThread.rafP99Ms.toFixed(1) }} ms</td>
+<td style="text-align:right">{{ pair.noWorker.mainThread.rafJankFrames }} / {{ pair.noWorker.mainThread.rafTotalFrames }}</td>
+<td style="text-align:right">{{ consoleCount(pair.noWorker, 'consoleErrors') }}</td>
+<td style="text-align:right">{{ consoleCount(pair.noWorker, 'consoleWarnings') }}</td>
+</tr>
 </template>
-
-</div>
+</tbody>
+</table>
 
 <p style="color: var(--vp-c-text-3); font-size: 0.85rem; margin-top: 1rem;">
 <strong>Long Tasks</strong>: browser tasks that block the main thread for >50 ms (fewer = better UI responsiveness). <strong>rAF P99</strong>: 99th percentile requestAnimationFrame gap (closer to 16.7 ms = smoother). <strong>Jank frames</strong>: rAF callbacks delayed by >50 ms. <strong>Errors / Warns</strong>: browser console errors and warnings observed during the benchmark (0 = clean).
