@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 import { MemoryRateLimiter } from '../../../../src/server/rate-limit';
 
 describe('MemoryRateLimiter', () => {
-  it('should allow requests within limit', async () => {
+  it('allows requests within limit', async () => {
     const limiter = new MemoryRateLimiter();
     const result = await limiter.consume('user-1', { windowMs: 60000, maxRequests: 10 });
     expect(result.allowed).toBe(true);
@@ -11,7 +11,7 @@ describe('MemoryRateLimiter', () => {
     limiter.destroy();
   });
 
-  it('should reject requests over limit', async () => {
+  it('rejects requests over limit', async () => {
     const limiter = new MemoryRateLimiter();
     const rule = { windowMs: 60000, maxRequests: 2 };
     await limiter.consume('user-1', rule);
@@ -22,7 +22,7 @@ describe('MemoryRateLimiter', () => {
     limiter.destroy();
   });
 
-  it('should reset counters', async () => {
+  it('resets counters', async () => {
     const limiter = new MemoryRateLimiter();
     const rule = { windowMs: 60000, maxRequests: 1 };
     await limiter.consume('user-1', rule);
@@ -30,5 +30,32 @@ describe('MemoryRateLimiter', () => {
     const result = await limiter.consume('user-1', rule);
     expect(result.allowed).toBe(true);
     limiter.destroy();
+  });
+
+  it('isolates counters between different keys', async () => {
+    const limiter = new MemoryRateLimiter();
+    const rule = { windowMs: 60000, maxRequests: 1 };
+    await limiter.consume('user-1', rule);
+    const result = await limiter.consume('user-2', rule);
+    expect(result.allowed).toBe(true);
+    limiter.destroy();
+  });
+
+  it('window expiry resets the counter', async () => {
+    vi.useFakeTimers();
+    const limiter = new MemoryRateLimiter();
+    const rule = { windowMs: 100, maxRequests: 1 };
+
+    await limiter.consume('user-1', rule);
+    const blocked = await limiter.consume('user-1', rule);
+    expect(blocked.allowed).toBe(false);
+
+    vi.advanceTimersByTime(150);
+
+    const afterExpiry = await limiter.consume('user-1', rule);
+    expect(afterExpiry.allowed).toBe(true);
+
+    limiter.destroy();
+    vi.useRealTimers();
   });
 });

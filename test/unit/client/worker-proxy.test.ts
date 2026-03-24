@@ -56,16 +56,28 @@ describe('WorkerProxy', () => {
   });
 
   describe('on / off', () => {
-    it('on adds listener and off removes it', () => {
-      const p = new WorkerProxy();
+    it('on registers handler that receives dispatched messages', async () => {
+      const proxy = new WorkerProxy();
       const handler = vi.fn();
-      p.on('msg', handler);
-      const internal = p as unknown as {
-        listeners: Map<string, Set<(...args: unknown[]) => void>>;
-      };
-      expect(internal.listeners.get('msg')?.has(handler)).toBe(true);
-      p.off('msg', handler);
-      expect(internal.listeners.get('msg')?.has(handler)).toBe(false);
+      proxy.on('message', handler);
+      await connectProxy(proxy);
+
+      simulateWorkerMessage({ type: 'message', payload: { test: true } });
+
+      expect(handler).toHaveBeenCalledOnce();
+      expect(handler).toHaveBeenCalledWith({ test: true });
+    });
+
+    it('off removes handler so it no longer receives messages', async () => {
+      const proxy = new WorkerProxy();
+      const handler = vi.fn();
+      proxy.on('message', handler);
+      await connectProxy(proxy);
+
+      proxy.off('message', handler);
+      simulateWorkerMessage({ type: 'message', payload: { test: true } });
+
+      expect(handler).not.toHaveBeenCalled();
     });
 
     it('off on non-existent event does not throw', () => {
@@ -157,13 +169,12 @@ describe('WorkerProxy', () => {
       expect(mockWorkerInstance.terminate).toHaveBeenCalledOnce();
     });
 
-    it('sets worker to null after disconnect', async () => {
+    it('subsequent send rejects after disconnect', async () => {
       const proxy = new WorkerProxy();
       await connectProxy(proxy);
       await proxy.disconnect();
 
-      const internal = proxy as unknown as { worker: unknown };
-      expect(internal.worker).toBeNull();
+      await expect(proxy.send(new Uint8Array([1]))).rejects.toThrow('Worker not initialized');
     });
 
     it('is safe when worker is already null', async () => {

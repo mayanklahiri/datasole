@@ -151,16 +151,65 @@ describe('DatasoleClient — subscribeState / getState', () => {
 });
 
 describe('DatasoleClient — on / off', () => {
-  it('on registers a handler without error', () => {
-    const client = new DatasoleClient({ url: 'http://localhost:3000' });
-    expect(() => client.on('test', vi.fn())).not.toThrow();
-  });
-
-  it('off removes a handler without error', () => {
+  it('on registers a handler that receives emitted events', () => {
     const client = new DatasoleClient({ url: 'http://localhost:3000' });
     const handler = vi.fn();
-    client.on('test', handler);
-    expect(() => client.off('test', handler)).not.toThrow();
+    client.on('test-event', handler);
+
+    const emitter = (
+      client as unknown as { eventEmitter: { emit: (e: string, d: unknown) => void } }
+    ).eventEmitter;
+    emitter.emit('test-event', { x: 1 });
+
+    expect(handler).toHaveBeenCalledOnce();
+    expect(handler.mock.calls[0]![0]).toHaveProperty('data', { x: 1 });
+  });
+
+  it('off removes a handler so it no longer receives events', () => {
+    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const handler = vi.fn();
+    client.on('test-event', handler);
+    client.off('test-event', handler);
+
+    const emitter = (
+      client as unknown as { eventEmitter: { emit: (e: string, d: unknown) => void } }
+    ).eventEmitter;
+    emitter.emit('test-event', { x: 1 });
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('multiple handlers on the same event all fire', () => {
+    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const h1 = vi.fn();
+    const h2 = vi.fn();
+    client.on('ev', h1);
+    client.on('ev', h2);
+
+    const emitter = (
+      client as unknown as { eventEmitter: { emit: (e: string, d: unknown) => void } }
+    ).eventEmitter;
+    emitter.emit('ev', null);
+
+    expect(h1).toHaveBeenCalledOnce();
+    expect(h2).toHaveBeenCalledOnce();
+  });
+
+  it('off only removes the specified handler', () => {
+    const client = new DatasoleClient({ url: 'http://localhost:3000' });
+    const h1 = vi.fn();
+    const h2 = vi.fn();
+    client.on('ev', h1);
+    client.on('ev', h2);
+    client.off('ev', h1);
+
+    const emitter = (
+      client as unknown as { eventEmitter: { emit: (e: string, d: unknown) => void } }
+    ).eventEmitter;
+    emitter.emit('ev', null);
+
+    expect(h1).not.toHaveBeenCalled();
+    expect(h2).toHaveBeenCalledOnce();
   });
 });
 
