@@ -2150,5 +2150,110 @@
         "totalOps": 150
       }
     ]
+  },
+  {
+    "timestamp": "2026-03-24T00:23:02.270Z",
+    "coverage": {
+      "lines": 89.65,
+      "branches": 78.44,
+      "functions": 88.99,
+      "statements": 88.8
+    },
+    "clientIifeGzip": 22729,
+    "workerIifeGzip": 15635,
+    "sharedEsmGzip": 67722,
+    "serverEsmGzip": 78288,
+    "unitTests": 508,
+    "e2eTests": 57,
+    "benchmarks": [
+      {
+        "name": "rpc-echo",
+        "opsPerSec": 33,
+        "p50Ms": 0.43,
+        "p95Ms": 0.81,
+        "p99Ms": 4.35,
+        "totalOps": 100
+      },
+      {
+        "name": "rpc-concurrent",
+        "opsPerSec": 37,
+        "p50Ms": 0.39,
+        "p95Ms": 3000.82,
+        "p99Ms": 3000.82,
+        "totalOps": 110
+      },
+      {
+        "name": "server-event-receive",
+        "opsPerSec": 930,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 2790
+      },
+      {
+        "name": "state-sync-receive",
+        "opsPerSec": 193,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 580
+      },
+      {
+        "name": "client-event-emit",
+        "opsPerSec": 232284,
+        "p50Ms": 0,
+        "p95Ms": 0.01,
+        "p99Ms": 0.01,
+        "totalOps": 696852
+      },
+      {
+        "name": "crdt-increment",
+        "opsPerSec": 1322,
+        "p50Ms": 0.74,
+        "p95Ms": 1.34,
+        "p99Ms": 2.5,
+        "totalOps": 3967
+      },
+      {
+        "name": "binary-frame-1kb",
+        "opsPerSec": 6952,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 20856
+      },
+      {
+        "name": "rpc-small-payload",
+        "opsPerSec": 33,
+        "p50Ms": 0.39,
+        "p95Ms": 0.85,
+        "p99Ms": 4.47,
+        "totalOps": 100
+      },
+      {
+        "name": "rpc-large-json",
+        "opsPerSec": 33,
+        "p50Ms": 17.39,
+        "p95Ms": 34.41,
+        "p99Ms": 40.89,
+        "totalOps": 100
+      },
+      {
+        "name": "two-way-latency",
+        "opsPerSec": 36,
+        "p50Ms": 4.09,
+        "p95Ms": 416.3,
+        "p99Ms": 417.13,
+        "totalOps": 107
+      },
+      {
+        "name": "mixed-workload",
+        "opsPerSec": 50,
+        "p50Ms": 0.32,
+        "p95Ms": 0.77,
+        "p99Ms": 4.11,
+        "totalOps": 150
+      }
+    ]
   }
 ]
