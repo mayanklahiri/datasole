@@ -9,7 +9,13 @@ const connectionState = useConnectionState();
     <header>
       <h1>datasole</h1>
       <span class="subtitle">Vue 3 + NestJS Demo</span>
-      <a class="gh-link" href="https://github.com/mayanklahiri/datasole" target="_blank" rel="noopener">GitHub</a>
+      <a
+        class="gh-link"
+        href="https://github.com/mayanklahiri/datasole"
+        target="_blank"
+        rel="noopener"
+        >GitHub</a
+      >
       <div class="conn-badge">
         <span :class="['conn-dot', { connected: connectionState === 'connected' }]" />
         <span>{{ connectionState }}</span>
@@ -53,9 +59,14 @@ header h1 {
   border: 1px solid var(--border);
   padding: 4px 10px;
   border-radius: 6px;
-  transition: color 0.2s, border-color 0.2s;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
 }
-.gh-link:hover { color: var(--accent); border-color: var(--accent); }
+.gh-link:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
 .conn-badge {
   margin-left: auto;
   display: flex;
@@ -65,12 +76,25 @@ header h1 {
   font-family: var(--mono);
 }
 .conn-dot {
-  width: 8px; height: 8px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--red);
   transition: background 0.3s;
 }
-.conn-dot.connected { background: var(--green); }
+.conn-dot.connected {
+  background: var(--green);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(34, 197, 94, 0);
+  }
+}
 main {
   flex: 1;
   display: grid;

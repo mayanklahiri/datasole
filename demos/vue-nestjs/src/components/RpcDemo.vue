@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useDatasoleClient } from '../composables/useDatasole';
 
 const ds = useDatasoleClient();
@@ -17,6 +17,13 @@ const result = ref<RpcResult | null>(null);
 const history = ref<RpcResult[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
+const pop = ref(false);
+
+const avgLatency = computed(() => {
+  if (history.value.length === 0) return null;
+  const sum = history.value.reduce((a, r) => a + parseFloat(r.ms), 0);
+  return (sum / history.value.length).toFixed(1);
+});
 
 async function generate() {
   if (!ds.value) return;
@@ -34,6 +41,11 @@ async function generate() {
     const entry: RpcResult = { value: data.value, min: lo, max: hi, ms: elapsed };
     result.value = entry;
     history.value = [entry, ...history.value].slice(0, 10);
+
+    pop.value = true;
+    setTimeout(() => {
+      pop.value = false;
+    }, 300);
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   }
@@ -45,7 +57,10 @@ async function generate() {
   <div class="panel">
     <div class="panel-header">RPC &mdash; Random Number</div>
     <div class="panel-body">
-      <div class="panel-help"><code>useDatasoleClient()</code> for imperative calls. <code>ds.rpc()</code> returns a typed response; latency includes the full round trip.</div>
+      <div class="panel-help">
+        <code>await ds.rpc('randomNumber', { min, max })</code> — typed request/response over the
+        WebSocket. Latency is the full round trip. No REST endpoint needed.
+      </div>
       <div class="rpc-section">
         <div class="rpc-controls">
           <div class="rpc-row">
@@ -64,20 +79,28 @@ async function generate() {
             Error: {{ error }}
           </div>
           <template v-else-if="result">
-            <div class="rpc-result-value">{{ result.value }}</div>
+            <div :class="['rpc-result-value', { pop }]">{{ result.value }}</div>
             <div class="rpc-result-meta">
-              Range [{{ result.min }}, {{ result.max }}] &middot; {{ result.ms }} ms
+              Range [{{ result.min }}, {{ result.max }}] &middot; {{ result.ms }}&thinsp;ms
             </div>
           </template>
           <div v-else class="rpc-result-empty">Press Generate to get a random number</div>
         </div>
 
         <div v-if="history.length > 0" class="rpc-history">
-          <div class="rpc-history-title">History</div>
-          <div v-for="(h, i) in history" :key="i" class="rpc-history-item">
-            <span class="val">{{ h.value }}</span>
-            <span class="meta">[{{ h.min }}–{{ h.max }}] {{ h.ms }} ms</span>
+          <div class="rpc-history-title">
+            History <span v-if="avgLatency" class="avg-badge">avg {{ avgLatency }}&thinsp;ms</span>
           </div>
+          <TransitionGroup name="hist" tag="div" class="hist-list">
+            <div
+              v-for="(h, i) in history"
+              :key="`${h.value}-${h.ms}-${i}`"
+              class="rpc-history-item"
+            >
+              <span class="val">{{ h.value }}</span>
+              <span class="meta">[{{ h.min }}–{{ h.max }}] {{ h.ms }}&thinsp;ms</span>
+            </div>
+          </TransitionGroup>
         </div>
       </div>
     </div>
@@ -139,7 +162,7 @@ async function generate() {
   color: var(--text-dim);
   min-width: 36px;
 }
-.rpc-row input[type="number"] {
+.rpc-row input[type='number'] {
   width: 80px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -151,7 +174,9 @@ async function generate() {
   outline: none;
   transition: border-color 0.2s;
 }
-.rpc-row input[type="number"]:focus { border-color: var(--accent); }
+.rpc-row input[type='number']:focus {
+  border-color: var(--accent);
+}
 .rpc-result {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -165,6 +190,10 @@ async function generate() {
   font-family: var(--mono);
   color: var(--accent);
   line-height: 1.2;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.rpc-result-value.pop {
+  transform: scale(1.12);
 }
 .rpc-result-empty {
   color: var(--text-dim);
@@ -187,6 +216,38 @@ async function generate() {
   letter-spacing: 0.06em;
   color: var(--text-dim);
   margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.avg-badge {
+  font-size: 0.65rem;
+  font-weight: 400;
+  font-family: var(--mono);
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+.hist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hist-enter-from {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+.hist-enter-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+.hist-enter-to {
+  opacity: 1;
+  transform: translateX(0);
 }
 .rpc-history-item {
   display: flex;
@@ -199,8 +260,14 @@ async function generate() {
   border: 1px solid var(--border);
   border-radius: 6px;
 }
-.rpc-history-item .val { color: var(--accent); font-weight: 600; }
-.rpc-history-item .meta { color: var(--text-dim); font-size: 0.7rem; }
+.rpc-history-item .val {
+  color: var(--accent);
+  font-weight: 600;
+}
+.rpc-history-item .meta {
+  color: var(--text-dim);
+  font-size: 0.7rem;
+}
 .btn {
   background: var(--accent);
   color: #fff;
@@ -214,7 +281,14 @@ async function generate() {
   transition: opacity 0.15s;
   white-space: nowrap;
 }
-.btn:hover { opacity: 0.85; }
-.btn:active { opacity: 0.7; }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn:hover {
+  opacity: 0.85;
+}
+.btn:active {
+  opacity: 0.7;
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 </style>

@@ -79,34 +79,25 @@ export function useDatasoleClient() {
 
 ### Vue 3
 
-Use `onMounted`/`onUnmounted` for lifecycle and `ref`/`reactive` for state.
+datasole data feeds directly into Vue's reactivity system — **no Vuex, no Pinia, no state store needed.** Build composables that return reactive refs; bind them in your SFC template and they update automatically when the server pushes data.
+
+**Quick start — server state as a reactive ref:**
 
 ```vue
 <script setup lang="ts">
-import { DatasoleClient } from 'datasole/client';
-import { onMounted, onUnmounted, reactive, ref } from 'vue';
+import { useDatasoleState } from './composables/useDatasole';
 
-const url = 'ws://localhost:3000';
-const client = new DatasoleClient({ url });
-const connected = ref(false);
-const dashboard = reactive({ visitors: 0, activeNow: 0 });
+interface Dashboard {
+  visitors: number;
+  activeNow: number;
+}
 
-onMounted(() => {
-  client.connect();
-  connected.value = true;
-  client.subscribeState('dashboard', (state) => {
-    Object.assign(dashboard, state);
-  });
-});
-
-onUnmounted(() => {
-  client.disconnect();
-  connected.value = false;
-});
+// One line. This ref auto-updates whenever the server calls setState('dashboard', ...).
+const dashboard = useDatasoleState<Dashboard>('dashboard');
 </script>
 
 <template>
-  <div v-if="connected">
+  <div v-if="dashboard">
     <p>Visitors: {{ dashboard.visitors }}</p>
     <p>Active: {{ dashboard.activeNow }}</p>
   </div>
@@ -114,40 +105,127 @@ onUnmounted(() => {
 </template>
 ```
 
-For a composable that can be shared across components:
+**Server events as a reactive ref:**
+
+```vue
+<script setup lang="ts">
+import { computed } from 'vue';
+import { useDatasoleEvent } from './composables/useDatasole';
+
+interface Metrics {
+  cpuUsage: number;
+  memoryMB: number;
+  totalMemoryGB: number;
+}
+
+const metrics = useDatasoleEvent<Metrics>('system-metrics');
+
+// Computed properties compose naturally with datasole refs
+const memoryPct = computed(() =>
+  metrics.value
+    ? Math.round((metrics.value.memoryMB / (metrics.value.totalMemoryGB * 1024)) * 100)
+    : 0,
+);
+</script>
+
+<template>
+  <p v-if="metrics">Memory: {{ metrics.memoryMB }} MB ({{ memoryPct }}%)</p>
+</template>
+```
+
+**The composable layer** — call `useDatasole()` once at the app root to provide the client to all descendants via `inject()`:
 
 ```typescript
 // composables/useDatasole.ts
+import {
+  shallowRef,
+  ref,
+  watch,
+  provide,
+  inject,
+  onMounted,
+  onUnmounted,
+  type InjectionKey,
+  type Ref,
+  type ShallowRef,
+} from 'vue';
 import { DatasoleClient } from 'datasole/client';
-import { onMounted, onUnmounted, shallowRef } from 'vue';
+import type { ConnectionState } from 'datasole/client';
 
-let sharedClient: DatasoleClient | null = null;
-let refCount = 0;
+const DS_KEY: InjectionKey<ShallowRef<DatasoleClient | null>> = Symbol('datasole');
 
-export function useDatasole(url: string) {
-  const client = shallowRef<DatasoleClient | null>(null);
+/** Call once at app root. Creates, connects, and provides the client. */
+export function useDatasole() {
+  const ds = shallowRef<DatasoleClient | null>(null);
+  provide(DS_KEY, ds);
 
   onMounted(() => {
-    if (!sharedClient) {
-      sharedClient = new DatasoleClient({ url });
-      sharedClient.connect();
-    }
-    refCount++;
-    client.value = sharedClient;
+    const client = new DatasoleClient({ url: `ws://${window.location.host}` });
+    ds.value = client;
+    client.connect();
   });
 
   onUnmounted(() => {
-    refCount--;
-    if (refCount === 0 && sharedClient) {
-      sharedClient.disconnect();
-      sharedClient = null;
-    }
-    client.value = null;
+    ds.value?.disconnect();
+    ds.value = null;
   });
+}
 
-  return { client };
+/** Server event → reactive ref. Auto-subscribes, auto-cleans up. */
+export function useDatasoleEvent<T>(eventName: string): Ref<T | null> {
+  const ds = inject(DS_KEY)!;
+  const data = ref<T | null>(null) as Ref<T | null>;
+  let cleanup: (() => void) | null = null;
+
+  watch(
+    ds,
+    (client) => {
+      cleanup?.();
+      cleanup = null;
+      if (!client) return;
+      const handler = (ev: { data: T }) => {
+        data.value = ev.data;
+      };
+      client.on(eventName, handler);
+      cleanup = () => client.off(eventName, handler);
+    },
+    { immediate: true },
+  );
+
+  onUnmounted(() => cleanup?.());
+  return data;
+}
+
+/** Server state → reactive ref. Synced via JSON Patch. */
+export function useDatasoleState<T>(key: string): Ref<T | null> {
+  const ds = inject(DS_KEY)!;
+  const data = ref<T | null>(null) as Ref<T | null>;
+  let cleanup: (() => void) | null = null;
+
+  watch(
+    ds,
+    (client) => {
+      cleanup?.();
+      cleanup = null;
+      if (!client) return;
+      cleanup = client.subscribeState(key, (val: T) => {
+        data.value = val;
+      });
+    },
+    { immediate: true },
+  );
+
+  onUnmounted(() => cleanup?.());
+  return data;
+}
+
+/** Raw client ref for imperative calls (emit, rpc). */
+export function useDatasoleClient(): ShallowRef<DatasoleClient | null> {
+  return inject(DS_KEY)!;
 }
 ```
+
+The internal `watch` on the client `shallowRef` handles the async lifecycle — the subscription activates when the client connects and cleans up when the component unmounts. No manual `onMounted`/`onUnmounted` boilerplate needed in leaf components.
 
 ### Next.js (App Router)
 

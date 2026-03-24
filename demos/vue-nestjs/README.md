@@ -1,6 +1,42 @@
 # Vue 3 + NestJS Demo
 
-Vue 3 SFC frontend with Vite, NestJS backend, connected via datasole WebSocket.
+Vue 3 SFC frontend with Vite 8, NestJS 11 backend — connected via datasole WebSocket with Web Worker transport and Pako compression.
+
+## The Vue SFC Experience
+
+This demo showcases how datasole's reactive data model integrates natively with Vue's reactivity system — **no Vuex, no Pinia, no state store at all.** The server is the store.
+
+Three composables replace an entire state layer:
+
+```vue
+<script setup lang="ts">
+// Server event → reactive ref. Updates arrive off-thread via Web Worker.
+const metrics = useDatasoleEvent<Metrics>('system-metrics');
+
+// Server state → reactive ref. Synced via JSON Patch over the wire.
+const messages = useDatasoleState<ChatMessage[]>('chat:messages');
+
+// Raw client for imperative calls (emit, rpc).
+const ds = useDatasoleClient();
+</script>
+
+<template>
+  <!-- Bind directly in your template — they're just refs -->
+  <p>{{ metrics?.connections }} connected</p>
+  <div v-for="msg in messages" :key="msg.id">{{ msg.text }}</div>
+  <button @click="ds?.rpc('randomNumber', { min: 1, max: 100 })">Roll</button>
+</template>
+```
+
+Computed properties compose naturally:
+
+```typescript
+const memoryPct = computed(() =>
+  Math.round((metrics.value!.memoryMB / (metrics.value!.totalMemoryGB * 1024)) * 100),
+);
+```
+
+Everything works because datasole updates `ref.value` from the Web Worker thread — Vue's reactivity system picks it up instantly and re-renders only what changed. The main thread stays free for smooth 60 fps animations.
 
 ## Quickstart
 
@@ -30,11 +66,11 @@ Then open [http://localhost:4002](http://localhost:4002).
 | Layer   | Technology                   |
 | ------- | ---------------------------- |
 | Server  | NestJS 11 + `DatasoleServer` |
-| Client  | Vue 3 SFC + Vite             |
-| Bundler | Vite 6                       |
-| Types   | TypeScript 5 (strict)        |
+| Client  | Vue 3 SFC + Vite 8           |
+| Bundler | Vite 8                       |
+| Types   | TypeScript 6 (strict)        |
 
-## Port
+## Ports
 
 - **Dev**: Vite on `5174`, NestJS on `4002` (proxied via Vite)
 - **Prod**: NestJS on `4002` serves built client via `@nestjs/serve-static`
@@ -58,7 +94,6 @@ expressApp.get('/datasole-worker.iife.min.js', (_req, res) => {
 
 // Attach datasole to NestJS's underlying HTTP server
 const ds = new DatasoleServer();
-// Default: thread-pool concurrency (4 Node.js worker_threads)
 ds.attach(app.getHttpServer());
 
 await app.listen(4002);
@@ -74,24 +109,25 @@ Key points:
 
 ## Client-Side Integration
 
-```typescript
-import { DatasoleClient } from 'datasole/client';
-
-const client = new DatasoleClient({
-  url: `ws://${window.location.host}`,
-  // useWorker: true (default) — WebSocket runs in Web Worker
-  // workerUrl: '/datasole-worker.iife.min.js' (default)
-});
-client.connect();
-```
-
-The `useDatasole` composable manages the client lifecycle:
+The `useDatasole()` composable (called once at the app root) creates the client, connects, and provides it to all descendants via `inject()`:
 
 ```typescript
-const { ds, connectionState } = useDatasole();
-// ds is a shallowRef<DatasoleClient | null>, available after mount
-// connectionState tracks 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
+// App.vue
+import { useDatasole } from './composables/useDatasole';
+useDatasole(); // once at root — provides client to entire tree
 ```
+
+Child components consume data with zero boilerplate:
+
+```typescript
+// Any child SFC
+const metrics = useDatasoleEvent<Metrics>('system-metrics'); // server broadcasts → ref
+const messages = useDatasoleState<ChatMsg[]>('chat:messages'); // server state → ref
+const ds = useDatasoleClient(); // raw client for emit/rpc
+const conn = useConnectionState(); // 'connected' | 'disconnected' | ...
+```
+
+No context wrapper components, no store modules, no actions/mutations. The composable returns a reactive `Ref` that updates when the server pushes data. Bind it in your template and forget about it.
 
 ## Vite Dev Proxy
 

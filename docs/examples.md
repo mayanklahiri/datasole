@@ -169,25 +169,21 @@ function Leaderboard() {
 ```
 
 ```vue
-<!-- client (Vue 3 SFC) -->
+<!-- client (Vue 3 SFC) — using composable, no manual lifecycle -->
 <script setup lang="ts">
-import { DatasoleClient } from 'datasole/client';
-import { onMounted, onUnmounted, ref } from 'vue';
+import { useDatasoleState } from './composables/useDatasole';
 
-const client = new DatasoleClient({ url: 'ws://localhost:3000' });
-const board = ref({ players: [], lastUpdated: '' });
+interface Board {
+  players: { name: string; score: number }[];
+  lastUpdated: string;
+}
 
-onMounted(() => {
-  client.connect();
-  client.subscribeState('leaderboard', (s) => {
-    board.value = s;
-  });
-});
-onUnmounted(() => client.disconnect());
+// One line — auto-syncs from server state via JSON Patch
+const board = useDatasoleState<Board>('leaderboard');
 </script>
 
 <template>
-  <table>
+  <table v-if="board">
     <tr v-for="(p, i) in board.players" :key="p.name">
       <td>{{ i + 1 }}</td>
       <td>{{ p.name }}</td>
@@ -376,7 +372,7 @@ See every example above — all client code uses React hooks.
 
 ### Vue 3 (SFC)
 
-See the Dashboard and Leaderboard examples above for `<script setup>` patterns.
+See the Leaderboard example above for the composable pattern (`useDatasoleState` / `useDatasoleEvent`). The composable handles lifecycle, subscription, and cleanup — leaf components just call it and bind the ref in their template. See `demos/vue-nestjs/` for a complete three-panel app.
 
 ### React Native
 

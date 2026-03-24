@@ -414,69 +414,65 @@ datasoleService.ds.attach(app.getHttpServer());
 await app.listen(4002);
 ```
 
-### Client Walkthrough — `useDatasole` Composable
+### Client Walkthrough — Composables
+
+The composable layer replaces any need for Vuex or Pinia. Call `useDatasole()` once at the app root, and all descendants get reactive access to server data via `inject()`:
 
 ```typescript
-// src/composables/useDatasole.ts
-import { shallowRef, ref, onMounted, onUnmounted } from 'vue';
-import { DatasoleClient } from 'datasole/client';
-import type { ConnectionState } from 'datasole/client';
-
-export function useDatasole() {
-  const ds = shallowRef<DatasoleClient | null>(null);
-  const connectionState = ref<ConnectionState>('disconnected');
-  let interval: ReturnType<typeof setInterval> | undefined;
-
-  onMounted(() => {
-    const client = new DatasoleClient({
-      url: `ws://${window.location.host}`,
-    });
-    ds.value = client;
-    client.connect();
-    interval = setInterval(() => {
-      connectionState.value = client.getConnectionState();
-    }, 500);
-  });
-
-  onUnmounted(() => {
-    if (interval) clearInterval(interval);
-    ds.value?.disconnect();
-    ds.value = null;
-  });
-
-  return { ds, connectionState };
-}
+// App.vue — one-time setup
+import { useDatasole } from './composables/useDatasole';
+useDatasole(); // provides the client to the entire component tree
 ```
 
-Components use `watch` on the `ds` prop to bind/unbind event handlers:
+Child components consume server data with zero boilerplate:
 
 ```vue
-<!-- MetricsDashboard.vue — key pattern -->
+<!-- MetricsDashboard.vue — entire script section -->
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue';
-import type { DatasoleClient } from 'datasole/client';
+import { computed } from 'vue';
+import { useDatasoleEvent } from '../composables/useDatasole';
 
-const props = defineProps<{ ds: DatasoleClient | null }>();
-const metrics = ref(null);
-let cleanup = null;
+interface Metrics {
+  uptime: number;
+  connections: number;
+  memoryMB: number;
+  totalMemoryGB: number;
+}
 
-watch(
-  () => props.ds,
-  (ds) => {
-    cleanup?.();
-    if (!ds) return;
-    const handler = (ev) => {
-      metrics.value = ev.data;
-    };
-    ds.on('system-metrics', handler);
-    cleanup = () => ds.off('system-metrics', handler);
-  },
-  { immediate: true },
+// One line — this ref auto-updates from the Web Worker
+const metrics = useDatasoleEvent<Metrics>('system-metrics');
+
+// Computed properties compose naturally
+const memoryPct = computed(() =>
+  metrics.value
+    ? Math.round((metrics.value.memoryMB / (metrics.value.totalMemoryGB * 1024)) * 100)
+    : 0,
 );
-
-onUnmounted(() => cleanup?.());
 </script>
+
+<template>
+  <p v-if="metrics">Memory: {{ metrics.memoryMB }} MB ({{ memoryPct }}%)</p>
+</template>
 ```
+
+Three composable flavors cover every datasole pattern:
+
+```typescript
+// Server broadcast events → reactive ref
+const metrics = useDatasoleEvent<Metrics>('system-metrics');
+
+// Server-managed state → reactive ref (synced via JSON Patch)
+const messages = useDatasoleState<ChatMessage[]>('chat:messages');
+
+// Raw client for imperative calls (emit, rpc)
+const ds = useDatasoleClient();
+await ds.value?.rpc('randomNumber', { min: 1, max: 100 });
+
+// Connection state
+const conn = useConnectionState(); // 'connected' | 'disconnected' | ...
+```
+
+No props drilling, no store modules, no actions/mutations. The server is the store.
 
 ### Vite Dev Proxy
 

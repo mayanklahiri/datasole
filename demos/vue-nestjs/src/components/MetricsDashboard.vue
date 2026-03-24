@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useDatasoleEvent } from '../composables/useDatasole';
 
 interface Metrics {
@@ -15,27 +16,46 @@ interface Metrics {
   timestamp: number;
 }
 
+// One line. That's it. This ref auto-updates from the Web Worker
+// whenever the server broadcasts 'system-metrics'. No store needed.
 const metrics = useDatasoleEvent<Metrics>('system-metrics');
 
-function formatUptime(ms: number): string {
-  const s = Math.floor(ms / 1000);
+// Computed properties compose naturally with the reactive ref —
+// they re-evaluate automatically when metrics.value changes.
+const uptimeDisplay = computed(() => {
+  if (!metrics.value) return '';
+  const s = Math.floor(metrics.value.uptime / 1000);
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
   return (h > 0 ? `${h}h ` : '') + `${m}m ${sec}s`;
-}
+});
+
+const memoryPct = computed(() => {
+  if (!metrics.value) return 0;
+  return Math.round((metrics.value.memoryMB / (metrics.value.totalMemoryGB * 1024)) * 100);
+});
+
+const totalMessages = computed(() => {
+  if (!metrics.value) return 0;
+  return metrics.value.messagesIn + metrics.value.messagesOut;
+});
 </script>
 
 <template>
   <div class="panel">
     <div class="panel-header">Server Metrics</div>
     <div class="panel-body">
-      <div class="panel-help"><code>useDatasoleEvent('system-metrics')</code> &mdash; one line, no Pinia/Vuex, no <code>watch()</code>. Data arrives reactively from the Web Worker.</div>
+      <div class="panel-help">
+        <code>const metrics = useDatasoleEvent('system-metrics')</code> — one line, no Pinia, no
+        Vuex, no <code>watch()</code>. The ref updates reactively from the Web Worker. Bind it in
+        your template like any other ref. Computed properties just work.
+      </div>
       <div v-if="!metrics" class="metrics-waiting">Waiting for metrics&hellip;</div>
       <div v-else class="metrics-grid">
         <div class="metric-card">
           <div class="metric-label">Uptime</div>
-          <div class="metric-value accent">{{ formatUptime(metrics.uptime) }}</div>
+          <div class="metric-value accent">{{ uptimeDisplay }}</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">Connections</div>
@@ -46,8 +66,10 @@ function formatUptime(ms: number): string {
           <div class="metric-value">{{ metrics.cpuUsage }}<span class="metric-unit">ms</span></div>
         </div>
         <div class="metric-card">
-          <div class="metric-label">Memory</div>
-          <div class="metric-value">{{ metrics.memoryMB }}<span class="metric-unit">MB</span></div>
+          <div class="metric-label">Heap / RAM</div>
+          <div class="metric-value">
+            {{ metrics.memoryMB }}<span class="metric-unit">MB ({{ memoryPct }}%)</span>
+          </div>
         </div>
         <div class="metric-card">
           <div class="metric-label">CPUs</div>
@@ -55,19 +77,24 @@ function formatUptime(ms: number): string {
         </div>
         <div class="metric-card">
           <div class="metric-label">Total RAM</div>
-          <div class="metric-value">{{ metrics.totalMemoryGB }}<span class="metric-unit">GB</span></div>
+          <div class="metric-value">
+            {{ metrics.totalMemoryGB }}<span class="metric-unit">GB</span>
+          </div>
         </div>
         <div class="metric-card">
-          <div class="metric-label">Messages In</div>
-          <div class="metric-value">{{ metrics.messagesIn }}</div>
+          <div class="metric-label">Messages</div>
+          <div class="metric-value">
+            {{ totalMessages
+            }}<span class="metric-unit"
+              >({{ metrics.messagesIn }}↓ {{ metrics.messagesOut }}↑)</span
+            >
+          </div>
         </div>
         <div class="metric-card">
-          <div class="metric-label">Messages Out</div>
-          <div class="metric-value">{{ metrics.messagesOut }}</div>
-        </div>
-        <div class="metric-card span-2">
           <div class="metric-label">Server Time</div>
-          <div class="metric-value">{{ metrics.serverTime }}<span class="metric-unit">{{ metrics.timezone }}</span></div>
+          <div class="metric-value time-value">
+            {{ metrics.serverTime }}<span class="metric-unit">{{ metrics.timezone }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -107,10 +134,14 @@ function formatUptime(ms: number): string {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 16px;
-  transition: border-color 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.3s;
 }
-.metric-card:hover { border-color: var(--accent); }
-.metric-card.span-2 { grid-column: span 2; }
+.metric-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(232, 132, 44, 0.08);
+}
 .panel-help {
   font-size: 0.75rem;
   color: var(--text-dim);
@@ -138,8 +169,14 @@ function formatUptime(ms: number): string {
   font-family: var(--mono);
   color: var(--text);
   line-height: 1.2;
+  transition: color 0.25s ease;
 }
-.metric-value.accent { color: var(--accent); }
+.metric-value.accent {
+  color: var(--accent);
+}
+.metric-value.time-value {
+  font-size: 1.2rem;
+}
 .metric-unit {
   font-size: 0.7rem;
   color: var(--text-dim);
