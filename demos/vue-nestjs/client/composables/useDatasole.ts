@@ -33,7 +33,7 @@ export function useDatasole() {
   onMounted(() => {
     const client = new DatasoleClient<AppContract>({
       url: `ws://${window.location.host}`,
-      workerUrl: '/datasole-worker.iife.min.js',
+      useWorker: false,
     });
     ds.value = client;
     client.connect();

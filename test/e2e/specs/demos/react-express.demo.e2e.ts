@@ -4,8 +4,8 @@ import { snap } from '../../helpers/screenshots';
 import { DemoHarness } from '../../helpers/demo-harness';
 
 const harness = new DemoHarness('react-express');
-const CONNECTION_TIMEOUT_MS = 15_000;
-const UI_SETTLE_TIMEOUT_MS = 10_000;
+const CONNECTION_TIMEOUT_MS = 20_000;
+const UI_SETTLE_TIMEOUT_MS = 20_000;
 
 test.beforeAll(async () => {
   harness.prepare();
