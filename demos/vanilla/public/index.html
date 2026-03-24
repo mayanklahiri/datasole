@@ -1,75 +1,98 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>datasole — Vanilla Demo</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/style.css" />
-</head>
-<body>
-<div class="app">
-  <header>
-    <h1>datasole</h1>
-    <span class="subtitle">Vanilla JS Demo</span>
-    <a class="gh-link" href="https://github.com/mayanklahiri/datasole" target="_blank" rel="noopener">GitHub</a>
-    <div class="conn-badge">
-      <span class="conn-dot" id="conn-dot"></span>
-      <span id="conn-label">disconnected</span>
-    </div>
-  </header>
-
-  <main>
-    <!-- Metrics Panel -->
-    <div class="panel">
-      <div class="panel-header">Server Metrics</div>
-      <div class="panel-body">
-        <div class="panel-help">Live server stats pushed every 2 s via <code>ds.broadcast()</code>. Updates arrive automatically&mdash;no polling.</div>
-        <div id="metrics-content" class="metrics-waiting">Waiting for metrics&hellip;</div>
-      </div>
-    </div>
-
-    <!-- Chat Panel -->
-    <div class="panel" style="display:flex;flex-direction:column;">
-      <div class="panel-header">Chat</div>
-      <div class="panel-help" style="padding:8px 20px 0;">Global chatroom: messages are broadcast to all connected clients in real time. Open a second browser tab to try it.</div>
-      <div class="chat-messages" id="chat-messages">
-        <div class="chat-empty" id="chat-empty">No messages yet</div>
-      </div>
-      <div class="chat-input-bar">
-        <input type="text" id="chat-input" placeholder="Type a message&hellip;" autocomplete="off" />
-        <button class="btn" id="chat-send">Send</button>
-      </div>
-    </div>
-
-    <!-- RPC Panel -->
-    <div class="panel">
-      <div class="panel-header">RPC &mdash; Random Number</div>
-      <div class="panel-body">
-        <div class="panel-help">Call <code>ds.rpc()</code> to invoke a server function and receive a typed response. Latency includes the full round trip.</div>
-        <div class="rpc-section">
-          <div class="rpc-controls">
-            <div class="rpc-row">
-              <label for="rpc-min">Min</label>
-              <input type="number" id="rpc-min" value="1" />
-              <label for="rpc-max">Max</label>
-              <input type="number" id="rpc-max" value="100" />
-            </div>
-            <button class="btn" id="rpc-call">Generate</button>
-          </div>
-          <div class="rpc-result" id="rpc-result">
-            <div class="rpc-result-empty">Press Generate to get a random number</div>
-          </div>
-          <div class="rpc-history" id="rpc-history"></div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>datasole — Vanilla Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <h1>datasole</h1>
+        <span class="subtitle">Vanilla JS Demo</span>
+        <a
+          class="gh-link"
+          href="https://github.com/mayanklahiri/datasole"
+          target="_blank"
+          rel="noopener"
+          >GitHub</a
+        >
+        <div class="conn-badge">
+          <span class="conn-dot" id="conn-dot"></span>
+          <span id="conn-label">disconnected</span>
         </div>
-      </div>
-    </div>
-  </main>
-</div>
+      </header>
 
-<script src="/datasole.iife.min.js"></script>
-<script src="/app.js"></script>
-</body>
+      <main>
+        <!-- Metrics Panel -->
+        <div class="panel">
+          <div class="panel-header">Server Metrics</div>
+          <div class="panel-body">
+            <div class="panel-help">
+              Live server stats pushed every 2 s via <code>ds.broadcast()</code>. Updates arrive
+              automatically&mdash;no polling.
+            </div>
+            <div id="metrics-content" class="metrics-waiting">Waiting for metrics&hellip;</div>
+          </div>
+        </div>
+
+        <!-- Chat Panel -->
+        <div class="panel" style="display: flex; flex-direction: column">
+          <div class="panel-header">Chat</div>
+          <div class="panel-help" style="padding: 8px 20px 0">
+            Global chatroom: messages are broadcast to all connected clients in real time. Open a
+            second browser tab to try it.
+          </div>
+          <div class="chat-messages" id="chat-messages">
+            <div class="chat-empty" id="chat-empty">No messages yet</div>
+          </div>
+          <div class="chat-input-bar">
+            <input
+              type="text"
+              id="chat-input"
+              placeholder="Type a message&hellip;"
+              autocomplete="off"
+            />
+            <button class="btn" id="chat-send">Send</button>
+          </div>
+        </div>
+
+        <!-- RPC Panel -->
+        <div class="panel">
+          <div class="panel-header">RPC &mdash; Random Number</div>
+          <div class="panel-body">
+            <div class="panel-help">
+              Call <code>ds.rpc()</code> to invoke a server function and receive a typed response.
+              Latency includes the full round trip.
+            </div>
+            <div class="rpc-section">
+              <div class="rpc-controls">
+                <div class="rpc-row">
+                  <label for="rpc-min">Min</label>
+                  <input type="number" id="rpc-min" value="1" />
+                  <label for="rpc-max">Max</label>
+                  <input type="number" id="rpc-max" value="100" />
+                </div>
+                <button class="btn" id="rpc-call">Generate</button>
+              </div>
+              <div class="rpc-result" id="rpc-result">
+                <div class="rpc-result-empty">Press Generate to get a random number</div>
+              </div>
+              <div class="rpc-history" id="rpc-history"></div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="/datasole.iife.min.js"></script>
+    <script src="/app.js"></script>
+  </body>
 </html>

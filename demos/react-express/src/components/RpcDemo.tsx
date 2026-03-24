@@ -51,17 +51,9 @@ export function RpcDemo() {
           <div className="rpc-controls">
             <div className="rpc-row">
               <label>Min</label>
-              <input
-                type="number"
-                value={min}
-                onChange={(e) => setMin(Number(e.target.value))}
-              />
+              <input type="number" value={min} onChange={(e) => setMin(Number(e.target.value))} />
               <label>Max</label>
-              <input
-                type="number"
-                value={max}
-                onChange={(e) => setMax(Number(e.target.value))}
-              />
+              <input type="number" value={max} onChange={(e) => setMax(Number(e.target.value))} />
             </div>
             <button className="btn" onClick={generate} disabled={loading || !ds}>
               {loading ? 'Generating…' : 'Generate'}

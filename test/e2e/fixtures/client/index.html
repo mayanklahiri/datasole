@@ -1,721 +1,960 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Datasole E2E Test</title>
-  <script src="/static/datasole.iife.min.js"></script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface-2: #242836;
-      --border: #2e3345;
-      --text: #e1e4ed;
-      --text-dim: #8b90a5;
-      --accent: #6366f1;
-      --green: #22c55e;
-      --red: #ef4444;
-      --amber: #f59e0b;
-      --cyan: #06b6d4;
-      --pink: #ec4899;
-      --radius: 10px;
-    }
-
-    body {
-      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Menlo', monospace;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    header {
-      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
-      border-bottom: 1px solid var(--border);
-      padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .logo {
-      width: 32px; height: 32px;
-      background: linear-gradient(135deg, var(--accent), var(--pink));
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 16px; color: #fff;
-      flex-shrink: 0;
-    }
-
-    header h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
-    header .subtitle { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-
-    .conn-badge {
-      margin-left: auto;
-      display: flex; align-items: center; gap: 8px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 6px 14px;
-      font-size: 12px;
-    }
-
-    .conn-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--red);
-      transition: background 0.3s;
-    }
-
-    .conn-dot.connected { background: var(--green); box-shadow: 0 0 8px rgba(34, 197, 94, 0.5); }
-    .conn-dot.connecting { background: var(--amber); animation: pulse 1s infinite; }
-    .conn-dot.rejected { background: var(--red); box-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
-
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-      gap: 16px;
-      padding: 20px 24px;
-      max-width: 1400px;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-
-    .card-header {
-      display: flex; align-items: center; gap: 8px;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-      font-size: 12px; font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--text-dim);
-    }
-
-    .card-icon {
-      width: 20px; height: 20px;
-      border-radius: 5px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px;
-    }
-
-    .card-body { padding: 16px; }
-
-    .card-body:empty::after {
-      content: 'Waiting for test…';
-      color: var(--text-dim);
-      font-style: italic;
-      font-size: 12px;
-    }
-
-    /* Feature-specific card colors */
-    .card--conn .card-icon { background: rgba(34,197,94,0.15); color: var(--green); }
-    .card--rpc .card-icon { background: rgba(99,102,241,0.15); color: var(--accent); }
-    .card--events .card-icon { background: rgba(6,182,212,0.15); color: var(--cyan); }
-    .card--state .card-icon { background: rgba(245,158,11,0.15); color: var(--amber); }
-    .card--crdt .card-icon { background: rgba(236,72,153,0.15); color: var(--pink); }
-    .card--session .card-icon { background: rgba(168,85,247,0.15); color: #a855f7; }
-    .card--board .card-icon { background: rgba(20,184,166,0.15); color: #14b8a6; }
-    .card--log .card-icon { background: rgba(139,144,165,0.15); color: var(--text-dim); }
-
-    /* RPC result display */
-    .rpc-entry {
-      display: flex; align-items: flex-start; gap: 10px;
-      padding: 8px 0;
-      border-bottom: 1px solid var(--border);
-    }
-    .rpc-entry:last-child { border-bottom: none; }
-    .rpc-method {
-      background: rgba(99,102,241,0.15);
-      color: var(--accent);
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 600;
-      flex-shrink: 0;
-    }
-    .rpc-method.error { background: rgba(239,68,68,0.15); color: var(--red); }
-    .rpc-arrow { color: var(--text-dim); flex-shrink: 0; }
-    .rpc-value { color: var(--green); word-break: break-all; }
-    .rpc-value.error-value { color: var(--red); }
-
-    /* Event entries */
-    .event-entry {
-      display: flex; align-items: flex-start; gap: 10px;
-      padding: 6px 0;
-    }
-    .event-dir {
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-weight: 600;
-      flex-shrink: 0;
-    }
-    .event-dir.inbound { background: rgba(6,182,212,0.15); color: var(--cyan); }
-    .event-dir.outbound { background: rgba(245,158,11,0.15); color: var(--amber); }
-    .event-name { color: var(--text); font-weight: 500; }
-    .event-data { color: var(--text-dim); font-size: 12px; margin-left: auto; }
-
-    /* State sync display */
-    .state-entry {
-      padding: 8px 12px;
-      background: var(--surface-2);
-      border-radius: 6px;
-      margin-bottom: 8px;
-    }
-    .state-key {
-      font-size: 11px;
-      color: var(--amber);
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-    .state-value {
-      font-size: 12px;
-      color: var(--text);
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
-    /* CRDT counter */
-    .crdt-counter {
-      display: flex; align-items: center; justify-content: center;
-      gap: 20px;
-      padding: 16px 0;
-    }
-    .crdt-value {
-      font-size: 48px;
-      font-weight: 700;
-      color: var(--pink);
-      min-width: 80px;
-      text-align: center;
-      line-height: 1;
-    }
-    .crdt-label {
-      font-size: 11px;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      text-align: center;
-      margin-top: 4px;
-    }
-    .crdt-ops {
-      display: flex; gap: 4px; margin-top: 12px; justify-content: center;
-    }
-    .crdt-op {
-      font-size: 10px;
-      padding: 3px 8px;
-      border-radius: 4px;
-      background: var(--surface-2);
-      color: var(--text-dim);
-    }
-    .crdt-op.inc { color: var(--green); }
-    .crdt-op.dec { color: var(--red); }
-
-    /* Session card */
-    .session-kv {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 4px 12px;
-      font-size: 12px;
-    }
-    .session-label { color: var(--text-dim); }
-    .session-val { color: #a855f7; font-weight: 500; }
-
-    /* Task board */
-    .board-columns {
-      display: flex; gap: 8px;
-    }
-    .board-col {
-      flex: 1;
-      background: var(--surface-2);
-      border-radius: 6px;
-      padding: 8px;
-      min-height: 60px;
-    }
-    .board-col-title {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--text-dim);
-      margin-bottom: 8px;
-      text-align: center;
-    }
-    .board-task {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      padding: 6px 8px;
-      font-size: 11px;
-      margin-bottom: 4px;
-    }
-
-    /* Activity log */
-    .log-entries { max-height: 140px; overflow-y: auto; }
-    .log-entry {
-      display: flex; align-items: baseline; gap: 8px;
-      padding: 3px 0;
-      font-size: 11px;
-      border-bottom: 1px solid rgba(46,51,69,0.5);
-    }
-    .log-ts { color: var(--text-dim); flex-shrink: 0; font-size: 10px; }
-    .log-msg { color: var(--text); }
-    .log-msg .highlight { color: var(--green); }
-    .log-msg .error-hl { color: var(--red); }
-
-    /* Hidden data divs (tests read these) */
-    #status, #connection-state, #rpc-result, #event-log, #state-data {
-      position: absolute;
-      left: -9999px;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-    }
-
-    /* Auth badge */
-    .auth-badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 3px 10px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 600;
-      margin-top: 6px;
-    }
-    .auth-badge.valid { background: rgba(34,197,94,0.15); color: var(--green); }
-    .auth-badge.rejected { background: rgba(239,68,68,0.15); color: var(--red); }
-    .auth-badge.anon { background: rgba(245,158,11,0.15); color: var(--amber); }
-  </style>
-</head>
-<body>
-  <!-- Hidden data divs for test assertions -->
-  <div id="status">loading</div>
-  <div id="connection-state">disconnected</div>
-  <div id="rpc-result"></div>
-  <div id="event-log"></div>
-  <div id="state-data"></div>
-
-  <header>
-    <div class="logo">D</div>
-    <div>
-      <h1>Datasole E2E Test Console</h1>
-      <div class="subtitle">Real-time binary WebSocket framework</div>
-    </div>
-    <div class="conn-badge">
-      <div class="conn-dot" id="vis-conn-dot"></div>
-      <span id="vis-conn-label">disconnected</span>
-    </div>
-  </header>
-
-  <div class="grid">
-    <!-- Connection -->
-    <div class="card card--conn">
-      <div class="card-header">
-        <div class="card-icon">⚡</div> Connection
-      </div>
-      <div class="card-body" id="vis-conn-body"></div>
-    </div>
-
-    <!-- RPC -->
-    <div class="card card--rpc">
-      <div class="card-header">
-        <div class="card-icon">⟐</div> RPC Calls
-      </div>
-      <div class="card-body" id="vis-rpc-body"></div>
-    </div>
-
-    <!-- Events -->
-    <div class="card card--events">
-      <div class="card-header">
-        <div class="card-icon">↯</div> Events
-      </div>
-      <div class="card-body" id="vis-events-body"></div>
-    </div>
-
-    <!-- State Sync -->
-    <div class="card card--state">
-      <div class="card-header">
-        <div class="card-icon">◈</div> State Sync
-      </div>
-      <div class="card-body" id="vis-state-body"></div>
-    </div>
-
-    <!-- CRDT -->
-    <div class="card card--crdt">
-      <div class="card-header">
-        <div class="card-icon">∞</div> CRDT Counter
-      </div>
-      <div class="card-body" id="vis-crdt-body"></div>
-    </div>
-
-    <!-- Session -->
-    <div class="card card--session">
-      <div class="card-header">
-        <div class="card-icon">⊕</div> Session
-      </div>
-      <div class="card-body" id="vis-session-body"></div>
-    </div>
-
-    <!-- Task Board -->
-    <div class="card card--board" style="grid-column: span 2;">
-      <div class="card-header">
-        <div class="card-icon">▦</div> Task Board
-      </div>
-      <div class="card-body" id="vis-board-body"></div>
-    </div>
-
-    <!-- Activity Log -->
-    <div class="card card--log" style="grid-column: 1 / -1;">
-      <div class="card-header">
-        <div class="card-icon">▤</div> Activity Log
-      </div>
-      <div class="card-body">
-        <div class="log-entries" id="vis-log"></div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // --- Visual helpers ---
-    function ts() {
-      return new Date().toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 3 });
-    }
-
-    function addLog(msg, type) {
-      var el = document.getElementById('vis-log');
-      var entry = document.createElement('div');
-      entry.className = 'log-entry';
-      var cls = type === 'error' ? 'error-hl' : 'highlight';
-      entry.innerHTML = '<span class="log-ts">' + ts() + '</span><span class="log-msg"><span class="' + cls + '">' + msg + '</span></span>';
-      el.prepend(entry);
-    }
-
-    function updateConnVisual(state, authInfo) {
-      var dot = document.getElementById('vis-conn-dot');
-      var label = document.getElementById('vis-conn-label');
-      dot.className = 'conn-dot ' + (state === 'connected' ? 'connected' : state === 'connecting' ? 'connecting' : '');
-      label.textContent = state;
-
-      var body = document.getElementById('vis-conn-body');
-      var html = '<div style="font-size:12px;color:var(--text-dim);">Status: <span style="color:' +
-        (state === 'connected' ? 'var(--green)' : state === 'disconnected' ? 'var(--red)' : 'var(--amber)') +
-        ';font-weight:600;">' + state + '</span></div>';
-      if (authInfo) {
-        html += '<div class="auth-badge ' + authInfo.cls + '">' + authInfo.icon + ' ' + authInfo.text + '</div>';
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Datasole E2E Test</title>
+    <script src="/static/datasole.iife.min.js"></script>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
       }
-      body.innerHTML = html;
-    }
 
-    // --- RPC tracking ---
-    var rpcCalls = [];
-    function addRpcVisual(method, params, result, isError) {
-      rpcCalls.push({ method: method, params: params, result: result, isError: isError });
-      var body = document.getElementById('vis-rpc-body');
-      body.innerHTML = '';
-      rpcCalls.forEach(function(c) {
-        var div = document.createElement('div');
-        div.className = 'rpc-entry';
-        div.innerHTML =
-          '<span class="rpc-method' + (c.isError ? ' error' : '') + '">' + c.method + '</span>' +
-          '<span class="rpc-arrow">→</span>' +
-          '<span class="rpc-value' + (c.isError ? ' error-value' : '') + '">' +
-          (c.isError ? '✗ ' : '✓ ') + JSON.stringify(c.result) + '</span>';
-        body.appendChild(div);
-      });
-    }
+      :root {
+        --bg: #0f1117;
+        --surface: #1a1d27;
+        --surface-2: #242836;
+        --border: #2e3345;
+        --text: #e1e4ed;
+        --text-dim: #8b90a5;
+        --accent: #6366f1;
+        --green: #22c55e;
+        --red: #ef4444;
+        --amber: #f59e0b;
+        --cyan: #06b6d4;
+        --pink: #ec4899;
+        --radius: 10px;
+      }
 
-    // --- CRDT visual ---
-    var crdtOps = [];
-    function updateCrdtVisual(value) {
-      var body = document.getElementById('vis-crdt-body');
-      var opsHtml = crdtOps.map(function(op) {
-        return '<span class="crdt-op ' + op.cls + '">' + op.label + '</span>';
-      }).join('');
-      body.innerHTML =
-        '<div class="crdt-counter"><div><div class="crdt-value">' + value + '</div>' +
-        '<div class="crdt-label">PN-Counter value</div></div></div>' +
-        '<div class="crdt-ops">' + opsHtml + '</div>';
-    }
+      body {
+        font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Menlo', monospace;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        font-size: 13px;
+        line-height: 1.5;
+      }
 
-    // --- Board visual ---
-    function updateBoardVisual(state) {
-      var body = document.getElementById('vis-board-body');
-      if (!state || !state.columns) { body.innerHTML = ''; return; }
-      var html = '<div class="board-columns">';
-      state.columns.forEach(function(col) {
-        html += '<div class="board-col"><div class="board-col-title">' + col + '</div>';
-        (state.tasks || []).filter(function(t) { return t.column === col; }).forEach(function(t) {
-          html += '<div class="board-task">' + t.title + '</div>';
+      header {
+        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+        border-bottom: 1px solid var(--border);
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .logo {
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, var(--accent), var(--pink));
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 16px;
+        color: #fff;
+        flex-shrink: 0;
+      }
+
+      header h1 {
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: -0.3px;
+      }
+      header .subtitle {
+        font-size: 11px;
+        color: var(--text-dim);
+        margin-top: 2px;
+      }
+
+      .conn-badge {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 6px 14px;
+        font-size: 12px;
+      }
+
+      .conn-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--red);
+        transition: background 0.3s;
+      }
+
+      .conn-dot.connected {
+        background: var(--green);
+        box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+      }
+      .conn-dot.connecting {
+        background: var(--amber);
+        animation: pulse 1s infinite;
+      }
+      .conn-dot.rejected {
+        background: var(--red);
+        box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: 16px;
+        padding: 20px 24px;
+        max-width: 1400px;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+
+      .card-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-dim);
+      }
+
+      .card-icon {
+        width: 20px;
+        height: 20px;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+      }
+
+      .card-body {
+        padding: 16px;
+      }
+
+      .card-body:empty::after {
+        content: 'Waiting for test…';
+        color: var(--text-dim);
+        font-style: italic;
+        font-size: 12px;
+      }
+
+      /* Feature-specific card colors */
+      .card--conn .card-icon {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--green);
+      }
+      .card--rpc .card-icon {
+        background: rgba(99, 102, 241, 0.15);
+        color: var(--accent);
+      }
+      .card--events .card-icon {
+        background: rgba(6, 182, 212, 0.15);
+        color: var(--cyan);
+      }
+      .card--state .card-icon {
+        background: rgba(245, 158, 11, 0.15);
+        color: var(--amber);
+      }
+      .card--crdt .card-icon {
+        background: rgba(236, 72, 153, 0.15);
+        color: var(--pink);
+      }
+      .card--session .card-icon {
+        background: rgba(168, 85, 247, 0.15);
+        color: #a855f7;
+      }
+      .card--board .card-icon {
+        background: rgba(20, 184, 166, 0.15);
+        color: #14b8a6;
+      }
+      .card--log .card-icon {
+        background: rgba(139, 144, 165, 0.15);
+        color: var(--text-dim);
+      }
+
+      /* RPC result display */
+      .rpc-entry {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .rpc-entry:last-child {
+        border-bottom: none;
+      }
+      .rpc-method {
+        background: rgba(99, 102, 241, 0.15);
+        color: var(--accent);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        flex-shrink: 0;
+      }
+      .rpc-method.error {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--red);
+      }
+      .rpc-arrow {
+        color: var(--text-dim);
+        flex-shrink: 0;
+      }
+      .rpc-value {
+        color: var(--green);
+        word-break: break-all;
+      }
+      .rpc-value.error-value {
+        color: var(--red);
+      }
+
+      /* Event entries */
+      .event-entry {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 6px 0;
+      }
+      .event-dir {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-weight: 600;
+        flex-shrink: 0;
+      }
+      .event-dir.inbound {
+        background: rgba(6, 182, 212, 0.15);
+        color: var(--cyan);
+      }
+      .event-dir.outbound {
+        background: rgba(245, 158, 11, 0.15);
+        color: var(--amber);
+      }
+      .event-name {
+        color: var(--text);
+        font-weight: 500;
+      }
+      .event-data {
+        color: var(--text-dim);
+        font-size: 12px;
+        margin-left: auto;
+      }
+
+      /* State sync display */
+      .state-entry {
+        padding: 8px 12px;
+        background: var(--surface-2);
+        border-radius: 6px;
+        margin-bottom: 8px;
+      }
+      .state-key {
+        font-size: 11px;
+        color: var(--amber);
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .state-value {
+        font-size: 12px;
+        color: var(--text);
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+
+      /* CRDT counter */
+      .crdt-counter {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        padding: 16px 0;
+      }
+      .crdt-value {
+        font-size: 48px;
+        font-weight: 700;
+        color: var(--pink);
+        min-width: 80px;
+        text-align: center;
+        line-height: 1;
+      }
+      .crdt-label {
+        font-size: 11px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        text-align: center;
+        margin-top: 4px;
+      }
+      .crdt-ops {
+        display: flex;
+        gap: 4px;
+        margin-top: 12px;
+        justify-content: center;
+      }
+      .crdt-op {
+        font-size: 10px;
+        padding: 3px 8px;
+        border-radius: 4px;
+        background: var(--surface-2);
+        color: var(--text-dim);
+      }
+      .crdt-op.inc {
+        color: var(--green);
+      }
+      .crdt-op.dec {
+        color: var(--red);
+      }
+
+      /* Session card */
+      .session-kv {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 4px 12px;
+        font-size: 12px;
+      }
+      .session-label {
+        color: var(--text-dim);
+      }
+      .session-val {
+        color: #a855f7;
+        font-weight: 500;
+      }
+
+      /* Task board */
+      .board-columns {
+        display: flex;
+        gap: 8px;
+      }
+      .board-col {
+        flex: 1;
+        background: var(--surface-2);
+        border-radius: 6px;
+        padding: 8px;
+        min-height: 60px;
+      }
+      .board-col-title {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-dim);
+        margin-bottom: 8px;
+        text-align: center;
+      }
+      .board-task {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 6px 8px;
+        font-size: 11px;
+        margin-bottom: 4px;
+      }
+
+      /* Activity log */
+      .log-entries {
+        max-height: 140px;
+        overflow-y: auto;
+      }
+      .log-entry {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 3px 0;
+        font-size: 11px;
+        border-bottom: 1px solid rgba(46, 51, 69, 0.5);
+      }
+      .log-ts {
+        color: var(--text-dim);
+        flex-shrink: 0;
+        font-size: 10px;
+      }
+      .log-msg {
+        color: var(--text);
+      }
+      .log-msg .highlight {
+        color: var(--green);
+      }
+      .log-msg .error-hl {
+        color: var(--red);
+      }
+
+      /* Hidden data divs (tests read these) */
+      #status,
+      #connection-state,
+      #rpc-result,
+      #event-log,
+      #state-data {
+        position: absolute;
+        left: -9999px;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+      }
+
+      /* Auth badge */
+      .auth-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        margin-top: 6px;
+      }
+      .auth-badge.valid {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--green);
+      }
+      .auth-badge.rejected {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--red);
+      }
+      .auth-badge.anon {
+        background: rgba(245, 158, 11, 0.15);
+        color: var(--amber);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Hidden data divs for test assertions -->
+    <div id="status">loading</div>
+    <div id="connection-state">disconnected</div>
+    <div id="rpc-result"></div>
+    <div id="event-log"></div>
+    <div id="state-data"></div>
+
+    <header>
+      <div class="logo">D</div>
+      <div>
+        <h1>Datasole E2E Test Console</h1>
+        <div class="subtitle">Real-time binary WebSocket framework</div>
+      </div>
+      <div class="conn-badge">
+        <div class="conn-dot" id="vis-conn-dot"></div>
+        <span id="vis-conn-label">disconnected</span>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Connection -->
+      <div class="card card--conn">
+        <div class="card-header">
+          <div class="card-icon">⚡</div>
+          Connection
+        </div>
+        <div class="card-body" id="vis-conn-body"></div>
+      </div>
+
+      <!-- RPC -->
+      <div class="card card--rpc">
+        <div class="card-header">
+          <div class="card-icon">⟐</div>
+          RPC Calls
+        </div>
+        <div class="card-body" id="vis-rpc-body"></div>
+      </div>
+
+      <!-- Events -->
+      <div class="card card--events">
+        <div class="card-header">
+          <div class="card-icon">↯</div>
+          Events
+        </div>
+        <div class="card-body" id="vis-events-body"></div>
+      </div>
+
+      <!-- State Sync -->
+      <div class="card card--state">
+        <div class="card-header">
+          <div class="card-icon">◈</div>
+          State Sync
+        </div>
+        <div class="card-body" id="vis-state-body"></div>
+      </div>
+
+      <!-- CRDT -->
+      <div class="card card--crdt">
+        <div class="card-header">
+          <div class="card-icon">∞</div>
+          CRDT Counter
+        </div>
+        <div class="card-body" id="vis-crdt-body"></div>
+      </div>
+
+      <!-- Session -->
+      <div class="card card--session">
+        <div class="card-header">
+          <div class="card-icon">⊕</div>
+          Session
+        </div>
+        <div class="card-body" id="vis-session-body"></div>
+      </div>
+
+      <!-- Task Board -->
+      <div class="card card--board" style="grid-column: span 2">
+        <div class="card-header">
+          <div class="card-icon">▦</div>
+          Task Board
+        </div>
+        <div class="card-body" id="vis-board-body"></div>
+      </div>
+
+      <!-- Activity Log -->
+      <div class="card card--log" style="grid-column: 1 / -1">
+        <div class="card-header">
+          <div class="card-icon">▤</div>
+          Activity Log
+        </div>
+        <div class="card-body">
+          <div class="log-entries" id="vis-log"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // --- Visual helpers ---
+      function ts() {
+        return new Date().toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 3 });
+      }
+
+      function addLog(msg, type) {
+        var el = document.getElementById('vis-log');
+        var entry = document.createElement('div');
+        entry.className = 'log-entry';
+        var cls = type === 'error' ? 'error-hl' : 'highlight';
+        entry.innerHTML =
+          '<span class="log-ts">' +
+          ts() +
+          '</span><span class="log-msg"><span class="' +
+          cls +
+          '">' +
+          msg +
+          '</span></span>';
+        el.prepend(entry);
+      }
+
+      function updateConnVisual(state, authInfo) {
+        var dot = document.getElementById('vis-conn-dot');
+        var label = document.getElementById('vis-conn-label');
+        dot.className =
+          'conn-dot ' +
+          (state === 'connected' ? 'connected' : state === 'connecting' ? 'connecting' : '');
+        label.textContent = state;
+
+        var body = document.getElementById('vis-conn-body');
+        var html =
+          '<div style="font-size:12px;color:var(--text-dim);">Status: <span style="color:' +
+          (state === 'connected'
+            ? 'var(--green)'
+            : state === 'disconnected'
+              ? 'var(--red)'
+              : 'var(--amber)') +
+          ';font-weight:600;">' +
+          state +
+          '</span></div>';
+        if (authInfo) {
+          html +=
+            '<div class="auth-badge ' +
+            authInfo.cls +
+            '">' +
+            authInfo.icon +
+            ' ' +
+            authInfo.text +
+            '</div>';
+        }
+        body.innerHTML = html;
+      }
+
+      // --- RPC tracking ---
+      var rpcCalls = [];
+      function addRpcVisual(method, params, result, isError) {
+        rpcCalls.push({ method: method, params: params, result: result, isError: isError });
+        var body = document.getElementById('vis-rpc-body');
+        body.innerHTML = '';
+        rpcCalls.forEach(function (c) {
+          var div = document.createElement('div');
+          div.className = 'rpc-entry';
+          div.innerHTML =
+            '<span class="rpc-method' +
+            (c.isError ? ' error' : '') +
+            '">' +
+            c.method +
+            '</span>' +
+            '<span class="rpc-arrow">→</span>' +
+            '<span class="rpc-value' +
+            (c.isError ? ' error-value' : '') +
+            '">' +
+            (c.isError ? '✗ ' : '✓ ') +
+            JSON.stringify(c.result) +
+            '</span>';
+          body.appendChild(div);
+        });
+      }
+
+      // --- CRDT visual ---
+      var crdtOps = [];
+      function updateCrdtVisual(value) {
+        var body = document.getElementById('vis-crdt-body');
+        var opsHtml = crdtOps
+          .map(function (op) {
+            return '<span class="crdt-op ' + op.cls + '">' + op.label + '</span>';
+          })
+          .join('');
+        body.innerHTML =
+          '<div class="crdt-counter"><div><div class="crdt-value">' +
+          value +
+          '</div>' +
+          '<div class="crdt-label">PN-Counter value</div></div></div>' +
+          '<div class="crdt-ops">' +
+          opsHtml +
+          '</div>';
+      }
+
+      // --- Board visual ---
+      function updateBoardVisual(state) {
+        var body = document.getElementById('vis-board-body');
+        if (!state || !state.columns) {
+          body.innerHTML = '';
+          return;
+        }
+        var html = '<div class="board-columns">';
+        state.columns.forEach(function (col) {
+          html += '<div class="board-col"><div class="board-col-title">' + col + '</div>';
+          (state.tasks || [])
+            .filter(function (t) {
+              return t.column === col;
+            })
+            .forEach(function (t) {
+              html += '<div class="board-task">' + t.title + '</div>';
+            });
+          html += '</div>';
         });
         html += '</div>';
-      });
-      html += '</div>';
-      body.innerHTML = html;
-    }
+        body.innerHTML = html;
+      }
 
-    // ========================================================================
-    // Original test API (unchanged contracts)
-    // ========================================================================
+      // ========================================================================
+      // Original test API (unchanged contracts)
+      // ========================================================================
 
-    window.__datasole_loaded = typeof Datasole !== 'undefined';
-    document.getElementById('status').textContent = 'ready';
-    addLog('Page ready — Datasole ' + (window.__datasole_loaded ? 'loaded' : 'NOT FOUND'), window.__datasole_loaded ? '' : 'error');
-    updateConnVisual('disconnected');
+      window.__datasole_loaded = typeof Datasole !== 'undefined';
+      document.getElementById('status').textContent = 'ready';
+      addLog(
+        'Page ready — Datasole ' + (window.__datasole_loaded ? 'loaded' : 'NOT FOUND'),
+        window.__datasole_loaded ? '' : 'error',
+      );
+      updateConnVisual('disconnected');
 
-    window.__logs = [];
-    window.__events = [];
-    window.__stateUpdates = [];
+      window.__logs = [];
+      window.__events = [];
+      window.__stateUpdates = [];
 
-    window.__connect = async function(opts) {
-      performance.mark('ws-connect-start');
-      updateConnVisual('connecting');
-      addLog('Connecting to ' + window.location.origin + '…');
-      var serverUrl = window.location.origin;
-      var client = new Datasole.DatasoleClient({
-        url: serverUrl,
-        reconnect: false,
-        ...opts,
-      });
-      window.__client = client;
+      window.__connect = async function (opts) {
+        performance.mark('ws-connect-start');
+        updateConnVisual('connecting');
+        addLog('Connecting to ' + window.location.origin + '…');
+        var serverUrl = window.location.origin;
+        var client = new Datasole.DatasoleClient({
+          url: serverUrl,
+          reconnect: false,
+          ...opts,
+        });
+        window.__client = client;
 
-      try {
-        await client.connect();
-      } catch (e) {
-        var rejectInfo = { cls: 'rejected', icon: '✗', text: 'Connection rejected' };
-        if (opts && opts.auth && opts.auth.token === 'reject') {
-          rejectInfo.text = 'Auth rejected (invalid token)';
+        try {
+          await client.connect();
+        } catch (e) {
+          var rejectInfo = { cls: 'rejected', icon: '✗', text: 'Connection rejected' };
+          if (opts && opts.auth && opts.auth.token === 'reject') {
+            rejectInfo.text = 'Auth rejected (invalid token)';
+          }
+          updateConnVisual('rejected', rejectInfo);
+          addLog('Connection failed: ' + e.message, 'error');
+          throw e;
         }
-        updateConnVisual('rejected', rejectInfo);
-        addLog('Connection failed: ' + e.message, 'error');
-        throw e;
-      }
-      performance.mark('ws-connect-end');
-      performance.measure('ws-connect', 'ws-connect-start', 'ws-connect-end');
-      document.getElementById('connection-state').textContent = client.getConnectionState();
+        performance.mark('ws-connect-end');
+        performance.measure('ws-connect', 'ws-connect-start', 'ws-connect-end');
+        document.getElementById('connection-state').textContent = client.getConnectionState();
 
-      var authInfo = null;
-      if (opts && opts.auth && opts.auth.token === 'valid-token') {
-        authInfo = { cls: 'valid', icon: '✓', text: 'Authenticated (token)' };
-      } else if (opts && opts.auth && opts.auth.token) {
-        authInfo = { cls: 'valid', icon: '✓', text: 'Token: ' + opts.auth.token.slice(0, 8) + '…' };
-      } else {
-        authInfo = { cls: 'anon', icon: '○', text: 'Anonymous' };
-      }
-      updateConnVisual('connected', authInfo);
-      addLog('WebSocket connected ✓');
-      return client.getConnectionState();
-    };
-
-    window.__rpc = async function(method, params) {
-      addLog('RPC → ' + method + '(' + JSON.stringify(params || {}) + ')');
-      performance.mark('rpc-start');
-      try {
-        var result = await window.__client.rpc(method, params);
-        performance.mark('rpc-end');
-        performance.measure('rpc-' + method, 'rpc-start', 'rpc-end');
-        document.getElementById('rpc-result').textContent = JSON.stringify(result);
-        addRpcVisual(method, params, result, false);
-        addLog('RPC ← ' + method + ' = ' + JSON.stringify(result));
-
-        if (method === 'addTask' && params && params.title) {
-          if (!window.__localBoard) window.__localBoard = { columns: ['todo', 'in-progress', 'done'], tasks: [] };
-          window.__localBoard.tasks.push({ id: result.id || 'task-?', title: params.title, column: 'todo' });
-          updateBoardVisual(window.__localBoard);
-        } else if (method === 'moveTask' && params && params.taskId && window.__localBoard) {
-          var t = window.__localBoard.tasks.find(function(t) { return t.id === params.taskId; });
-          if (t) t.column = params.column;
-          updateBoardVisual(window.__localBoard);
+        var authInfo = null;
+        if (opts && opts.auth && opts.auth.token === 'valid-token') {
+          authInfo = { cls: 'valid', icon: '✓', text: 'Authenticated (token)' };
+        } else if (opts && opts.auth && opts.auth.token) {
+          authInfo = {
+            cls: 'valid',
+            icon: '✓',
+            text: 'Token: ' + opts.auth.token.slice(0, 8) + '…',
+          };
+        } else {
+          authInfo = { cls: 'anon', icon: '○', text: 'Anonymous' };
         }
-        return result;
-      } catch (e) {
-        addRpcVisual(method, params, e.message, true);
-        addLog('RPC ✗ ' + method + ': ' + e.message, 'error');
-        throw e;
-      }
-    };
+        updateConnVisual('connected', authInfo);
+        addLog('WebSocket connected ✓');
+        return client.getConnectionState();
+      };
 
-    window.__subscribeEvent = function(eventName) {
-      addLog('Subscribing to event: ' + eventName);
-      window.__client.on(eventName, function(payload) {
-        window.__events.push({ event: eventName, data: payload.data, timestamp: payload.timestamp });
-        document.getElementById('event-log').textContent = JSON.stringify(window.__events);
+      window.__rpc = async function (method, params) {
+        addLog('RPC → ' + method + '(' + JSON.stringify(params || {}) + ')');
+        performance.mark('rpc-start');
+        try {
+          var result = await window.__client.rpc(method, params);
+          performance.mark('rpc-end');
+          performance.measure('rpc-' + method, 'rpc-start', 'rpc-end');
+          document.getElementById('rpc-result').textContent = JSON.stringify(result);
+          addRpcVisual(method, params, result, false);
+          addLog('RPC ← ' + method + ' = ' + JSON.stringify(result));
 
+          if (method === 'addTask' && params && params.title) {
+            if (!window.__localBoard)
+              window.__localBoard = { columns: ['todo', 'in-progress', 'done'], tasks: [] };
+            window.__localBoard.tasks.push({
+              id: result.id || 'task-?',
+              title: params.title,
+              column: 'todo',
+            });
+            updateBoardVisual(window.__localBoard);
+          } else if (method === 'moveTask' && params && params.taskId && window.__localBoard) {
+            var t = window.__localBoard.tasks.find(function (t) {
+              return t.id === params.taskId;
+            });
+            if (t) t.column = params.column;
+            updateBoardVisual(window.__localBoard);
+          }
+          return result;
+        } catch (e) {
+          addRpcVisual(method, params, e.message, true);
+          addLog('RPC ✗ ' + method + ': ' + e.message, 'error');
+          throw e;
+        }
+      };
+
+      window.__subscribeEvent = function (eventName) {
+        addLog('Subscribing to event: ' + eventName);
+        window.__client.on(eventName, function (payload) {
+          window.__events.push({
+            event: eventName,
+            data: payload.data,
+            timestamp: payload.timestamp,
+          });
+          document.getElementById('event-log').textContent = JSON.stringify(window.__events);
+
+          var body = document.getElementById('vis-events-body');
+          var div = document.createElement('div');
+          div.className = 'event-entry';
+          div.innerHTML =
+            '<span class="event-dir inbound">▼ IN</span>' +
+            '<span class="event-name">' +
+            eventName +
+            '</span>' +
+            '<span class="event-data">' +
+            JSON.stringify(payload.data) +
+            '</span>';
+          body.appendChild(div);
+          addLog('Event ▼ ' + eventName + ': ' + JSON.stringify(payload.data));
+        });
+      };
+
+      window.__emitEvent = function (eventName, data) {
+        window.__client.emit(eventName, data);
         var body = document.getElementById('vis-events-body');
         var div = document.createElement('div');
         div.className = 'event-entry';
         div.innerHTML =
-          '<span class="event-dir inbound">▼ IN</span>' +
-          '<span class="event-name">' + eventName + '</span>' +
-          '<span class="event-data">' + JSON.stringify(payload.data) + '</span>';
+          '<span class="event-dir outbound">▲ OUT</span>' +
+          '<span class="event-name">' +
+          eventName +
+          '</span>' +
+          '<span class="event-data">' +
+          JSON.stringify(data) +
+          '</span>';
         body.appendChild(div);
-        addLog('Event ▼ ' + eventName + ': ' + JSON.stringify(payload.data));
-      });
-    };
+        addLog('Event ▲ ' + eventName + ': ' + JSON.stringify(data));
+      };
 
-    window.__emitEvent = function(eventName, data) {
-      window.__client.emit(eventName, data);
-      var body = document.getElementById('vis-events-body');
-      var div = document.createElement('div');
-      div.className = 'event-entry';
-      div.innerHTML =
-        '<span class="event-dir outbound">▲ OUT</span>' +
-        '<span class="event-name">' + eventName + '</span>' +
-        '<span class="event-data">' + JSON.stringify(data) + '</span>';
-      body.appendChild(div);
-      addLog('Event ▲ ' + eventName + ': ' + JSON.stringify(data));
-    };
+      window.__subscribeState = function (key) {
+        addLog('Subscribing to state: ' + key);
+        window.__client.subscribeState(key, function (state) {
+          window.__stateUpdates.push({ key: key, state: state });
+          document.getElementById('state-data').textContent = JSON.stringify(window.__stateUpdates);
 
-    window.__subscribeState = function(key) {
-      addLog('Subscribing to state: ' + key);
-      window.__client.subscribeState(key, function(state) {
-        window.__stateUpdates.push({ key: key, state: state });
-        document.getElementById('state-data').textContent = JSON.stringify(window.__stateUpdates);
+          var body = document.getElementById('vis-state-body');
+          var div = document.createElement('div');
+          div.className = 'state-entry';
+          div.innerHTML =
+            '<div class="state-key">⬤ ' +
+            key +
+            '</div>' +
+            '<div class="state-value">' +
+            JSON.stringify(state, null, 2) +
+            '</div>';
+          body.appendChild(div);
 
-        var body = document.getElementById('vis-state-body');
-        var div = document.createElement('div');
-        div.className = 'state-entry';
-        div.innerHTML =
-          '<div class="state-key">⬤ ' + key + '</div>' +
-          '<div class="state-value">' + JSON.stringify(state, null, 2) + '</div>';
-        body.appendChild(div);
+          if (state && state.columns && state.tasks) {
+            updateBoardVisual(state);
+          }
+          addLog('State patch ← ' + key);
+        });
+      };
 
-        if (state && state.columns && state.tasks) {
-          updateBoardVisual(state);
-        }
-        addLog('State patch ← ' + key);
-      });
-    };
+      // --- CRDT helpers ---
+      window.__crdtStore = null;
+      window.__crdtValues = {};
 
-    // --- CRDT helpers ---
-    window.__crdtStore = null;
-    window.__crdtValues = {};
+      window.__initCrdt = function (nodeId) {
+        window.__crdtStore = new Datasole.CrdtStore(nodeId || 'test-client');
+        window.__crdtStore.register('counter', 'pn-counter');
+        updateCrdtVisual(0);
+        addLog('CRDT initialized: PNCounter (node=' + (nodeId || 'test-client') + ')');
+        window.__client.on('crdt:state', function (payload) {
+          window.__crdtStore.mergeRemoteState('counter', payload.data);
+          var c = window.__crdtStore.get('counter');
+          window.__crdtValues.counter = c ? c.value() : 0;
+          updateCrdtVisual(window.__crdtValues.counter);
+        });
+      };
 
-    window.__initCrdt = function(nodeId) {
-      window.__crdtStore = new Datasole.CrdtStore(nodeId || 'test-client');
-      window.__crdtStore.register('counter', 'pn-counter');
-      updateCrdtVisual(0);
-      addLog('CRDT initialized: PNCounter (node=' + (nodeId || 'test-client') + ')');
-      window.__client.on('crdt:state', function(payload) {
-        window.__crdtStore.mergeRemoteState('counter', payload.data);
+      window.__crdtIncrement = function () {
         var c = window.__crdtStore.get('counter');
-        window.__crdtValues.counter = c ? c.value() : 0;
-        updateCrdtVisual(window.__crdtValues.counter);
-      });
-    };
+        var op = c.increment();
+        window.__client.emit('crdt:op', op);
+        window.__crdtValues.counter = c.value();
+        crdtOps.push({ cls: 'inc', label: '+1' });
+        updateCrdtVisual(c.value());
+        addLog('CRDT +1 → ' + c.value());
+        return c.value();
+      };
 
-    window.__crdtIncrement = function() {
-      var c = window.__crdtStore.get('counter');
-      var op = c.increment();
-      window.__client.emit('crdt:op', op);
-      window.__crdtValues.counter = c.value();
-      crdtOps.push({ cls: 'inc', label: '+1' });
-      updateCrdtVisual(c.value());
-      addLog('CRDT +1 → ' + c.value());
-      return c.value();
-    };
+      window.__crdtDecrement = function () {
+        var c = window.__crdtStore.get('counter');
+        var op = c.decrement();
+        window.__client.emit('crdt:op', op);
+        window.__crdtValues.counter = c.value();
+        crdtOps.push({ cls: 'dec', label: '−1' });
+        updateCrdtVisual(c.value());
+        addLog('CRDT −1 → ' + c.value());
+        return c.value();
+      };
 
-    window.__crdtDecrement = function() {
-      var c = window.__crdtStore.get('counter');
-      var op = c.decrement();
-      window.__client.emit('crdt:op', op);
-      window.__crdtValues.counter = c.value();
-      crdtOps.push({ cls: 'dec', label: '−1' });
-      updateCrdtVisual(c.value());
-      addLog('CRDT −1 → ' + c.value());
-      return c.value();
-    };
+      window.__crdtGetValue = function () {
+        var c = window.__crdtStore ? window.__crdtStore.get('counter') : null;
+        return c ? c.value() : 0;
+      };
 
-    window.__crdtGetValue = function() {
-      var c = window.__crdtStore ? window.__crdtStore.get('counter') : null;
-      return c ? c.value() : 0;
-    };
+      // --- Session helpers ---
+      window.__saveProgress = async function (level, score) {
+        var result = await window.__client.rpc('saveProgress', { level: level, score: score });
+        var body = document.getElementById('vis-session-body');
+        body.innerHTML =
+          '<div class="session-kv">' +
+          '<span class="session-label">User:</span><span class="session-val">session-user-1</span>' +
+          '<span class="session-label">Level:</span><span class="session-val">' +
+          level +
+          '</span>' +
+          '<span class="session-label">Score:</span><span class="session-val">' +
+          score +
+          '</span>' +
+          '<span class="session-label">Status:</span><span class="session-val" style="color:var(--green)">✓ Saved</span>' +
+          '</div>';
+        addLog('Session saved: level=' + level + ' score=' + score);
+        return result;
+      };
 
-    // --- Session helpers ---
-    window.__saveProgress = async function(level, score) {
-      var result = await window.__client.rpc('saveProgress', { level: level, score: score });
-      var body = document.getElementById('vis-session-body');
-      body.innerHTML =
-        '<div class="session-kv">' +
-        '<span class="session-label">User:</span><span class="session-val">session-user-1</span>' +
-        '<span class="session-label">Level:</span><span class="session-val">' + level + '</span>' +
-        '<span class="session-label">Score:</span><span class="session-val">' + score + '</span>' +
-        '<span class="session-label">Status:</span><span class="session-val" style="color:var(--green)">✓ Saved</span>' +
-        '</div>';
-      addLog('Session saved: level=' + level + ' score=' + score);
-      return result;
-    };
+      window.__getProgress = async function () {
+        var result = await window.__client.rpc('getProgress');
+        var body = document.getElementById('vis-session-body');
+        body.innerHTML =
+          '<div class="session-kv">' +
+          '<span class="session-label">User:</span><span class="session-val">session-user-1</span>' +
+          '<span class="session-label">Level:</span><span class="session-val">' +
+          (result.level || '—') +
+          '</span>' +
+          '<span class="session-label">Score:</span><span class="session-val">' +
+          (result.score || '—') +
+          '</span>' +
+          '<span class="session-label">Status:</span><span class="session-val" style="color:var(--cyan)">✓ Restored</span>' +
+          '</div>';
+        addLog('Session restored: level=' + result.level + ' score=' + result.score);
+        return result;
+      };
 
-    window.__getProgress = async function() {
-      var result = await window.__client.rpc('getProgress');
-      var body = document.getElementById('vis-session-body');
-      body.innerHTML =
-        '<div class="session-kv">' +
-        '<span class="session-label">User:</span><span class="session-val">session-user-1</span>' +
-        '<span class="session-label">Level:</span><span class="session-val">' + (result.level || '—') + '</span>' +
-        '<span class="session-label">Score:</span><span class="session-val">' + (result.score || '—') + '</span>' +
-        '<span class="session-label">Status:</span><span class="session-val" style="color:var(--cyan)">✓ Restored</span>' +
-        '</div>';
-      addLog('Session restored: level=' + result.level + ' score=' + result.score);
-      return result;
-    };
+      // --- Task board helpers ---
+      window.__boardState = null;
 
-    // --- Task board helpers ---
-    window.__boardState = null;
+      window.__subscribeBoard = function () {
+        window.__client.subscribeState('board', function (state) {
+          window.__boardState = state;
+          document.getElementById('state-data').textContent = JSON.stringify(state);
+          updateBoardVisual(state);
+        });
+      };
 
-    window.__subscribeBoard = function() {
-      window.__client.subscribeState('board', function(state) {
-        window.__boardState = state;
-        document.getElementById('state-data').textContent = JSON.stringify(state);
-        updateBoardVisual(state);
-      });
-    };
-
-    window.__addTask = async function(title) {
-      var result = await window.__client.rpc('addTask', { title: title });
-      if (!window.__localBoard) window.__localBoard = { columns: ['todo', 'in-progress', 'done'], tasks: [] };
-      window.__localBoard.tasks.push({ id: result.id, title: title, column: 'todo' });
-      updateBoardVisual(window.__localBoard);
-      addRpcVisual('addTask', { title: title }, result, false);
-      addLog('Task added: "' + title + '" → todo');
-      return result;
-    };
-
-    window.__moveTask = async function(taskId, column) {
-      var result = await window.__client.rpc('moveTask', { taskId: taskId, column: column });
-      if (window.__localBoard) {
-        var t = window.__localBoard.tasks.find(function(t) { return t.id === taskId; });
-        if (t) t.column = column;
+      window.__addTask = async function (title) {
+        var result = await window.__client.rpc('addTask', { title: title });
+        if (!window.__localBoard)
+          window.__localBoard = { columns: ['todo', 'in-progress', 'done'], tasks: [] };
+        window.__localBoard.tasks.push({ id: result.id, title: title, column: 'todo' });
         updateBoardVisual(window.__localBoard);
-      }
-      addRpcVisual('moveTask', { taskId: taskId, column: column }, result, false);
-      addLog('Task moved: ' + taskId + ' → ' + column);
-      return result;
-    };
+        addRpcVisual('addTask', { title: title }, result, false);
+        addLog('Task added: "' + title + '" → todo');
+        return result;
+      };
 
-    window.__disconnect = async function() {
-      if (window.__client) {
-        await window.__client.disconnect();
-        document.getElementById('connection-state').textContent = 'disconnected';
-        updateConnVisual('disconnected');
-        addLog('Disconnected');
-      }
-    };
+      window.__moveTask = async function (taskId, column) {
+        var result = await window.__client.rpc('moveTask', { taskId: taskId, column: column });
+        if (window.__localBoard) {
+          var t = window.__localBoard.tasks.find(function (t) {
+            return t.id === taskId;
+          });
+          if (t) t.column = column;
+          updateBoardVisual(window.__localBoard);
+        }
+        addRpcVisual('moveTask', { taskId: taskId, column: column }, result, false);
+        addLog('Task moved: ' + taskId + ' → ' + column);
+        return result;
+      };
 
-    window.__getConnectionState = function() {
-      return window.__client ? window.__client.getConnectionState() : 'no-client';
-    };
+      window.__disconnect = async function () {
+        if (window.__client) {
+          await window.__client.disconnect();
+          document.getElementById('connection-state').textContent = 'disconnected';
+          updateConnVisual('disconnected');
+          addLog('Disconnected');
+        }
+      };
 
-    performance.mark('page-loaded');
-    performance.measure('page-load', 'navigationStart', 'page-loaded');
-  </script>
-</body>
+      window.__getConnectionState = function () {
+        return window.__client ? window.__client.getConnectionState() : 'no-client';
+      };
+
+      performance.mark('page-loaded');
+      performance.measure('page-load', 'navigationStart', 'page-loaded');
+    </script>
+  </body>
 </html>

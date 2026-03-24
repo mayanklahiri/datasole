@@ -1,5 +1,5 @@
 // E2E: test WebSocket connection
-window.__test_connect = async function(url) {
+window.__test_connect = async function (url) {
   const client = new Datasole.DatasoleClient({ url });
   try {
     await client.connect();

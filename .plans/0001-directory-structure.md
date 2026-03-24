@@ -16,6 +16,7 @@ Three top-level source modules with strict dependency direction: `shared` has ze
 ## Build System
 
 Rollup with multi-target output:
+
 - Client: IIFE (script tag), ESM, CJS bundles + worker IIFE
 - Server: CJS + ESM (bundles ws, utf-8-validate, bufferutil)
 - Shared: CJS + ESM

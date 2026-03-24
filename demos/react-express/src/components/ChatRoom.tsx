@@ -42,9 +42,7 @@ export function ChatRoom() {
         manual subscribe. Open a second tab to try.
       </div>
       <div className="chat-messages">
-        {(!messages || messages.length === 0) && (
-          <div className="chat-empty">No messages yet</div>
-        )}
+        {(!messages || messages.length === 0) && <div className="chat-empty">No messages yet</div>}
         {(messages ?? []).map((msg) => (
           <div key={msg.id} className="chat-msg">
             <div className="author">

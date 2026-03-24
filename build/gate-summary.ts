@@ -154,7 +154,12 @@ function printE2eServerLogsIfPresent(): void {
       const text = readFileSync(path, 'utf8').trimEnd();
       if (!text) continue;
       console.log(`  ── ${name} ──`);
-      console.log(text.split('\n').map((l) => `  ${l}`).join('\n'));
+      console.log(
+        text
+          .split('\n')
+          .map((l) => `  ${l}`)
+          .join('\n'),
+      );
     } catch {
       /* ignore per-file errors */
     }

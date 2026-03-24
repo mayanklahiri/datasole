@@ -19,15 +19,12 @@ export default {
           clone.alt = (img as HTMLImageElement).alt;
           overlay.appendChild(clone);
           overlay.addEventListener('click', () => overlay.remove());
-          document.addEventListener(
-            'keydown',
-            function onKey(e: KeyboardEvent) {
-              if (e.key === 'Escape') {
-                overlay.remove();
-                document.removeEventListener('keydown', onKey);
-              }
-            },
-          );
+          document.addEventListener('keydown', function onKey(e: KeyboardEvent) {
+            if (e.key === 'Escape') {
+              overlay.remove();
+              document.removeEventListener('keydown', onKey);
+            }
+          });
           document.body.appendChild(overlay);
         });
       });

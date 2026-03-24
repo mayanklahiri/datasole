@@ -51,11 +51,7 @@ function formatBytes(bytes: number): string {
 
 // ── Scanning ────────────────────────────────────────────────────────
 
-function walkDir(
-  dir: string,
-  relBase: string,
-  filter: (name: string) => boolean,
-): ArtifactEntry[] {
+function walkDir(dir: string, relBase: string, filter: (name: string) => boolean): ArtifactEntry[] {
   const results: ArtifactEntry[] = [];
   let entries: string[];
   try {
@@ -189,11 +185,7 @@ function categorize(file: string): Category {
  * Print a table of artifacts. `labelCol` is the visible character width
  * allocated for the left column (indent + label), used for alignment.
  */
-function printGroup(
-  heading: string,
-  entries: ArtifactEntry[],
-  labelCol: number,
-): void {
+function printGroup(heading: string, entries: ArtifactEntry[], labelCol: number): void {
   console.log(`  ${heading}`);
 
   const sorted = [...entries].sort((a, b) => a.raw - b.raw);

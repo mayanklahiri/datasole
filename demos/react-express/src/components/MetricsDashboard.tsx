@@ -48,13 +48,15 @@ export function MetricsDashboard() {
             <div className="metric-card">
               <div className="metric-label">CPU</div>
               <div className="metric-value">
-                {metrics.cpuUsage}<span className="metric-unit">ms</span>
+                {metrics.cpuUsage}
+                <span className="metric-unit">ms</span>
               </div>
             </div>
             <div className="metric-card">
               <div className="metric-label">Memory</div>
               <div className="metric-value">
-                {metrics.memoryMB}<span className="metric-unit">MB</span>
+                {metrics.memoryMB}
+                <span className="metric-unit">MB</span>
               </div>
             </div>
             <div className="metric-card">
@@ -64,7 +66,8 @@ export function MetricsDashboard() {
             <div className="metric-card">
               <div className="metric-label">Total RAM</div>
               <div className="metric-value">
-                {metrics.totalMemoryGB}<span className="metric-unit">GB</span>
+                {metrics.totalMemoryGB}
+                <span className="metric-unit">GB</span>
               </div>
             </div>
             <div className="metric-card">
@@ -78,7 +81,8 @@ export function MetricsDashboard() {
             <div className="metric-card span-2">
               <div className="metric-label">Server Time</div>
               <div className="metric-value">
-                {metrics.serverTime}<span className="metric-unit">{metrics.timezone}</span>
+                {metrics.serverTime}
+                <span className="metric-unit">{metrics.timezone}</span>
               </div>
             </div>
           </div>

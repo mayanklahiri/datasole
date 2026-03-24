@@ -37,40 +37,60 @@
     metricsEl.className = 'metrics-grid';
     metricsEl.innerHTML =
       '<div class="metric-card">' +
-        '<div class="metric-label">Uptime</div>' +
-        '<div class="metric-value accent">' + formatUptime(d.uptime) + '</div>' +
+      '<div class="metric-label">Uptime</div>' +
+      '<div class="metric-value accent">' +
+      formatUptime(d.uptime) +
+      '</div>' +
       '</div>' +
       '<div class="metric-card">' +
-        '<div class="metric-label">Connections</div>' +
-        '<div class="metric-value">' + d.connections + '</div>' +
+      '<div class="metric-label">Connections</div>' +
+      '<div class="metric-value">' +
+      d.connections +
+      '</div>' +
       '</div>' +
       '<div class="metric-card">' +
-        '<div class="metric-label">CPU</div>' +
-        '<div class="metric-value">' + d.cpuUsage + '<span class="metric-unit">ms</span></div>' +
+      '<div class="metric-label">CPU</div>' +
+      '<div class="metric-value">' +
+      d.cpuUsage +
+      '<span class="metric-unit">ms</span></div>' +
       '</div>' +
       '<div class="metric-card">' +
-        '<div class="metric-label">Memory</div>' +
-        '<div class="metric-value">' + d.memoryMB + '<span class="metric-unit">MB</span></div>' +
+      '<div class="metric-label">Memory</div>' +
+      '<div class="metric-value">' +
+      d.memoryMB +
+      '<span class="metric-unit">MB</span></div>' +
       '</div>' +
       '<div class="metric-card">' +
-        '<div class="metric-label">CPUs</div>' +
-        '<div class="metric-value">' + d.cpuCount + '</div>' +
+      '<div class="metric-label">CPUs</div>' +
+      '<div class="metric-value">' +
+      d.cpuCount +
+      '</div>' +
       '</div>' +
       '<div class="metric-card">' +
-        '<div class="metric-label">Total RAM</div>' +
-        '<div class="metric-value">' + d.totalMemoryGB + '<span class="metric-unit">GB</span></div>' +
+      '<div class="metric-label">Total RAM</div>' +
+      '<div class="metric-value">' +
+      d.totalMemoryGB +
+      '<span class="metric-unit">GB</span></div>' +
       '</div>' +
       '<div class="metric-card">' +
-        '<div class="metric-label">Messages In</div>' +
-        '<div class="metric-value">' + d.messagesIn + '</div>' +
+      '<div class="metric-label">Messages In</div>' +
+      '<div class="metric-value">' +
+      d.messagesIn +
+      '</div>' +
       '</div>' +
       '<div class="metric-card">' +
-        '<div class="metric-label">Messages Out</div>' +
-        '<div class="metric-value">' + d.messagesOut + '</div>' +
+      '<div class="metric-label">Messages Out</div>' +
+      '<div class="metric-value">' +
+      d.messagesOut +
+      '</div>' +
       '</div>' +
       '<div class="metric-card span-2">' +
-        '<div class="metric-label">Server Time</div>' +
-        '<div class="metric-value">' + d.serverTime + '<span class="metric-unit">' + d.timezone + '</span></div>' +
+      '<div class="metric-label">Server Time</div>' +
+      '<div class="metric-value">' +
+      d.serverTime +
+      '<span class="metric-unit">' +
+      d.timezone +
+      '</span></div>' +
       '</div>';
   });
 
@@ -83,9 +103,13 @@
 
   function formatTime(ts) {
     var d = new Date(ts);
-    return d.getHours().toString().padStart(2, '0') + ':' +
-           d.getMinutes().toString().padStart(2, '0') + ':' +
-           d.getSeconds().toString().padStart(2, '0');
+    return (
+      d.getHours().toString().padStart(2, '0') +
+      ':' +
+      d.getMinutes().toString().padStart(2, '0') +
+      ':' +
+      d.getSeconds().toString().padStart(2, '0')
+    );
   }
 
   function escapeHtml(str) {
@@ -101,9 +125,14 @@
     var el = document.createElement('div');
     el.className = 'chat-msg';
     el.innerHTML =
-      '<div class="author">' + escapeHtml(msg.username) +
-      '<span class="time">' + formatTime(msg.ts) + '</span></div>' +
-      '<div class="body">' + escapeHtml(msg.text) + '</div>';
+      '<div class="author">' +
+      escapeHtml(msg.username) +
+      '<span class="time">' +
+      formatTime(msg.ts) +
+      '</span></div>' +
+      '<div class="body">' +
+      escapeHtml(msg.text) +
+      '</div>';
     chatMessages.appendChild(el);
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
@@ -116,7 +145,9 @@
     if (!messages) return;
     seenIds.clear();
     chatMessages.innerHTML = '';
-    messages.forEach(function (msg) { appendMessage(msg); });
+    messages.forEach(function (msg) {
+      appendMessage(msg);
+    });
   });
 
   function sendChat() {
@@ -142,7 +173,11 @@
   rpcCall.addEventListener('click', async function () {
     var min = parseInt(rpcMin.value, 10) || 1;
     var max = parseInt(rpcMax.value, 10) || 100;
-    if (min > max) { var t = min; min = max; max = t; }
+    if (min > max) {
+      var t = min;
+      min = max;
+      max = t;
+    }
 
     rpcCall.disabled = true;
     var start = performance.now();
@@ -151,15 +186,25 @@
       var elapsed = (performance.now() - start).toFixed(1);
 
       rpcResult.innerHTML =
-        '<div class="rpc-result-value">' + data.value + '</div>' +
-        '<div class="rpc-result-meta">Range [' + min + ', ' + max + '] &middot; ' + elapsed + ' ms</div>';
+        '<div class="rpc-result-value">' +
+        data.value +
+        '</div>' +
+        '<div class="rpc-result-meta">Range [' +
+        min +
+        ', ' +
+        max +
+        '] &middot; ' +
+        elapsed +
+        ' ms</div>';
 
       history.unshift({ value: data.value, min: min, max: max, ms: elapsed });
       if (history.length > 10) history.pop();
       renderHistory();
     } catch (err) {
       rpcResult.innerHTML =
-        '<div class="rpc-result-empty" style="color:var(--red)">Error: ' + escapeHtml(err.message || String(err)) + '</div>';
+        '<div class="rpc-result-empty" style="color:var(--red)">Error: ' +
+        escapeHtml(err.message || String(err)) +
+        '</div>';
     }
     rpcCall.disabled = false;
   });
@@ -173,8 +218,16 @@
     history.forEach(function (h) {
       html +=
         '<div class="rpc-history-item">' +
-          '<span class="val">' + h.value + '</span>' +
-          '<span class="meta">[' + h.min + '–' + h.max + '] ' + h.ms + ' ms</span>' +
+        '<span class="val">' +
+        h.value +
+        '</span>' +
+        '<span class="meta">[' +
+        h.min +
+        '–' +
+        h.max +
+        '] ' +
+        h.ms +
+        ' ms</span>' +
         '</div>';
     });
     rpcHistory.innerHTML = html;

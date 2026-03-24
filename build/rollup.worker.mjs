@@ -20,7 +20,7 @@ export default {
     replace({
       preventAssignment: true,
       values: {
-        '__BUILD_VERSION__': JSON.stringify(pkg.version),
+        __BUILD_VERSION__: JSON.stringify(pkg.version),
       },
     }),
     resolve({ browser: true, preferBuiltins: false }),

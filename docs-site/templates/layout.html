@@ -1,24 +1,22 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{title}}</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" href="/static/favicon.svg">
-</head>
-<body>
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <a href="/" class="logo">datasole</a>
-    </div>
-    <nav class="sidebar-nav">
-      {{nav}}
-      <a href="/dashboard/">Dashboard</a>
-    </nav>
-  </aside>
-  <main class="content">
-    {{body}}
-  </main>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{title}}</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="icon" href="/static/favicon.svg" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a href="/" class="logo">datasole</a>
+      </div>
+      <nav class="sidebar-nav">
+        {{nav}}
+        <a href="/dashboard/">Dashboard</a>
+      </nav>
+    </aside>
+    <main class="content">{{body}}</main>
+  </body>
 </html>
