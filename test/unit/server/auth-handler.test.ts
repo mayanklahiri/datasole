@@ -33,12 +33,12 @@ describe('createAuthHandler', () => {
     expect(r).toEqual({ authenticated: false });
   });
 
-  it('on throw, returns anonymous when allowAnonymous', async () => {
+  it('on throw, returns unauthenticated even when allowAnonymous (never escalate)', async () => {
     const h = createAuthHandler(async () => Promise.reject(new Error('boom')), {
       allowAnonymous: true,
     });
     const r = await h.verify({} as never);
-    expect(r).toEqual({ authenticated: true, userId: 'anonymous' });
+    expect(r).toEqual({ authenticated: false });
   });
 
   it('on throw, returns not authenticated when anonymous not allowed', async () => {

@@ -275,7 +275,10 @@ export class DatasoleClient {
   private scheduleReconnect(): void {
     this.state = 'reconnecting';
     this.reconnectAttempts++;
-    const delay = this.options.reconnectInterval * Math.min(this.reconnectAttempts, 5);
+    const base = this.options.reconnectInterval;
+    const exp = Math.min(2 ** this.reconnectAttempts, 64);
+    const jitter = Math.random() * base;
+    const delay = base * exp + jitter;
     this.reconnectTimer = setTimeout(() => {
       this.connect().catch(() => {});
     }, delay);

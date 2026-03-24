@@ -20,7 +20,11 @@ export class EventBus {
     if (!handlers) return;
     const payload = { event, data, timestamp: Date.now() };
     for (const handler of handlers) {
-      handler(payload);
+      try {
+        handler(payload);
+      } catch {
+        // Isolate handler errors so one bad handler does not block others.
+      }
     }
   }
 }

@@ -69,12 +69,18 @@ export class PNCounter implements Crdt<number> {
   }
 
   merge(remote: CrdtState<number>): void {
+    if (!remote?.metadata) return;
     const rv = (remote.metadata as unknown as { vector?: PNCounterVector })?.vector;
-    if (rv) {
+    if (!rv || typeof rv !== 'object') return;
+    if (rv.increments && typeof rv.increments === 'object') {
       for (const [nodeId, count] of Object.entries(rv.increments)) {
+        if (typeof count !== 'number' || !Number.isFinite(count)) continue;
         this.increments.set(nodeId, Math.max(this.increments.get(nodeId) ?? 0, count));
       }
+    }
+    if (rv.decrements && typeof rv.decrements === 'object') {
       for (const [nodeId, count] of Object.entries(rv.decrements)) {
+        if (typeof count !== 'number' || !Number.isFinite(count)) continue;
         this.decrements.set(nodeId, Math.max(this.decrements.get(nodeId) ?? 0, count));
       }
     }

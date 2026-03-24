@@ -69,8 +69,17 @@ export class WsServer {
   }
 
   private async handleUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer): Promise<void> {
+    const AUTH_TIMEOUT_MS = 10_000;
+    const authTimer = setTimeout(() => {
+      socket.write('HTTP/1.1 408 Request Timeout\r\n\r\n');
+      socket.destroy();
+    }, AUTH_TIMEOUT_MS);
+
     try {
       const authResult = await this.authHandler(req);
+      clearTimeout(authTimer);
+      if (socket.destroyed) return;
+
       if (!authResult.authenticated) {
         socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
         socket.destroy();
@@ -83,8 +92,11 @@ export class WsServer {
         this.connectionHandler?.(ws, { id, remoteAddress, auth: authResult });
       });
     } catch {
-      socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-      socket.destroy();
+      clearTimeout(authTimer);
+      if (!socket.destroyed) {
+        socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+        socket.destroy();
+      }
     }
   }
 }

@@ -47,6 +47,14 @@ export class LWWRegister<T = unknown> implements Crdt<T> {
 
   merge(remote: CrdtState<T>): void {
     if (
+      !remote?.metadata ||
+      typeof remote.metadata.timestamp !== 'number' ||
+      typeof remote.metadata.nodeId !== 'string' ||
+      typeof remote.metadata.version !== 'number'
+    ) {
+      return;
+    }
+    if (
       remote.metadata.timestamp > this._timestamp ||
       (remote.metadata.timestamp === this._timestamp && remote.metadata.nodeId > this.nodeId)
     ) {

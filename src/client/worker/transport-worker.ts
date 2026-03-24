@@ -11,19 +11,20 @@ const sharedBuffer = new WorkerSharedBuffer();
 let ws: WebSocket | null = null;
 
 self.onmessage = (event: MessageEvent) => {
+  if (!event.data || typeof event.data !== 'object') return;
   const { type, payload } = event.data;
   switch (type) {
     case 'connect':
-      connect(payload.url, payload.protocols);
+      if (payload?.url) connect(payload.url, payload.protocols);
       break;
     case 'send':
-      ws?.send(payload.data);
+      if (payload?.data) ws?.send(payload.data);
       break;
     case 'disconnect':
       ws?.close();
       break;
     case 'init-sab':
-      sharedBuffer.init(payload.buffer);
+      if (payload?.buffer) sharedBuffer.init(payload.buffer);
       break;
   }
 };
@@ -45,18 +46,22 @@ function connect(url: string, protocols?: string[]) {
   };
 
   ws.onmessage = (event) => {
-    const raw = new Uint8Array(event.data as ArrayBuffer);
-    const data = isCompressed(raw) ? decompress(raw) : raw;
-    const frame = decodeFrame(data);
+    try {
+      const raw = new Uint8Array(event.data as ArrayBuffer);
+      const data = isCompressed(raw) ? decompress(raw) : raw;
+      const frame = decodeFrame(data);
 
-    if (sharedBuffer.isAvailable()) {
-      const fullFrame = encodeFrame(frame);
-      if (sharedBuffer.write(fullFrame)) {
-        self.postMessage({ type: 'sab-frame', payload: { length: fullFrame.length } });
-        return;
+      if (sharedBuffer.isAvailable()) {
+        const fullFrame = encodeFrame(frame);
+        if (sharedBuffer.write(fullFrame)) {
+          self.postMessage({ type: 'sab-frame', payload: { length: fullFrame.length } });
+          return;
+        }
       }
-    }
 
-    self.postMessage({ type: 'message', payload: frame }, [frame.payload.buffer]);
+      self.postMessage({ type: 'message', payload: frame }, [frame.payload.buffer]);
+    } catch {
+      // Malformed frame — drop silently to avoid crashing the worker.
+    }
   };
 }

@@ -33,11 +33,17 @@ export class WorkerProxy {
       this.worker.addEventListener('message', openHandler, { once: false });
 
       this.worker.addEventListener('message', (event: MessageEvent) => {
+        if (!event.data || typeof event.data !== 'object') return;
         const { type, payload } = event.data;
+        if (typeof type !== 'string') return;
         const handlers = this.listeners.get(type);
         if (handlers) {
           for (const handler of handlers) {
-            handler(payload);
+            try {
+              handler(payload);
+            } catch {
+              // Isolate handler errors.
+            }
           }
         }
       });

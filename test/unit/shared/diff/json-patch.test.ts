@@ -13,6 +13,13 @@ describe('json-patch (applyPatch)', () => {
     expect(next).toEqual({ value: 42 });
   });
 
+  it('add at /0 with undefined initial state uses array root (state sync)', () => {
+    const msg = { id: '1', text: 'hi', username: 'u', ts: 1 };
+    const next = applyPatch(undefined, [{ op: 'add', path: '/0', value: msg }]);
+    expect(Array.isArray(next)).toBe(true);
+    expect(next).toEqual([msg]);
+  });
+
   it('remove operation', () => {
     const next = applyPatch({ a: 1, b: 2 }, [{ op: 'remove', path: '/b' }]);
     expect(next).toEqual({ a: 1 });

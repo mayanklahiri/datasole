@@ -48,7 +48,14 @@ export class RpcClient {
         reject,
         timer,
       });
-      this.sendFn!(frame);
+
+      try {
+        this.sendFn!(frame);
+      } catch (err) {
+        clearTimeout(timer);
+        this.pending.delete(correlationId);
+        reject(err instanceof Error ? err : new Error('Send failed'));
+      }
     });
   }
 

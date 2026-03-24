@@ -12,7 +12,7 @@ export class LWWMap<T = unknown> implements Crdt<Record<string, T>> {
   constructor(readonly nodeId: string) {}
 
   value(): Record<string, T> {
-    const result: Record<string, T> = {};
+    const result = Object.create(null) as Record<string, T>;
     for (const [key, register] of this.fields) {
       const v = register.value();
       if (v !== undefined) result[key] = v;
@@ -67,12 +67,15 @@ export class LWWMap<T = unknown> implements Crdt<Record<string, T>> {
   }
 
   merge(remote: CrdtState<Record<string, T>>): void {
-    // remote.value contains the resolved map, but for proper merge
-    // we'd need per-field metadata; simplified: treat as bulk LWW
-    if (remote.value && typeof remote.value === 'object') {
-      for (const [key, val] of Object.entries(remote.value)) {
-        this.set(key, val, remote.metadata.timestamp);
-      }
+    if (!remote?.metadata || typeof remote.metadata.timestamp !== 'number') return;
+    if (!remote.value || typeof remote.value !== 'object') return;
+    const entries = Object.entries(remote.value);
+    if (entries.length > 10_000) {
+      throw new Error(`LWWMap merge too large: ${entries.length} entries`);
+    }
+    for (const [key, val] of entries) {
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+      this.set(key, val, remote.metadata.timestamp);
     }
     this._version++;
   }

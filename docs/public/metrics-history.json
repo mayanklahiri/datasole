@@ -1940,5 +1940,215 @@
         "totalOps": 150
       }
     ]
+  },
+  {
+    "timestamp": "2026-03-23T23:58:46.902Z",
+    "coverage": {
+      "lines": 89.72,
+      "branches": 79.08,
+      "functions": 88.96,
+      "statements": 88.93
+    },
+    "clientIifeGzip": 22634,
+    "workerIifeGzip": 15635,
+    "sharedEsmGzip": 67507,
+    "serverEsmGzip": 78288,
+    "unitTests": 507,
+    "e2eTests": 57,
+    "benchmarks": [
+      {
+        "name": "rpc-echo",
+        "opsPerSec": 33,
+        "p50Ms": 0.49,
+        "p95Ms": 0.97,
+        "p99Ms": 4.86,
+        "totalOps": 100
+      },
+      {
+        "name": "rpc-concurrent",
+        "opsPerSec": 37,
+        "p50Ms": 0.39,
+        "p95Ms": 3001.26,
+        "p99Ms": 3001.26,
+        "totalOps": 110
+      },
+      {
+        "name": "server-event-receive",
+        "opsPerSec": 930,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 2790
+      },
+      {
+        "name": "state-sync-receive",
+        "opsPerSec": 194,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 581
+      },
+      {
+        "name": "client-event-emit",
+        "opsPerSec": 231218,
+        "p50Ms": 0,
+        "p95Ms": 0.01,
+        "p99Ms": 0.01,
+        "totalOps": 693655
+      },
+      {
+        "name": "crdt-increment",
+        "opsPerSec": 1299,
+        "p50Ms": 0.72,
+        "p95Ms": 1.36,
+        "p99Ms": 2.54,
+        "totalOps": 3897
+      },
+      {
+        "name": "binary-frame-1kb",
+        "opsPerSec": 6926,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 20779
+      },
+      {
+        "name": "rpc-small-payload",
+        "opsPerSec": 33,
+        "p50Ms": 0.41,
+        "p95Ms": 0.91,
+        "p99Ms": 4.51,
+        "totalOps": 100
+      },
+      {
+        "name": "rpc-large-json",
+        "opsPerSec": 33,
+        "p50Ms": 18.5,
+        "p95Ms": 33.18,
+        "p99Ms": 35.54,
+        "totalOps": 100
+      },
+      {
+        "name": "two-way-latency",
+        "opsPerSec": 36,
+        "p50Ms": 4.09,
+        "p95Ms": 410.15,
+        "p99Ms": 416.57,
+        "totalOps": 107
+      },
+      {
+        "name": "mixed-workload",
+        "opsPerSec": 50,
+        "p50Ms": 0.36,
+        "p95Ms": 0.78,
+        "p99Ms": 4.39,
+        "totalOps": 150
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-03-24T00:18:34.586Z",
+    "coverage": {
+      "lines": 89.65,
+      "branches": 78.44,
+      "functions": 88.99,
+      "statements": 88.8
+    },
+    "clientIifeGzip": 22729,
+    "workerIifeGzip": 15635,
+    "sharedEsmGzip": 67722,
+    "serverEsmGzip": 78288,
+    "unitTests": 508,
+    "e2eTests": 57,
+    "benchmarks": [
+      {
+        "name": "rpc-echo",
+        "opsPerSec": 33,
+        "p50Ms": 0.45,
+        "p95Ms": 0.91,
+        "p99Ms": 4.08,
+        "totalOps": 100
+      },
+      {
+        "name": "rpc-concurrent",
+        "opsPerSec": 37,
+        "p50Ms": 0.47,
+        "p95Ms": 3000.79,
+        "p99Ms": 3000.79,
+        "totalOps": 110
+      },
+      {
+        "name": "server-event-receive",
+        "opsPerSec": 924,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 2771
+      },
+      {
+        "name": "state-sync-receive",
+        "opsPerSec": 194,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 582
+      },
+      {
+        "name": "client-event-emit",
+        "opsPerSec": 234229,
+        "p50Ms": 0,
+        "p95Ms": 0.01,
+        "p99Ms": 0.01,
+        "totalOps": 702688
+      },
+      {
+        "name": "crdt-increment",
+        "opsPerSec": 1323,
+        "p50Ms": 0.75,
+        "p95Ms": 1.33,
+        "p99Ms": 2.33,
+        "totalOps": 3968
+      },
+      {
+        "name": "binary-frame-1kb",
+        "opsPerSec": 6939,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 20818
+      },
+      {
+        "name": "rpc-small-payload",
+        "opsPerSec": 33,
+        "p50Ms": 0.42,
+        "p95Ms": 0.88,
+        "p99Ms": 4.31,
+        "totalOps": 100
+      },
+      {
+        "name": "rpc-large-json",
+        "opsPerSec": 33,
+        "p50Ms": 18.58,
+        "p95Ms": 33.13,
+        "p99Ms": 37.05,
+        "totalOps": 100
+      },
+      {
+        "name": "two-way-latency",
+        "opsPerSec": 36,
+        "p50Ms": 4.09,
+        "p95Ms": 412.86,
+        "p99Ms": 414.39,
+        "totalOps": 107
+      },
+      {
+        "name": "mixed-workload",
+        "opsPerSec": 50,
+        "p50Ms": 0.35,
+        "p95Ms": 0.76,
+        "p99Ms": 4,
+        "totalOps": 150
+      }
+    ]
   }
 ]

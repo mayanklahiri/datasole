@@ -31,7 +31,11 @@ export class StateStore<T = unknown> {
 
   private notify(): void {
     for (const handler of this.subscribers) {
-      handler(this.state);
+      try {
+        handler(this.state);
+      } catch {
+        // Isolate subscriber errors so one bad subscriber does not block others.
+      }
     }
   }
 }

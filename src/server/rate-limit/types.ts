@@ -17,6 +17,8 @@ export interface RateLimiter {
   check(key: string, rule: RateLimitRule): Promise<RateLimitResult>;
   consume(key: string, rule: RateLimitRule, cost?: number): Promise<RateLimitResult>;
   reset(key: string): Promise<void>;
+  /** Clean up resources (intervals, connections). Called by DatasoleServer.close(). */
+  destroy?(): void;
 }
 
 export interface RateLimitConfig {

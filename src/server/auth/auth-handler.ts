@@ -27,9 +27,7 @@ export function createAuthHandler(
         }
         return result;
       } catch {
-        if (allowAnonymous) {
-          return { authenticated: true, userId: 'anonymous' };
-        }
+        // Auth handler errors always deny access — never escalate to authenticated.
         return { authenticated: false };
       }
     },

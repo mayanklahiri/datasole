@@ -45,6 +45,12 @@ export interface DatasoleServerOptions {
   rateLimiter?: RateLimiter;
   rateLimit?: RateLimitConfig;
   session?: SessionOptions;
+  /** Maximum concurrent WebSocket connections (default: 10000). */
+  maxConnections?: number;
+  /** Maximum distinct CRDT keys (default: 1000). */
+  maxCrdtKeys?: number;
+  /** Maximum event name length from clients (default: 256). */
+  maxEventNameLength?: number;
 }
 
 export class DatasoleServer {
@@ -63,12 +69,18 @@ export class DatasoleServer {
   private readonly path: string;
   private readonly authHandler: AuthHandler;
   private readonly perMessageDeflate: boolean | undefined;
+  private readonly maxConnections: number;
+  private readonly maxCrdtKeys: number;
+  private readonly maxEventNameLength: number;
   private wsServer: WsServer | null = null;
 
   constructor(options: DatasoleServerOptions = {}) {
     this.path = options.path ?? DEFAULT_WS_PATH;
     this.authHandler = options.authHandler ?? (async () => ({ authenticated: true }));
     this.perMessageDeflate = options.perMessageDeflate;
+    this.maxConnections = options.maxConnections ?? 10_000;
+    this.maxCrdtKeys = options.maxCrdtKeys ?? 1_000;
+    this.maxEventNameLength = options.maxEventNameLength ?? 256;
     const backend = options.stateBackend ?? new MemoryBackend();
 
     this.stateManager = new StateManager(backend);
@@ -111,6 +123,11 @@ export class DatasoleServer {
     this.wsServer.setAuthHandler(this.authHandler);
 
     this.wsServer.onConnection((ws, info) => {
+      if (this.connections.size >= this.maxConnections) {
+        ws.close(1013, 'Max connections reached');
+        return;
+      }
+
       const auth = info.auth.authenticated
         ? {
             userId: info.auth.userId ?? info.id,
@@ -181,6 +198,13 @@ export class DatasoleServer {
         }
         case Opcode.EVENT_C2S: {
           const payload = deserialize<{ event: string; data: unknown }>(frame.payload);
+          if (
+            typeof payload.event !== 'string' ||
+            payload.event.length === 0 ||
+            payload.event.length > this.maxEventNameLength
+          ) {
+            break;
+          }
           this.eventBus.emit(payload.event, payload.data);
           break;
         }
@@ -352,6 +376,9 @@ export class DatasoleServer {
     const key = op.key ?? connectionId;
     let crdt = this.crdtRegistry.get(key);
     if (!crdt) {
+      if (this.crdtRegistry.size >= this.maxCrdtKeys) {
+        return;
+      }
       switch (op.type) {
         case 'pn-counter':
           crdt = new PNCounter('server');
@@ -417,5 +444,8 @@ export class DatasoleServer {
     this.syncChannels.clear();
     this.connections.clear();
     this.crdtRegistry.clear();
+    if (typeof this.rateLimiter.destroy === 'function') {
+      this.rateLimiter.destroy();
+    }
   }
 }

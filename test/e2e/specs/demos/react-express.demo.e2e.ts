@@ -37,7 +37,7 @@ test.describe('React + Express Demo', () => {
     await expect(page.locator('.metrics-grid')).toBeVisible({ timeout: 5000 });
 
     const cards = page.locator('.metric-card');
-    await expect(cards).toHaveCount(6);
+    await expect(cards).toHaveCount(9);
 
     await snap(page, testInfo, 'demo-react-express-metrics');
   });
@@ -51,8 +51,10 @@ test.describe('React + Express Demo', () => {
     await page.fill('.chat-input-bar input', 'Hello from React e2e!');
     await page.click('.chat-input-bar .btn');
 
-    await expect(page.locator('.chat-msg')).toHaveCount(1, { timeout: 5000 });
-    await expect(page.locator('.chat-msg .body').first()).toHaveText('Hello from React e2e!');
+    await expect(page.locator('.chat-messages .chat-msg')).toHaveCount(1, { timeout: 5000 });
+    await expect(page.locator('.chat-messages .chat-msg .body').first()).toHaveText(
+      'Hello from React e2e!',
+    );
 
     await snap(page, testInfo, 'demo-react-express-chat');
   });

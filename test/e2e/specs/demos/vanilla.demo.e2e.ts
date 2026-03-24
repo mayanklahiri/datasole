@@ -35,7 +35,7 @@ test.describe('Vanilla Demo', () => {
 
     // Verify metric cards have content
     const cards = page.locator('.metric-card');
-    await expect(cards).toHaveCount(6);
+    await expect(cards).toHaveCount(9);
 
     await snap(page, testInfo, 'demo-vanilla-metrics');
   });
