@@ -115,6 +115,9 @@ When making changes:
 
 - TypeScript strict mode; no `any` in public APIs
 - Use `unknown` with type guards instead of `any`
+- **Zero `eslint-disable`** — fix the type or the code, never suppress the rule (see ADR-020)
+- **Zero `as any`** — use generics, `unknown` + guards, or typed interfaces. `as never` is acceptable at generic variance boundaries; `as unknown as T` for test doubles
+- **`catch (e: unknown)`** — never `catch (e: any)`. Use `e instanceof Error` guards
 - Barrel exports via `index.ts` in each directory
 - Imports from `shared` only — no cross-imports between `client` and `server`
 - Run `npm run gate` before pushing — it catches everything

@@ -17,24 +17,24 @@ test.describe('State Sync', () => {
   test('receives state patches from server', async ({ page }, testInfo) => {
     await page.goto(harness.getUrl());
     await expect(page.locator('#status')).toHaveText('ready');
-    await page.evaluate(() => (window as any).__connect());
+    await page.evaluate(() => window.__connect());
 
     await snap(page, testInfo, 'state-sync-before');
 
-    await page.evaluate(() => (window as any).__subscribeState('counter'));
+    await page.evaluate(() => window.__subscribeState('counter'));
 
     await harness.getDatasoleServer().setState('counter', { value: 42 });
 
-    await page.waitForFunction(() => (window as any).__stateUpdates.length > 0, null, {
+    await page.waitForFunction(() => window.__stateUpdates.length > 0, null, {
       timeout: 5000,
     });
 
-    const updates = await page.evaluate(() => (window as any).__stateUpdates);
+    const updates = await page.evaluate(() => window.__stateUpdates);
     expect(updates.length).toBeGreaterThan(0);
     expect(updates[0].key).toBe('counter');
 
     await snap(page, testInfo, 'state-sync-after');
 
-    await page.evaluate(() => (window as any).__disconnect());
+    await page.evaluate(() => window.__disconnect());
   });
 });

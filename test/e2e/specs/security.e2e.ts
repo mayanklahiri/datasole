@@ -55,59 +55,47 @@ test.describe('Security', () => {
     ws.close();
 
     // Server still works after receiving garbage
-    await page.evaluate(() => (window as Record<string, unknown>).__connect());
-    await page.waitForFunction(
-      () => (window as Record<string, unknown>).__getConnectionState?.() === 'connected',
-      undefined,
-      { timeout: 5000 },
-    );
-    const result = await page.evaluate(() =>
-      (window as Record<string, unknown>).__rpc('echo', { alive: true }),
-    );
+    await page.evaluate(() => window.__connect());
+    await page.waitForFunction(() => window.__getConnectionState() === 'connected', undefined, {
+      timeout: 5000,
+    });
+    const result = await page.evaluate(() => window.__rpc('echo', { alive: true }));
     expect(result).toEqual({ alive: true });
   });
 
   test('oversized event name is silently dropped', async ({ page }) => {
     await page.goto(harness.getUrl());
     await expect(page.locator('#status')).toHaveText('ready', { timeout: 5000 });
-    await page.evaluate(() => (window as Record<string, unknown>).__connect());
-    await page.waitForFunction(
-      () => (window as Record<string, unknown>).__getConnectionState?.() === 'connected',
-      undefined,
-      { timeout: 5000 },
-    );
+    await page.evaluate(() => window.__connect());
+    await page.waitForFunction(() => window.__getConnectionState() === 'connected', undefined, {
+      timeout: 5000,
+    });
 
     // Emit event with an absurdly long name — should not crash the server
     await page.evaluate(() => {
       const longName = 'x'.repeat(1000);
-      (window as Record<string, unknown>).__client &&
-        (
-          (window as Record<string, unknown>).__client as { emit: (e: string, d: unknown) => void }
-        ).emit(longName, { test: true });
+      const client = window.__client as { emit: (e: string, d: unknown) => void } | null;
+      client?.emit(longName, { test: true });
     });
 
     await new Promise((r) => setTimeout(r, 300));
 
     // Server is still alive
-    const result = await page.evaluate(() =>
-      (window as Record<string, unknown>).__rpc('echo', { still: 'alive' }),
-    );
+    const result = await page.evaluate(() => window.__rpc('echo', { still: 'alive' }));
     expect(result).toEqual({ still: 'alive' });
   });
 
   test('RPC with unknown method returns error', async ({ page }) => {
     await page.goto(harness.getUrl());
     await expect(page.locator('#status')).toHaveText('ready', { timeout: 5000 });
-    await page.evaluate(() => (window as Record<string, unknown>).__connect());
-    await page.waitForFunction(
-      () => (window as Record<string, unknown>).__getConnectionState?.() === 'connected',
-      undefined,
-      { timeout: 5000 },
-    );
+    await page.evaluate(() => window.__connect());
+    await page.waitForFunction(() => window.__getConnectionState() === 'connected', undefined, {
+      timeout: 5000,
+    });
 
-    await expect(
-      page.evaluate(() => (window as Record<string, unknown>).__rpc('nonexistent_method', {})),
-    ).rejects.toThrow(/Method not found/);
+    await expect(page.evaluate(() => window.__rpc('nonexistent_method', {}))).rejects.toThrow(
+      /Method not found/,
+    );
   });
 
   test('connection limit works', async () => {

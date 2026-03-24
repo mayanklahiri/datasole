@@ -20,7 +20,7 @@ test('page loads with datasole library', async ({ page }, testInfo) => {
   await page.goto(harness.getUrl());
   await expect(page.locator('#status')).toHaveText('ready');
 
-  const loaded = await page.evaluate(() => (window as any).__datasole_loaded);
+  const loaded = await page.evaluate(() => window.__datasole_loaded);
   expect(loaded).toBe(true);
   expect(hasErrors(logs)).toBe(false);
 
@@ -35,17 +35,17 @@ test('connects to WebSocket server', async ({ page }, testInfo) => {
   await page.goto(harness.getUrl());
   await expect(page.locator('#status')).toHaveText('ready');
 
-  const state = await page.evaluate(() => (window as any).__connect());
+  const state = await page.evaluate(() => window.__connect());
   expect(state).toBe('connected');
 
-  const connectionState = await page.evaluate(() => (window as any).__getConnectionState());
+  const connectionState = await page.evaluate(() => window.__getConnectionState());
   expect(connectionState).toBe('connected');
   expect(hasErrors(logs)).toBe(false);
 
   await snap(page, testInfo, 'connection-ws-connected');
 
-  await page.evaluate(() => (window as any).__disconnect());
-  const disconnectedState = await page.evaluate(() => (window as any).__getConnectionState());
+  await page.evaluate(() => window.__disconnect());
+  const disconnectedState = await page.evaluate(() => window.__getConnectionState());
   expect(disconnectedState).toBe('disconnected');
 
   await snap(page, testInfo, 'connection-ws-disconnected');
@@ -55,12 +55,10 @@ test('connects with auth token', async ({ page }, testInfo) => {
   await page.goto(harness.getUrl());
   await expect(page.locator('#status')).toHaveText('ready');
 
-  const state = await page.evaluate(() =>
-    (window as any).__connect({ auth: { token: 'valid-token' } }),
-  );
+  const state = await page.evaluate(() => window.__connect({ auth: { token: 'valid-token' } }));
   expect(state).toBe('connected');
 
   await snap(page, testInfo, 'connection-auth-token');
 
-  await page.evaluate(() => (window as any).__disconnect());
+  await page.evaluate(() => window.__disconnect());
 });

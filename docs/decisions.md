@@ -174,3 +174,18 @@ description: Architecture Decision Records for the datasole project.
 - **Decision:** Remove `ProcessExecutor` entirely. Reduce `ExecutorModel` to three options: `async` (default), `thread`, `thread-pool` (recommended for production). The `async` model remains the default because it is the only fully implemented executor — `thread` and `thread-pool` are stub implementations ready for `workerScript`-based extension. `thread-pool` defaults to `os.availableParallelism()` threads. Threads can initialize their own backend instance or share the parent's — this covers the distributed coordination concern that motivated process isolation.
 
 - **Consequences:** Simpler executor surface (3 models instead of 4). Default is now production-appropriate out of the box. Process-level isolation can still be achieved via pm2 cluster mode or Kubernetes pods. Trade-off: users who specifically need child_process isolation must implement it themselves, but no existing users depended on the stub implementation.
+
+## ADR-020: Zero eslint-disable — fix types, don't suppress rules
+
+- **Status:** Accepted
+- **Date:** 2026-03-23
+
+- **Context:** `eslint-disable` comments are a code smell. They hide type errors behind suppressions instead of fixing the root cause. Even in test code, `as any` casts propagate type-unsafety and make refactoring blind. Two eslint-disable comments existed: one for `@typescript-eslint/no-explicit-any` in a unit test RPC handler that used `ctx: any` instead of `RpcContext`, and one for `no-control-regex` in the build summary printer that matched ANSI escape sequences.
+
+- **Decision:** Adopt a zero-tolerance policy for `eslint-disable` comments and `as any` casts:
+  1. **No `eslint-disable`** — if a rule fires, fix the code. If the rule is wrong for the project, disable it in `.eslintrc` globally with justification.
+  2. **No `as any`** — use proper generics, `unknown` with type guards, or well-typed interfaces. The only acceptable type escape hatches are `as never` (for generic variance boundaries in internal plumbing) and `as unknown as T` (for test doubles where the full interface isn't needed).
+  3. **Typed browser globals** — E2E tests declare a `Window` augmentation (`test/e2e/types/test-window.d.ts`) so Playwright `page.evaluate()` calls are fully typed instead of using `window as any`.
+  4. **`catch (e: unknown)`** — error handlers use `unknown` with `instanceof Error` guards, never `catch (e: any)`.
+
+- **Consequences:** All type errors surface at compile time. Refactoring tools can follow types through the entire codebase including tests. No hidden suppressions. Trade-off: slightly more verbose catch blocks and occasionally verbose generic constraints, but this is a feature, not a cost — it forces explicit handling of edge cases.

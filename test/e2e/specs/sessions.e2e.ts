@@ -19,31 +19,31 @@ test.describe('Sessions', () => {
     await page.waitForSelector('#status', { state: 'attached' });
 
     await page.evaluate(() =>
-      (window as any).__connect({ auth: { headers: { 'x-user-id': 'session-user-1' } } }),
+      window.__connect({ auth: { headers: { 'x-user-id': 'session-user-1' } } }),
     );
-    await page.waitForFunction(() => (window as any).__getConnectionState() === 'connected');
+    await page.waitForFunction(() => window.__getConnectionState() === 'connected');
 
-    const saveResult = await page.evaluate(() => (window as any).__saveProgress(5, 500));
+    const saveResult = await page.evaluate(() => window.__saveProgress(5, 500));
     expect(saveResult).toEqual({ ok: true });
 
-    const progress = await page.evaluate(() => (window as any).__getProgress());
+    const progress = await page.evaluate(() => window.__getProgress());
     expect(progress).toEqual({ level: 5, score: 500 });
 
     await snap(page, testInfo, 'session-saved');
 
-    await page.evaluate(() => (window as any).__disconnect());
-    await page.waitForFunction(() => (window as any).__getConnectionState() !== 'connected');
+    await page.evaluate(() => window.__disconnect());
+    await page.waitForFunction(() => window.__getConnectionState() !== 'connected');
 
     await page.evaluate(() =>
-      (window as any).__connect({ auth: { headers: { 'x-user-id': 'session-user-1' } } }),
+      window.__connect({ auth: { headers: { 'x-user-id': 'session-user-1' } } }),
     );
-    await page.waitForFunction(() => (window as any).__getConnectionState() === 'connected');
+    await page.waitForFunction(() => window.__getConnectionState() === 'connected');
 
-    const restored = await page.evaluate(() => (window as any).__getProgress());
+    const restored = await page.evaluate(() => window.__getProgress());
     expect(restored).toEqual({ level: 5, score: 500 });
 
     await snap(page, testInfo, 'session-restored');
 
-    await page.evaluate(() => (window as any).__disconnect());
+    await page.evaluate(() => window.__disconnect());
   });
 });

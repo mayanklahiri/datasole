@@ -36,12 +36,10 @@ test.afterAll(async () => {
 async function setupPage(page: import('@playwright/test').Page) {
   await page.goto(harness.getUrl());
   await expect(page.locator('#status')).toHaveText('ready', { timeout: 5000 });
-  await page.evaluate(() => (window as Record<string, unknown>).__connect());
-  await page.waitForFunction(
-    () => (window as Record<string, unknown>).__getConnectionState?.() === 'connected',
-    undefined,
-    { timeout: 5000 },
-  );
+  await page.evaluate(() => window.__connect());
+  await page.waitForFunction(() => window.__getConnectionState() === 'connected', undefined, {
+    timeout: 5000,
+  });
 }
 
 test.describe('Benchmarks', { tag: '@bench' }, () => {
@@ -370,15 +368,10 @@ test.describe('Benchmarks', { tag: '@bench' }, () => {
 
       await pg.goto(harness.getUrl());
       await expect(pg.locator('#status')).toHaveText('ready', { timeout: 10000 });
-      await pg.evaluate(
-        (opts: Record<string, unknown>) => (window as Record<string, unknown>).__connect(opts),
-        { useWorker },
-      );
-      await pg.waitForFunction(
-        () => (window as Record<string, unknown>).__getConnectionState?.() === 'connected',
-        undefined,
-        { timeout: 10000 },
-      );
+      await pg.evaluate((opts) => window.__connect(opts), { useWorker });
+      await pg.waitForFunction(() => window.__getConnectionState() === 'connected', undefined, {
+        timeout: 10000,
+      });
     }
 
     test(`main-thread: heavy payload flood (${tag})`, async ({ page }) => {

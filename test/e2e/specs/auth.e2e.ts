@@ -18,14 +18,12 @@ test.describe('Auth', () => {
     await page.goto(harness.getUrl());
     await expect(page.locator('#status')).toHaveText('ready');
 
-    const state = await page.evaluate(() =>
-      (window as any).__connect({ auth: { token: 'valid-token' } }),
-    );
+    const state = await page.evaluate(() => window.__connect({ auth: { token: 'valid-token' } }));
     expect(state).toBe('connected');
 
     await snap(page, testInfo, 'auth-valid-token');
 
-    await page.evaluate(() => (window as any).__disconnect());
+    await page.evaluate(() => window.__disconnect());
   });
 
   test('rejects connection with invalid token', async ({ page }, testInfo) => {
@@ -34,10 +32,10 @@ test.describe('Auth', () => {
 
     const error = await page.evaluate(async () => {
       try {
-        await (window as any).__connect({ auth: { token: 'reject' } });
+        await window.__connect({ auth: { token: 'reject' } });
         return null;
-      } catch (e: any) {
-        return e.message || 'connection failed';
+      } catch (e: unknown) {
+        return e instanceof Error ? e.message || 'connection failed' : String(e);
       }
     });
     expect(error).toBeTruthy();
@@ -49,11 +47,11 @@ test.describe('Auth', () => {
     await page.goto(harness.getUrl());
     await expect(page.locator('#status')).toHaveText('ready');
 
-    const state = await page.evaluate(() => (window as any).__connect());
+    const state = await page.evaluate(() => window.__connect());
     expect(state).toBe('connected');
 
     await snap(page, testInfo, 'auth-anonymous');
 
-    await page.evaluate(() => (window as any).__disconnect());
+    await page.evaluate(() => window.__disconnect());
   });
 });

@@ -18,10 +18,11 @@ const cyan = (s: string) => `\x1b[36m${s}\x1b[39m`;
 const green = (s: string) => `\x1b[32m${s}\x1b[39m`;
 const yellow = (s: string) => `\x1b[33m${s}\x1b[39m`;
 
+const ANSI_RE = new RegExp(String.fromCharCode(27) + '\\[[0-9;]*m', 'g');
+
 /** Strip all ANSI escape codes and return the visible character count. */
 function visibleLen(s: string): number {
-  // eslint-disable-next-line no-control-regex
-  return s.replace(/\x1b\[[0-9;]*m/g, '').length;
+  return s.replace(ANSI_RE, '').length;
 }
 
 /** Pad an ANSI-colored string on the right so its visible width reaches `width`. */

@@ -378,8 +378,7 @@ describe('DatasoleClient — auth with live server', () => {
     });
     srv.ds.rpc.register(
       TestRpc.Whoami,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      async (_p: unknown, ctx: any) => ctx?.connection?.userId ?? 'unknown',
+      async (_p: unknown, ctx) => ctx.connection.userId ?? 'unknown',
     );
   });
 
