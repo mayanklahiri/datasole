@@ -7,15 +7,19 @@ globs: ["src/**/*.ts", "test/**/*.ts", "build/**", "docs/**"]
 
 ## Quality Gate
 
-The single command `npm run gate` validates the entire project. It runs:
-format:check → lint → build → test (with coverage) → e2e → collect-metrics → docs:build → gate:summary
+Two gate levels: `npm run gate` (local, fast, no bench) and `npm run gate:full` (CI, includes perf benchmarks).
 
 **Run `npm run gate` after making changes.** It is enforced by:
 - pre-commit hook: lint-staged (format + lint staged .ts files)
-- pre-push hook: full `npm run gate`
-- CI: GitHub Actions on every push/PR
+- pre-push hook: `npm run gate` (no bench — fast for iteration)
+- CI: `npm run gate:full` + demo install/build. Auto-commits artifacts with `[skip ci]`
+- Nightly: upgrades all deps, runs `gate:full`, commits with `[skip ci]`
 
 `npm run dist` is an alias for `npm run gate`.
+
+## Commit Messages
+
+Lead with **intention** (the _why_), not a list of what changed. Use Conventional Commits types (`feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `perf`, `ci`, `build`). Include `[ADR-XXX]` when applicable. Bot/CI commits use `[skip ci]` to prevent re-triggering.
 
 ## Documentation
 

@@ -189,3 +189,19 @@ description: Architecture Decision Records for the datasole project.
   4. **`catch (e: unknown)`** — error handlers use `unknown` with `instanceof Error` guards, never `catch (e: any)`.
 
 - **Consequences:** All type errors surface at compile time. Refactoring tools can follow types through the entire codebase including tests. No hidden suppressions. Trade-off: slightly more verbose catch blocks and occasionally verbose generic constraints, but this is a feature, not a cost — it forces explicit handling of edge cases.
+
+## ADR-021: CI pipeline — full validation with skip-ci artifact commits
+
+- **Status:** Accepted
+- **Date:** 2026-03-23
+
+- **Context:** The local quality gate (`npm run gate`) runs format, lint, build, unit tests, functional E2E, metrics collection, and docs build. Performance benchmarks (`test:bench`) are excluded locally to keep push times fast (~60s vs ~3min+). CI needs to run _everything_ — including benchmarks and demo package validation — but bot-generated artifact commits (metrics, screenshots) must not re-trigger CI, creating infinite loops.
+
+- **Decision:** Establish a two-tier validation pipeline with `[skip ci]` loop prevention:
+  1. **Local (pre-push hook):** `npm run gate` — all non-performance checks. Bench tests excluded via `grepInvert: /@bench/` in the default Playwright config. Auto-commits updated artifacts with `[skip ci]`.
+  2. **CI (push/PR to main):** `npm run gate:full` = gate + `gate:bench` (performance benchmarks) + demo package installation and builds. On push to main, auto-commits updated artifacts with `[skip ci]`. GitHub Actions natively skips workflows on `[skip ci]` commits, preventing infinite loops.
+  3. **Nightly (scheduled):** Upgrades all dependencies (root + demos via `ncu`), installs everywhere, runs `gate:full`. Commits updated lockfiles, package.json files, and build artifacts with `[skip ci]`.
+
+  Commit messages follow intention-driven Conventional Commits: title expresses _why_, body explains _what_. Bot commits use `chore:` type with `[skip ci]`.
+
+- **Consequences:** Performance benchmarks run on every CI push without blocking local development. Demo packages are validated in CI, catching breakage from upstream dependency changes. `[skip ci]` prevents infinite commit loops from bot artifact commits. Trade-off: CI runs take longer (~3-5min vs ~60s local), but this is acceptable for a CI job that runs asynchronously.
