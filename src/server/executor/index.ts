@@ -11,5 +11,4 @@ export type { DecodedFrame, FrameHandlerFn } from './frame-router';
 export { AsyncExecutor } from './async-executor';
 export { ThreadExecutor } from './thread-executor';
 export { PoolExecutor } from './pool-executor';
-export { ProcessExecutor } from './process-executor';
 export { createExecutor } from './factory';

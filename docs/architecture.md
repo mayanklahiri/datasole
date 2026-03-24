@@ -72,7 +72,7 @@ flowchart TB
             end
             subgraph Executor["Executor Layer"]
                 FR["FrameRouter"]
-                EX["ConnectionExecutor (async / thread / pool / process)"]
+                EX["ConnectionExecutor (async / thread / pool)"]
             end
             subgraph Backend["Backend Layer"]
                 SBE["StateBackend (memory / redis / postgres)"]
@@ -109,7 +109,6 @@ src/server/
 │   ├── async-executor.ts
 │   ├── thread-executor.ts
 │   ├── pool-executor.ts
-│   ├── process-executor.ts
 │   ├── frame-router.ts
 │   ├── factory.ts   # createExecutor(config)
 │   └── types.ts     # ConnectionExecutor interface
@@ -146,7 +145,7 @@ Opcodes cover: RPC request/response, event, state snapshot, state patch, CRDT op
 2. Web Worker opens WebSocket to `wss://server/__ds`
 3. ServerTransport receives HTTP upgrade → `AuthHandler` validates credentials
 4. On success: `ConnectionContext` created with auth identity, metadata
-5. FrameRouter assigns connection to a ConnectionExecutor (async / thread / pool / process)
+5. FrameRouter assigns connection to a ConnectionExecutor (async / thread / pool)
 6. Primitives push initial state snapshots via StateBackend
 7. Ongoing: incremental JSON Patches, events, RPC, CRDT ops — all multiplexed
 8. On disconnect: SessionManager flushes to StateBackend for future restore

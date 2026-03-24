@@ -47,7 +47,7 @@ npm install datasole
 
 2. **Guaranteed compression (not permessage-deflate)** — datasole compresses every binary frame >256 B using pako in user-space. No extension negotiation, no per-connection zlib state, no browser compatibility matrix. Socket.IO [disabled permessage-deflate by default](https://github.com/socketio/engine.io/commit/5ad273601eb66c7b318542f87026837bf9dddd21) due to memory leaks crashing production servers. datasole sidesteps the entire problem.
 
-3. **Scale without "contact sales"** — Swap in Redis or Postgres endpoints and go from single-process to distributed with zero code changes. Four concurrency models (async, thread, pool, process). pm2/k8s ready. Horizontal scaling is built in, not a pricing tier.
+3. **Scale without "contact sales"** — Swap in Redis or Postgres endpoints and go from single-process to distributed with zero code changes. Three concurrency models (async, thread, thread-pool). pm2/k8s ready. Horizontal scaling is built in, not a pricing tier.
 
 4. **Open source, Apache-2.0, free forever** — No per-message pricing. No vendor lock-in. No "enterprise tier for production use." Self-host on your infra, your terms.
 

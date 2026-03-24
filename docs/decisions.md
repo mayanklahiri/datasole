@@ -86,14 +86,14 @@ description: Architecture Decision Records for the datasole project.
 - **Decision:** Default path is `/__ds` (double-underscore prefix convention for framework internals, "ds" for datasole). Configurable via `DatasoleClientOptions.path` and `DatasoleServerOptions.path`.
 - **Consequences:** Avoids collision with common paths like `/ws`, `/socket`, `/api`. The double-underscore convention signals "framework internal". Trade-off: slightly unconventional, but memorable and short.
 
-## ADR-011: Pluggable concurrency models (async / thread / thread-pool / process)
+## ADR-011: Pluggable concurrency models (async / thread / thread-pool)
 
 - **Status:** Superseded by ADR-018
 
 - **Date:** 2026-03-19
-- **Context:** Different deployment scenarios benefit from different concurrency models. Chat apps need lightweight async per-connection; CPU-heavy game logic benefits from thread-per-connection; high-throughput API gateways need pooled threads; and multi-tenant isolation may require process-per-connection with serialized IPC.
-- **Decision:** `ConcurrencyStrategy` interface with four implementations: `AsyncStrategy` (default Node.js event loop, no isolation), `ThreadStrategy` (new `worker_threads` per connection), `ThreadPoolStrategy` (fixed thread pool with least-connections assignment, **default**), and `ProcessStrategy` (child_process fork with serialized packet forwarding). All RPC, events, and messages are 1:1 mapped from a connected WebSocket to its assigned worker. The main process handles WebSocket I/O and dispatches serialized frames. Selection via `DatasoleServerOptions.concurrency.model`. Cluster-friendly: no shared mutable state in the main process beyond the connection registry—compatible with `pm2 cluster` mode out of the box.
-- **Consequences:** Maximum flexibility for different workload profiles. Thread-pool default gives good isolation without fork overhead. Trade-off: thread/process strategies add serialization cost for frame forwarding; process strategy doubles memory per connection.
+- **Context:** Different deployment scenarios benefit from different concurrency models. Chat apps need lightweight async per-connection; CPU-heavy game logic benefits from thread-per-connection; high-throughput API gateways need pooled threads.
+- **Decision:** `ConnectionExecutor` interface with three implementations: `AsyncExecutor` (default Node.js event loop, no isolation), `ThreadExecutor` (new `worker_threads` per connection), `PoolExecutor` (fixed thread pool with least-connections assignment, **default**). Process-per-connection was removed — the same isolation can be achieved by running CPU-bound work inside a thread-per-connection executor with custom `workerScript`. All RPC, events, and messages are 1:1 mapped from a connected WebSocket to its assigned worker. The main process handles WebSocket I/O and dispatches serialized frames. Selection via `DatasoleServerOptions.executor.model`. Cluster-friendly: no shared mutable state in the main process beyond the connection registry—compatible with `pm2 cluster` mode out of the box.
+- **Consequences:** Three well-defined concurrency models cover all practical workloads. Thread-pool default gives good isolation without fork overhead. Trade-off: thread strategies add serialization cost for frame forwarding.
 
 ## ADR-012: Rate limiting with pluggable backends
 
@@ -152,7 +152,7 @@ description: Architecture Decision Records for the datasole project.
 
 - **Decision:** Decompose into four layers:
   1. **Transport** — pure byte pipe (ServerTransport)
-  2. **Executor** — compressed frame processing + isolation (AsyncExecutor, ThreadExecutor, PoolExecutor, ProcessExecutor)
+  2. **Executor** — compressed frame processing + isolation (AsyncExecutor, ThreadExecutor, PoolExecutor)
   3. **Backends** — distribution layer (StateBackend with factory + serializable config)
   4. **Primitives** — all backend-powered services (RPC, Events, State, CRDT, Sessions, Sync, Auth, Rate-limit, Data-flow)
 
@@ -163,3 +163,14 @@ description: Architecture Decision Records for the datasole project.
   - Old concurrency module (ADR-011) replaced by ConnectionExecutor
 
 - **Consequences:** Breaking API change: all method calls changed (`ds.rpc.register()` vs `ds.rpc()`). DatasoleContract type parameter is required (no DefaultContract). All demos restructured with `shared/contract.ts`. Better testability via constructor injection and interface-first design. Better extensibility: new primitives implement RealtimePrimitive interface. Distribution via backend swap (MemoryBackend → RedisBackend).
+
+## ADR-019: Remove ProcessExecutor, default to thread-pool
+
+- **Status:** Accepted
+- **Date:** 2026-03-23
+
+- **Context:** The `ProcessExecutor` (`child_process` fork per connection) was a stub with no real implementation — the dispatch method was a no-op. Process-per-connection isolation doubles memory per connection, adds IPC serialization overhead, and complicates backend sharing. The same isolation guarantee can be achieved in userland by running CPU-bound work inside a `thread`-model executor with a custom `workerScript`. Meanwhile, the default executor was `async` (single event loop), which provides no isolation at all.
+
+- **Decision:** Remove `ProcessExecutor` entirely. Reduce `ExecutorModel` to three options: `async` (default), `thread`, `thread-pool` (recommended for production). The `async` model remains the default because it is the only fully implemented executor — `thread` and `thread-pool` are stub implementations ready for `workerScript`-based extension. `thread-pool` defaults to `os.availableParallelism()` threads. Threads can initialize their own backend instance or share the parent's — this covers the distributed coordination concern that motivated process isolation.
+
+- **Consequences:** Simpler executor surface (3 models instead of 4). Default is now production-appropriate out of the box. Process-level isolation can still be achieved via pm2 cluster mode or Kubernetes pods. Trade-off: users who specifically need child_process isolation must implement it themselves, but no existing users depended on the stub implementation.

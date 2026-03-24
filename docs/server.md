@@ -1,36 +1,407 @@
 ---
 title: Server
 order: 3
-description: Server API reference, adapter setup, concurrency, rate limiting, sessions, and authentication.
+description: Server API reference, configuration, executor models, rate limiting, sessions, and authentication.
 ---
 
 # Server API
 
 > **New here?** Start with the [Tutorials](tutorials.md) — they build from a 10-line server to production configuration with thread pools, Redis, and rate limiting.
 
-## DatasoleServer
-
-### Constructor
+## Quick Start
 
 ```typescript
-import { DatasoleServer, MemoryBackend, PrometheusExporter } from 'datasole/server';
+import { createServer } from 'http';
+import { DatasoleServer } from 'datasole/server';
+
+const ds = new DatasoleServer<AppContract>();
+const http = createServer();
+ds.attach(http);
+http.listen(3000);
+```
+
+## Configuration Reference
+
+All options are passed to `new DatasoleServer<T>(options)`. Every field is optional — sensible defaults are applied.
+
+### `DatasoleServerOptions`
+
+```typescript
+interface DatasoleServerOptions {
+  path?: string;
+  authHandler?: AuthHandlerFn;
+  stateBackend?: StateBackend;
+  backendConfig?: BackendConfig;
+  metricsExporter?: MetricsExporter;
+  perMessageDeflate?: boolean;
+  executor?: Partial<ExecutorOptions>;
+  rateLimit?: RateLimitConfig;
+  session?: SessionOptions;
+  maxConnections?: number;
+  maxCrdtKeys?: number;
+  maxEventNameLength?: number;
+}
+```
+
+---
+
+#### `path`
+
+WebSocket endpoint path. Clients connect to `ws://<host><path>`.
+
+|             |                        |
+| ----------- | ---------------------- |
+| **Type**    | `string`               |
+| **Default** | `'/__ds'`              |
+| **Example** | `'/ws'`, `'/realtime'` |
+
+The double-underscore prefix convention signals "framework internal" and avoids collision with common application routes like `/api` or `/ws`.
+
+---
+
+#### `authHandler`
+
+Authenticate the HTTP upgrade request before establishing the WebSocket connection.
+
+|             |                                                                        |
+| ----------- | ---------------------------------------------------------------------- |
+| **Type**    | `(req: IncomingMessage) => Promise<AuthResult>`                        |
+| **Default** | Pass-through (all connections allowed, `userId` set to remote address) |
+
+Return `{ authenticated: true, userId, roles?, metadata? }` to accept the connection, or `{ authenticated: false }` to reject with HTTP 401.
+
+**`AuthResult` fields:**
+
+| Field           | Type                      | Required | Description                                                   |
+| --------------- | ------------------------- | -------- | ------------------------------------------------------------- |
+| `authenticated` | `boolean`                 | yes      | Whether the connection is allowed                             |
+| `userId`        | `string`                  | no       | Unique user identifier (populates `ConnectionContext.userId`) |
+| `roles`         | `string[]`                | no       | Authorization roles for permission checks in RPC handlers     |
+| `metadata`      | `Record<string, unknown>` | no       | Arbitrary metadata attached to the connection context         |
+
+```typescript
+const ds = new DatasoleServer<AppContract>({
+  authHandler: async (req) => {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return { authenticated: false };
+
+    const user = await verifyJwt(token);
+    return {
+      authenticated: true,
+      userId: user.id,
+      roles: user.roles,
+      metadata: { displayName: user.name },
+    };
+  },
+});
+```
+
+The auth result is available in all RPC handlers via `ctx.auth` and `ctx.connection`:
+
+```typescript
+ds.rpc.register('protectedMethod', async (params, ctx) => {
+  if (!ctx.auth?.roles?.includes('admin')) {
+    throw new Error('Forbidden');
+  }
+  // ctx.connection.userId, ctx.connection.metadata, etc.
+});
+```
+
+---
+
+#### `stateBackend`
+
+Pluggable key-value + pub/sub backend instance. All primitives share this single backend, so swapping it makes the entire server distributed.
+
+|             |                       |
+| ----------- | --------------------- |
+| **Type**    | `StateBackend`        |
+| **Default** | `new MemoryBackend()` |
+
+**Built-in backends:**
+
+| Backend           | Import            | Use case                                           |
+| ----------------- | ----------------- | -------------------------------------------------- |
+| `MemoryBackend`   | `datasole/server` | Development, single-process                        |
+| `RedisBackend`    | `datasole/server` | Multi-process, production (optional peer dep)      |
+| `PostgresBackend` | `datasole/server` | Persistent state, audit trails (optional peer dep) |
+
+```typescript
+import { RedisBackend } from 'datasole/server';
 
 const ds = new DatasoleServer<AppContract>({
-  path: '/__ds', // WebSocket path (default: /__ds)
+  stateBackend: new RedisBackend({ url: 'redis://localhost:6379' }),
+});
+```
+
+**`StateBackend` interface** (for custom implementations):
+
+```typescript
+interface StateBackend {
+  get<T = unknown>(key: string): Promise<T | undefined>;
+  set<T = unknown>(key: string, value: T): Promise<void>;
+  delete(key: string): Promise<boolean>;
+  subscribe(key: string, handler: (key: string, value: unknown) => void): () => void;
+  publish(key: string, value: unknown): Promise<void>;
+}
+```
+
+---
+
+#### `backendConfig`
+
+Declarative backend configuration — an alternative to `stateBackend`. Useful when the backend type is loaded from a config file or environment variables.
+
+|             |                                   |
+| ----------- | --------------------------------- |
+| **Type**    | `BackendConfig`                   |
+| **Default** | `undefined` (uses `stateBackend`) |
+
+If both `stateBackend` and `backendConfig` are provided, `stateBackend` takes precedence.
+
+```typescript
+interface BackendConfig {
+  type: 'memory' | 'redis' | 'postgres';
+  redis?: { url?: string; keyPrefix?: string; prefix?: string };
+  postgres?: { connectionString?: string; tableName?: string; prefix?: string };
+}
+```
+
+```typescript
+const ds = new DatasoleServer<AppContract>({
+  backendConfig: {
+    type: 'redis',
+    redis: { url: process.env.REDIS_URL, keyPrefix: 'myapp:' },
+  },
+});
+```
+
+---
+
+#### `metricsExporter`
+
+Metrics sink for observability systems. If omitted, metrics are collected in-memory only (accessible via `ds.metrics.snapshot()`).
+
+|             |                              |
+| ----------- | ---------------------------- |
+| **Type**    | `MetricsExporter`            |
+| **Default** | `undefined` (in-memory only) |
+
+**Built-in exporters:**
+
+| Exporter                | Import            | Description                    |
+| ----------------------- | ----------------- | ------------------------------ |
+| `PrometheusExporter`    | `datasole/server` | Exposes `/metrics` endpoint    |
+| `OpenTelemetryExporter` | `datasole/server` | Integrates with OTel collector |
+
+```typescript
+import { PrometheusExporter } from 'datasole/server';
+
+const ds = new DatasoleServer<AppContract>({
+  metricsExporter: new PrometheusExporter(),
+});
+```
+
+---
+
+#### `perMessageDeflate`
+
+Enable WebSocket per-message-deflate compression at the transport level.
+
+|             |           |
+| ----------- | --------- |
+| **Type**    | `boolean` |
+| **Default** | `false`   |
+
+Generally leave disabled. Datasole already compresses every frame >256 bytes using pako at the application level. Enabling per-message-deflate adds CPU cost per-connection and is known to cause memory issues at scale (the reason Socket.IO disabled it by default).
+
+---
+
+#### `executor`
+
+Connection executor configuration — controls how incoming WebSocket frames are dispatched and processed.
+
+|             |                            |
+| ----------- | -------------------------- |
+| **Type**    | `Partial<ExecutorOptions>` |
+| **Default** | `{ model: 'async' }`       |
+
+See [Executor Models](#executor-models) below for detailed guidance.
+
+```typescript
+interface ExecutorOptions {
+  model: 'async' | 'thread' | 'thread-pool';
+  poolSize?: number;
+  maxThreads?: number;
+  workerScript?: string;
+  idleTimeout?: number;
+}
+```
+
+| Field          | Type                                   | Default                     | Applies to              | Description                                    |
+| -------------- | -------------------------------------- | --------------------------- | ----------------------- | ---------------------------------------------- |
+| `model`        | `'async' \| 'thread' \| 'thread-pool'` | `'async'`                   | all                     | Concurrency model                              |
+| `poolSize`     | `number`                               | `os.availableParallelism()` | `thread-pool`           | Number of worker threads in the pool           |
+| `maxThreads`   | `number`                               | `256`                       | `thread`                | Upper bound on per-connection threads          |
+| `workerScript` | `string`                               | `undefined`                 | `thread`, `thread-pool` | Path to JS/TS module loaded inside each worker |
+| `idleTimeout`  | `number`                               | `30000`                     | `thread`, `thread-pool` | Milliseconds before an idle thread is recycled |
+
+```typescript
+// Minimal — use defaults (async executor)
+const ds = new DatasoleServer<AppContract>();
+
+// I/O-bound workload — single event loop, lowest overhead
+const ds = new DatasoleServer<AppContract>({
+  executor: { model: 'async' },
+});
+
+// CPU-bound per-connection work
+const ds = new DatasoleServer<AppContract>({
+  executor: { model: 'thread', maxThreads: 64 },
+});
+
+// Explicit pool sizing
+const ds = new DatasoleServer<AppContract>({
+  executor: { model: 'thread-pool', poolSize: 8 },
+});
+```
+
+---
+
+#### `rateLimit`
+
+Frame-level rate limiting configuration. Rate limits are enforced per connection per sliding window. Uses the configured `StateBackend`, so limits are automatically distributed with Redis or Postgres.
+
+|             |                                                           |
+| ----------- | --------------------------------------------------------- |
+| **Type**    | `RateLimitConfig`                                         |
+| **Default** | `{ defaultRule: { windowMs: 60_000, maxRequests: 100 } }` |
+
+```typescript
+interface RateLimitConfig {
+  defaultRule: RateLimitRule;
+  rules?: Record<string, RateLimitRule>;
+  keyExtractor?: (connectionId: string, method?: string) => string;
+}
+
+interface RateLimitRule {
+  windowMs: number; // Sliding window duration in milliseconds
+  maxRequests: number; // Maximum requests allowed per window
+}
+```
+
+| Field          | Type                            | Default                                  | Description                                                                           |
+| -------------- | ------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------- |
+| `defaultRule`  | `RateLimitRule`                 | `{ windowMs: 60_000, maxRequests: 100 }` | Applied when no per-method rule matches                                               |
+| `rules`        | `Record<string, RateLimitRule>` | `{}`                                     | Per-method overrides keyed by RPC method name or event name                           |
+| `keyExtractor` | `(connId, method?) => string`   | `undefined`                              | Custom key function for rate limit buckets (e.g., per-user instead of per-connection) |
+
+```typescript
+const ds = new DatasoleServer<AppContract>({
+  rateLimit: {
+    defaultRule: { windowMs: 60_000, maxRequests: 200 },
+    rules: {
+      search: { windowMs: 60_000, maxRequests: 30 },
+      upload: { windowMs: 60_000, maxRequests: 5 },
+    },
+    keyExtractor: (connId, method) => `${connId}:${method ?? 'default'}`,
+  },
+});
+```
+
+---
+
+#### `session`
+
+Session persistence tuning. Sessions auto-flush dirty writes to the state backend.
+
+|             |                                              |
+| ----------- | -------------------------------------------- |
+| **Type**    | `SessionOptions`                             |
+| **Default** | `{}` (uses SessionManager internal defaults) |
+
+```typescript
+interface SessionOptions {
+  flushThreshold?: number; // Persist after N mutations (default: 10)
+  flushIntervalMs?: number; // Or every N ms (default: 5000)
+  ttlMs?: number; // Session expiry TTL (default: no expiry)
+  enableChangeStream?: boolean; // Emit change events (default: false)
+}
+```
+
+| Field                | Type      | Default     | Description                                      |
+| -------------------- | --------- | ----------- | ------------------------------------------------ |
+| `flushThreshold`     | `number`  | `10`        | Number of mutations before auto-flush to backend |
+| `flushIntervalMs`    | `number`  | `5000`      | Timer-based flush interval (ms)                  |
+| `ttlMs`              | `number`  | `undefined` | Session expiry (ms). No expiry if omitted        |
+| `enableChangeStream` | `boolean` | `false`     | Emit change events via `ds.sessions.onChange()`  |
+
+```typescript
+const ds = new DatasoleServer<AppContract>({
+  session: {
+    flushThreshold: 5,
+    flushIntervalMs: 2000,
+    ttlMs: 3_600_000, // 1 hour
+    enableChangeStream: true,
+  },
+});
+```
+
+---
+
+#### `maxConnections`
+
+Maximum simultaneous WebSocket connections. Connections beyond this limit are rejected at the transport layer before auth.
+
+|             |          |
+| ----------- | -------- |
+| **Type**    | `number` |
+| **Default** | `10_000` |
+
+---
+
+#### `maxCrdtKeys`
+
+Maximum number of distinct CRDT keys the server will track. Prevents memory exhaustion from unbounded CRDT registration.
+
+|             |          |
+| ----------- | -------- |
+| **Type**    | `number` |
+| **Default** | `1000`   |
+
+---
+
+#### `maxEventNameLength`
+
+Maximum allowed length (characters) for client-to-server event names. Events exceeding this limit are silently dropped.
+
+|             |          |
+| ----------- | -------- |
+| **Type**    | `number` |
+| **Default** | `256`    |
+
+---
+
+### Complete Example
+
+```typescript
+import { createServer } from 'http';
+import { DatasoleServer, RedisBackend, PrometheusExporter } from 'datasole/server';
+
+const ds = new DatasoleServer<AppContract>({
+  path: '/__ds',
 
   authHandler: async (req) => {
     const token = req.headers.authorization?.replace('Bearer ', '');
-    return { authenticated: !!token, userId: token };
+    if (!token) return { authenticated: false };
+    const user = await verifyJwt(token);
+    return { authenticated: true, userId: user.id, roles: user.roles };
   },
 
-  stateBackend: new MemoryBackend(), // or RedisBackend, PostgresBackend
+  stateBackend: new RedisBackend({ url: process.env.REDIS_URL }),
   metricsExporter: new PrometheusExporter(),
 
-  executor: {
-    // See "Concurrency Models" below
-    model: 'thread-pool', // 'async' | 'thread' | 'thread-pool' | 'process'
-    poolSize: 4,
-  },
+  executor: { model: 'thread-pool', poolSize: 8 },
 
   rateLimit: {
     defaultRule: { windowMs: 60_000, maxRequests: 200 },
@@ -38,13 +409,99 @@ const ds = new DatasoleServer<AppContract>({
   },
 
   session: {
-    flushThreshold: 10, // Persist after N mutations
-    flushIntervalMs: 5000, // Or every N ms
+    flushThreshold: 10,
+    flushIntervalMs: 5000,
+    ttlMs: 3_600_000,
+  },
+
+  maxConnections: 50_000,
+  maxCrdtKeys: 500,
+  maxEventNameLength: 128,
+});
+
+const http = createServer();
+ds.attach(http);
+http.listen(3000);
+```
+
+---
+
+## Executor Models
+
+The executor determines how incoming WebSocket frames are dispatched and processed. All models are cluster-friendly — no shared mutable state in the main process.
+
+| Model         | Description                                                 | When to use                                       | Overhead   |
+| ------------- | ----------------------------------------------------------- | ------------------------------------------------- | ---------- |
+| `async`       | Single event loop, all connections in-process **(default)** | I/O-bound: chat, notifications, dashboards        | Lowest     |
+| `thread`      | Dedicated `worker_threads` per connection                   | CPU-bound per-connection: game logic, computation | Medium     |
+| `thread-pool` | Fixed pool, least-connections assignment                    | Production workloads, general-purpose             | Low–medium |
+
+### `async` — Single Event Loop (Default)
+
+All frames are processed on the Node.js event loop with no thread isolation. This is the default model and the lightest option, ideal when your handlers are predominantly I/O-bound (database queries, external API calls, broadcasting). No serialization overhead.
+
+```typescript
+const ds = new DatasoleServer<AppContract>({
+  executor: { model: 'async' },
+});
+```
+
+### `thread` — Thread per Connection
+
+Spawns a dedicated `worker_threads` thread for each connection. Best for CPU-intensive per-connection processing (game physics, real-time computation, audio/video processing). Each thread can initialize its own backend instance or share the parent's.
+
+```typescript
+const ds = new DatasoleServer<AppContract>({
+  executor: {
+    model: 'thread',
+    maxThreads: 64,
+    idleTimeout: 60_000,
   },
 });
 ```
 
-### Attach to HTTP Server
+Use `maxThreads` to cap thread count and prevent resource exhaustion during connection spikes. Threads are recycled after `idleTimeout` ms of inactivity.
+
+### `thread-pool` — Fixed Thread Pool (Recommended for Production)
+
+A fixed pool of `worker_threads` with least-connections assignment. Recommended for production deployments. It balances thread isolation with resource efficiency — a small number of threads handle many connections.
+
+```typescript
+const ds = new DatasoleServer<AppContract>({
+  executor: {
+    model: 'thread-pool',
+    poolSize: 8,
+  },
+});
+```
+
+`poolSize` defaults to `os.availableParallelism()` (typically the number of CPU cores). For I/O-heavy workloads with occasional CPU bursts, this is the best default.
+
+### Worker Scripts
+
+For `thread` and `thread-pool` models, you can specify a `workerScript` — a JS/TS module loaded inside each worker thread. This module can register RPC handlers and primitives that run in the thread context:
+
+```typescript
+const ds = new DatasoleServer<AppContract>({
+  executor: {
+    model: 'thread-pool',
+    poolSize: 4,
+    workerScript: './src/worker-setup.js',
+  },
+});
+```
+
+### pm2 Cluster Mode
+
+Because the executor keeps no shared mutable state in the main process, and Redis/Postgres backends provide cross-process pub/sub, pm2 cluster mode works out of the box:
+
+```bash
+pm2 start dist/server.js -i max
+```
+
+---
+
+## Attach to HTTP Server
 
 ```typescript
 import { createServer } from 'http';
@@ -53,6 +510,10 @@ const http = createServer();
 ds.attach(http);
 http.listen(3000);
 ```
+
+`ds.attach()` hooks into the HTTP server's `upgrade` event to handle WebSocket connections. Works with any Node.js HTTP server — Express, Koa, Fastify, NestJS, or plain `http.createServer()`.
+
+---
 
 ## RPC Handlers
 
@@ -78,10 +539,8 @@ ds.rpc.register<{ userId: string }, { name: string; email: string }>(
 The most powerful pattern: mutate a data structure on the server, and every connected client sees a live mirror. Only the JSON Patch diff is sent.
 
 ```typescript
-// Initial state
 await ds.setState('dashboard', { visitors: 0, active: 0 });
 
-// Update later — datasole diffs automatically
 setInterval(async () => {
   await ds.setState('dashboard', {
     visitors: getVisitorCount(),
@@ -92,20 +551,17 @@ setInterval(async () => {
 
 Clients subscribe with `client.subscribeState('dashboard', handler)` — no polling, no event mapping, no client-side state management.
 
-> **Tutorial:** [Live State — A Server-Synced Dashboard](tutorials.md#4-live-state--a-server-synced-dashboard) — the most common datasole pattern
+> **Tutorial:** [Live State — A Server-Synced Dashboard](tutorials.md#4-live-state--a-server-synced-dashboard)
 
 ## Events
 
 ```typescript
-// Listen for client events
 ds.events.on<{ text: string }>('chat:message', ({ data }) => {
   console.log('Received:', data.text);
 });
 
-// Broadcast to all connected clients
 ds.broadcast('notification', { title: 'Server restarting in 5 minutes' });
 
-// Unsubscribe
 ds.events.off('chat:message', handler);
 ```
 
@@ -116,7 +572,6 @@ ds.events.off('chat:message', handler);
 Fine-grained control over when state updates are flushed to clients.
 
 ```typescript
-// Immediate: every update pushes instantly
 const alerts = ds.createSyncChannel({
   key: 'alerts',
   direction: 'server-to-client',
@@ -124,7 +579,6 @@ const alerts = ds.createSyncChannel({
   flush: { flushStrategy: 'immediate' },
 });
 
-// Batched: accumulate, flush every 200ms or 50 ops
 const metrics = ds.createSyncChannel({
   key: 'metrics',
   direction: 'server-to-client',
@@ -132,7 +586,6 @@ const metrics = ds.createSyncChannel({
   flush: { flushStrategy: 'batched', batchIntervalMs: 200, maxBatchSize: 50 },
 });
 
-// Debounced: wait for 500ms of quiet before flushing
 const form = ds.createSyncChannel({
   key: 'form',
   direction: 'client-to-server',
@@ -148,14 +601,11 @@ const form = ds.createSyncChannel({
 Per-user state that survives disconnections. Auto-flushes to the state backend.
 
 ```typescript
-// Restore session on reconnect (pass ConnectionContext, not RpcContext)
 const state = await ds.sessions.restore(ctx.connection);
 
-// Read/write session values
 ds.sessions.set('user-123', 'lastPage', '/dashboard');
 const page = ds.sessions.get<string>('user-123', 'lastPage');
 
-// Listen for session changes (e.g., to update a leaderboard)
 ds.sessions.onChange((userId, key, value, version) => {
   console.log(`${userId} → ${key} = ${JSON.stringify(value)} (v${version})`);
 });
@@ -163,34 +613,11 @@ ds.sessions.onChange((userId, key, value, version) => {
 
 > **Tutorial:** [Session Persistence — Surviving Reconnections](tutorials.md#8-session-persistence--surviving-reconnections)
 
-## Concurrency Models
-
-Choose how connections are handled. Each WebSocket maps 1:1 to a worker.
-
-```typescript
-const ds = new DatasoleServer<AppContract>({
-  executor: { model: 'thread-pool', poolSize: 4 },
-});
-```
-
-| Model         | Description                                            | When to Use                            |
-| ------------- | ------------------------------------------------------ | -------------------------------------- |
-| `async`       | Single event loop, all connections in-process          | I/O-bound: chat, notifications         |
-| `thread`      | New `worker_threads` per connection                    | CPU-bound: game logic, computation     |
-| `thread-pool` | Fixed pool, least-connections assignment **(default)** | General-purpose, good default          |
-| `process`     | `child_process` fork per connection, IPC               | Multi-tenant isolation, untrusted code |
-
-All models are cluster-friendly — no shared mutable state in the main process. Works with `pm2 cluster` out of the box.
-
-> **Tutorial:** [Production — Thread Pool, Rate Limiting, Redis, Metrics](tutorials.md#9-production--thread-pool-rate-limiting-redis-metrics)
-
 ## Rate Limiting
 
 Frame-level rate limiting on persistent WebSocket connections. Rate limiting uses a `BackendRateLimiter` backed by the configured `StateBackend`, so it is automatically distributed when using Redis or Postgres.
 
 ```typescript
-import { DatasoleServer } from 'datasole/server';
-
 const ds = new DatasoleServer<AppContract>({
   rateLimit: {
     defaultRule: { windowMs: 60_000, maxRequests: 100 },
@@ -209,11 +636,9 @@ Hook into the HTTP upgrade request to authenticate connections. Supports any aut
 ```typescript
 const ds = new DatasoleServer<AppContract>({
   authHandler: async (req) => {
-    // Access any header from the upgrade request
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) return { authenticated: false };
 
-    // Verify token (your logic)
     const user = await verifyJwt(token);
     return {
       authenticated: true,
@@ -232,7 +657,6 @@ ds.rpc.register('protectedMethod', async (params, ctx) => {
   if (!ctx.auth?.roles?.includes('admin')) {
     throw new Error('Forbidden');
   }
-  // ctx.connection.userId, ctx.connection.metadata, etc.
 });
 ```
 
@@ -278,7 +702,7 @@ server.listen(3000);
 
 | Method                                      | Description                                                             |
 | ------------------------------------------- | ----------------------------------------------------------------------- |
-| `attach(httpServer, adapter?)`              | Attach to HTTP server (adapter accepted but currently unused)           |
+| `attach(httpServer, adapter?)`              | Attach to HTTP server                                                   |
 | `setState<T>(key, value)`                   | Set state, diff, and broadcast patches. Returns `Promise<StatePatch[]>` |
 | `getState<T>(key)`                          | Get current state. Returns `Promise<T \| undefined>`                    |
 | `createSyncChannel<T>(config)`              | Create a sync channel with configurable flush                           |
@@ -298,6 +722,4 @@ server.listen(3000);
 | `crdt.getState(key)`                        | Get current CRDT state for a key                                        |
 | `getConnectionCount()`                      | Number of currently connected clients                                   |
 | `metrics.snapshot()`                        | Get current metrics snapshot                                            |
-| `getRateLimiter()`                          | Access rate limiter                                                     |
-| `getExecutor()`                             | Access connection executor                                              |
 | `close()`                                   | Flush sessions, shut down workers, close. Returns `Promise<void>`       |

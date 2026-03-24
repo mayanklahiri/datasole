@@ -29,7 +29,6 @@ export {
   AsyncExecutor,
   ThreadExecutor,
   PoolExecutor,
-  ProcessExecutor,
   FrameRouter,
   createExecutor,
   DEFAULT_EXECUTOR_OPTIONS,

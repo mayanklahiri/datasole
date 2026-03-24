@@ -87,7 +87,7 @@ features:
   - icon:
       src: /features/scale.jpg
     title: Scale without "contact sales"
-    details: 'Swap in Redis or Postgres endpoints and go from single-process to distributed — zero code changes. Four concurrency models (async, thread, pool, process). pm2/k8s ready. Horizontal scaling is built in, not a pricing tier.'
+    details: 'Swap in Redis or Postgres endpoints and go from single-process to distributed — zero code changes. Three concurrency models (async, thread, thread-pool). pm2/k8s ready. Horizontal scaling is built in, not a pricing tier.'
   - icon:
       src: /features/tutorial.jpg
     title: Progressive tutorial

@@ -804,12 +804,11 @@ Because datasole's concurrency model keeps no shared mutable state in the main p
 
 ### Concurrency model cheat sheet
 
-| Model         | Use case                               | Overhead                                     |
-| ------------- | -------------------------------------- | -------------------------------------------- |
-| `async`       | Chat, notifications (I/O-bound)        | Lowest — single event loop                   |
-| `thread`      | Per-connection game logic (CPU-bound)  | Medium — one `worker_thread` per connection  |
-| `thread-pool` | **Default.** General-purpose.          | Low–medium — fixed thread pool               |
-| `process`     | Multi-tenant isolation, untrusted code | Highest — one `child_process` per connection |
+| Model         | Use case                                         | Overhead                                    |
+| ------------- | ------------------------------------------------ | ------------------------------------------- |
+| `async`       | **Default.** Chat, notifications (I/O-bound)     | Lowest — single event loop                  |
+| `thread`      | Per-connection game logic (CPU-bound)            | Medium — one `worker_thread` per connection |
+| `thread-pool` | **Recommended for production.** General-purpose. | Low–medium — fixed thread pool              |
 
 <!-- Tutorial 9 covers production deployment with Redis and pm2 — no standalone e2e demo. -->
 

@@ -38,18 +38,171 @@ import type { SyncChannelConfig } from './primitives/sync/types';
 import type { Connection } from './transport/connection';
 import { ServerTransport } from './transport/server-transport';
 
+/**
+ * Configuration for {@link DatasoleServer}.
+ *
+ * All properties are optional — sensible defaults are applied for every field.
+ * See the [Configuration Reference](https://datasole.dev/server.html#configuration-reference)
+ * for exhaustive documentation of each option.
+ */
 export interface DatasoleServerOptions {
+  /**
+   * WebSocket endpoint path. Clients connect to `ws://<host><path>`.
+   *
+   * @default '/__ds'
+   */
   path?: string;
+
+  /**
+   * Authenticate the HTTP upgrade request before establishing the WebSocket.
+   * Return `{ authenticated: true, userId, roles?, metadata? }` to allow,
+   * or `{ authenticated: false }` to reject with HTTP 401.
+   *
+   * If omitted, all connections are allowed (anonymous access).
+   *
+   * @example
+   * ```ts
+   * authHandler: async (req) => {
+   *   const token = req.headers.authorization?.replace('Bearer ', '');
+   *   const user = await verifyJwt(token);
+   *   return user
+   *     ? { authenticated: true, userId: user.id, roles: user.roles }
+   *     : { authenticated: false };
+   * }
+   * ```
+   */
   authHandler?: AuthHandlerFn;
+
+  /**
+   * Pluggable key-value + pub/sub backend. Powers state, sessions, events,
+   * CRDTs, rate limiting, and sync channels. All primitives share this
+   * single backend instance, so swapping it to Redis or Postgres makes
+   * the entire server distributed.
+   *
+   * @default new MemoryBackend()
+   *
+   * @example
+   * ```ts
+   * import { RedisBackend } from 'datasole/server';
+   * stateBackend: new RedisBackend({ url: 'redis://localhost:6379' })
+   * ```
+   */
   stateBackend?: StateBackend;
+
+  /**
+   * Declarative backend configuration (alternative to `stateBackend`).
+   * Useful when the config is loaded from a file or environment variable.
+   *
+   * @example
+   * ```ts
+   * backendConfig: { type: 'redis', redis: { url: process.env.REDIS_URL } }
+   * ```
+   */
   backendConfig?: BackendConfig;
+
+  /**
+   * Metrics exporter for Prometheus, OpenTelemetry, or custom sinks.
+   * If omitted, metrics are collected in-memory only (accessible via
+   * `ds.metrics.snapshot()`).
+   *
+   * @example
+   * ```ts
+   * import { PrometheusExporter } from 'datasole/server';
+   * metricsExporter: new PrometheusExporter()
+   * ```
+   */
   metricsExporter?: MetricsExporter;
+
+  /**
+   * Enable WebSocket per-message deflate compression at the transport level.
+   * This is **in addition to** datasole's own application-level pako compression.
+   * Generally leave disabled — the application-level compression is sufficient
+   * and avoids the CPU cost of per-message-deflate on high-connection servers.
+   *
+   * @default false
+   */
   perMessageDeflate?: boolean;
+
+  /**
+   * Connection executor configuration — controls how incoming frames are
+   * dispatched and processed.
+   *
+   * Available models:
+   * - `'async'`       — single event loop, no thread isolation (default)
+   * - `'thread'`      — dedicated worker thread per connection
+   * - `'thread-pool'` — fixed-size worker thread pool (recommended for production)
+   *
+   * @default { model: 'async' }
+   *
+   * @example
+   * ```ts
+   * executor: { model: 'thread-pool', poolSize: 8 }
+   * executor: { model: 'async' }
+   * executor: { model: 'thread', maxThreads: 64 }
+   * ```
+   */
   executor?: Partial<ExecutorOptions>;
+
+  /**
+   * Frame-level rate limiting configuration. Rate limits are enforced per
+   * connection per sliding window. Uses the configured `StateBackend`,
+   * so limits are automatically distributed with Redis or Postgres.
+   *
+   * @default { defaultRule: { windowMs: 60_000, maxRequests: 100 } }
+   *
+   * @example
+   * ```ts
+   * rateLimit: {
+   *   defaultRule: { windowMs: 60_000, maxRequests: 200 },
+   *   rules: {
+   *     'heavy-rpc': { windowMs: 60_000, maxRequests: 10 },
+   *     upload:      { windowMs: 60_000, maxRequests: 5 },
+   *   },
+   *   keyExtractor: (connId, method) => `${connId}:${method}`,
+   * }
+   * ```
+   */
   rateLimit?: RateLimitConfig;
+
+  /**
+   * Session persistence tuning. Sessions auto-flush dirty writes to the
+   * state backend when either the mutation threshold or interval is reached.
+   *
+   * @default { flushThreshold: 10, flushIntervalMs: 5000 }
+   *
+   * @example
+   * ```ts
+   * session: {
+   *   flushThreshold: 5,   // persist after 5 mutations
+   *   flushIntervalMs: 2000, // or every 2 seconds
+   *   ttlMs: 3_600_000,    // expire sessions after 1 hour
+   * }
+   * ```
+   */
   session?: SessionOptions;
+
+  /**
+   * Maximum simultaneous WebSocket connections. New connections beyond this
+   * limit are rejected at the transport layer before auth.
+   *
+   * @default 10_000
+   */
   maxConnections?: number;
+
+  /**
+   * Maximum number of distinct CRDT keys the server will track.
+   * Prevents memory exhaustion from unbounded CRDT registration.
+   *
+   * @default 1000
+   */
   maxCrdtKeys?: number;
+
+  /**
+   * Maximum allowed length (in characters) for client-to-server event names.
+   * Events with names exceeding this limit are silently dropped.
+   *
+   * @default 256
+   */
   maxEventNameLength?: number;
 }
 
@@ -92,7 +245,7 @@ export class DatasoleServer<T extends DatasoleContract> {
     this.crdt = new CrdtManager(this.backend, options.maxCrdtKeys);
     this.sessions = new SessionManager(this.backend, options.session);
 
-    this.executor = createExecutor(options.executor ?? { model: 'async' });
+    this.executor = createExecutor(options.executor);
     this.transport = new ServerTransport(this.metrics, this.rateLimiter, this.rateLimitConfig);
 
     this.executor.init({
