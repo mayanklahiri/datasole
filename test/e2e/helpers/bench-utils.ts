@@ -25,6 +25,13 @@ export interface MainThreadMetrics {
   rafTotalFrames: number;
 }
 
+export interface ConsoleMetrics {
+  /** Number of console.error() calls observed during the benchmark. */
+  consoleErrors: number;
+  /** Number of console.warn() calls observed during the benchmark. */
+  consoleWarnings: number;
+}
+
 export interface BenchScenarioResult {
   name: string;
   durationMs: number;
@@ -36,6 +43,8 @@ export interface BenchScenarioResult {
   minMs: number;
   maxMs: number;
   errors: number;
+  /** Browser console error and warning counts during the benchmark. */
+  console: ConsoleMetrics;
   /** Main-thread blocking metrics (present when measurement is enabled). */
   mainThread?: MainThreadMetrics;
 }
@@ -70,6 +79,7 @@ export function computeStats(
     minMs: sorted.length > 0 ? Math.round(sorted[0] * 100) / 100 : 0,
     maxMs: sorted.length > 0 ? Math.round(sorted[sorted.length - 1] * 100) / 100 : 0,
     errors,
+    console: { consoleErrors: 0, consoleWarnings: 0 },
   };
 }
 
@@ -136,6 +146,31 @@ export async function collectMainThreadMetrics(page: Page): Promise<MainThreadMe
   });
 }
 
+interface ConsoleCollector {
+  collect(): ConsoleMetrics;
+}
+
+/**
+ * Attach a listener that counts console errors and warnings on the page.
+ * Call `.collect()` after the benchmark to get the totals and detach.
+ */
+function startConsoleMetrics(page: Page): ConsoleCollector {
+  let errors = 0;
+  let warnings = 0;
+  const handler = (msg: import('@playwright/test').ConsoleMessage) => {
+    const t = msg.type();
+    if (t === 'error') errors++;
+    else if (t === 'warning') warnings++;
+  };
+  page.on('console', handler);
+  return {
+    collect(): ConsoleMetrics {
+      page.off('console', handler);
+      return { consoleErrors: errors, consoleWarnings: warnings };
+    },
+  };
+}
+
 /**
  * Run a benchmark scenario inside the browser page via page.evaluate.
  * The `fn` string is injected as an async function body that has access to
@@ -149,6 +184,7 @@ export async function runBench(
   benchFn: string,
   measureMainThread = false,
 ): Promise<BenchScenarioResult> {
+  const consoleMon = startConsoleMetrics(page);
   if (measureMainThread) await startMainThreadMetrics(page);
 
   const result = await page.evaluate(
@@ -170,6 +206,7 @@ export async function runBench(
   );
 
   const stats = computeStats(name, result.latencies, durationSec * 1000, result.errors);
+  stats.console = consoleMon.collect();
   if (measureMainThread) {
     stats.mainThread = await collectMainThreadMetrics(page);
   }
@@ -187,6 +224,7 @@ export async function runReceiveBench(
   countExpr: string,
   measureMainThread = false,
 ): Promise<BenchScenarioResult> {
+  const consoleMon = startConsoleMetrics(page);
   if (measureMainThread) await startMainThreadMetrics(page);
 
   const result = await page.evaluate(
@@ -213,6 +251,7 @@ export async function runReceiveBench(
     minMs: 0,
     maxMs: 0,
     errors: 0,
+    console: consoleMon.collect(),
   };
 
   if (measureMainThread) {

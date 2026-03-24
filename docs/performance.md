@@ -18,9 +18,11 @@ const loaded = ref(false)
 const throughputCanvas = ref(null)
 const latencyCanvas = ref(null)
 const threadCanvas = ref(null)
+const consoleCanvas = ref(null)
 let throughputChart = null
 let latencyChart = null
 let threadChart = null
+let consoleChart = null
 
 onMounted(async () => {
   try {
@@ -72,6 +74,10 @@ function fmtMs(n) {
 
 function fmtDate(ts) {
   return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function consoleCount(b, field) {
+  return b.console ? b.console[field] : 0
 }
 
 const scenarioLabels = {
@@ -271,6 +277,56 @@ watch([loaded, history], async () => {
       })
     }
   }
+
+  // Console errors/warnings chart
+  if (consoleCanvas.value) {
+    const errData = withBench.map(e => {
+      const benchmarks = e.benchmarks || []
+      return benchmarks.reduce((sum, b) => sum + (b.console ? b.console.consoleErrors : 0), 0)
+    })
+    const warnData = withBench.map(e => {
+      const benchmarks = e.benchmarks || []
+      return benchmarks.reduce((sum, b) => sum + (b.console ? b.console.consoleWarnings : 0), 0)
+    })
+    if (errData.some(v => v != null) || warnData.some(v => v != null)) {
+      if (consoleChart) consoleChart.destroy()
+      consoleChart = new Chart(consoleCanvas.value, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Console errors',
+              data: errData,
+              backgroundColor: '#ef4444',
+            },
+            {
+              label: 'Console warnings',
+              data: warnData,
+              backgroundColor: '#eab308',
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            x: {
+              title: { display: true, text: 'Date', font: { weight: 'bold' } },
+            },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'Total count (all scenarios)', font: { weight: 'bold' } },
+              ticks: { stepSize: 1, precision: 0 },
+            },
+          },
+          plugins: {
+            tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y } },
+          },
+        },
+      })
+    }
+  }
 }, { immediate: true })
 </script>
 
@@ -278,17 +334,17 @@ watch([loaded, history], async () => {
 
 <div class="bench-table">
 
-| Scenario | Throughput | P50 latency | P95 latency | P99 latency | Total ops |
-| :------- | ---------: | ----------: | ----------: | ----------: | --------: |
+| Scenario | Throughput | P50 | P95 | P99 | Total ops | Errors | Warns |
+| :------- | ---------: | --: | --: | --: | --------: | -----: | ----: |
 
 <template v-for="b in benchmarks" :key="b.name">
-| {{ label(b.name) }} | **{{ fmtOps(b.opsPerSec) }} ops/s** | {{ fmtMs(b.p50Ms) }} | {{ fmtMs(b.p95Ms) }} | {{ fmtMs(b.p99Ms) }} | {{ fmtOps(b.totalOps) }} |
+| {{ label(b.name) }} | **{{ fmtOps(b.opsPerSec) }} ops/s** | {{ fmtMs(b.p50Ms) }} | {{ fmtMs(b.p95Ms) }} | {{ fmtMs(b.p99Ms) }} | {{ fmtOps(b.totalOps) }} | {{ consoleCount(b, 'consoleErrors') }} | {{ consoleCount(b, 'consoleWarnings') }} |
 </template>
 
 </div>
 
 <p style="color: var(--vp-c-text-3); font-size: 0.85rem; margin-top: 1rem;">
-Measured: {{ new Date(latest.timestamp).toLocaleString() }} — 3 s sustained load per scenario, headless Chromium, single Node.js process, Web Worker + pako compression enabled.
+Measured: {{ new Date(latest.timestamp).toLocaleString() }} — 3 s sustained load per scenario, headless Chromium, single Node.js process, Web Worker + pako compression enabled. <strong>Errors / Warns</strong>: browser console errors and warnings observed during the benchmark (0 = clean).
 </p>
 
 </div>
@@ -345,18 +401,18 @@ One of datasole's key features is off-main-thread WebSocket transport via Web Wo
 
 <div class="bench-table">
 
-| Workload | Mode | Throughput | Long Tasks | Total blocked | rAF P99 | Jank frames |
-| :------- | :--- | ---------: | ---------: | ------------: | ------: | ----------: |
+| Workload | Mode | Throughput | Long Tasks | Total blocked | rAF P99 | Jank frames | Errors | Warns |
+| :------- | :--- | ---------: | ---------: | ------------: | ------: | ----------: | -----: | ----: |
 
 <template v-for="pair in mainThreadPairs" :key="pair.base">
-| {{ pair.label.replace(' (worker)', '') }} | **Worker** | {{ fmtOps(pair.worker.opsPerSec) }} ops/s | {{ pair.worker.mainThread.longTaskCount }} | {{ pair.worker.mainThread.longTaskTotalMs.toFixed(0) }} ms | {{ pair.worker.mainThread.rafP99Ms.toFixed(1) }} ms | {{ pair.worker.mainThread.rafJankFrames }} / {{ pair.worker.mainThread.rafTotalFrames }} |
-| | No worker | {{ fmtOps(pair.noWorker.opsPerSec) }} ops/s | {{ pair.noWorker.mainThread.longTaskCount }} | {{ pair.noWorker.mainThread.longTaskTotalMs.toFixed(0) }} ms | {{ pair.noWorker.mainThread.rafP99Ms.toFixed(1) }} ms | {{ pair.noWorker.mainThread.rafJankFrames }} / {{ pair.noWorker.mainThread.rafTotalFrames }} |
+| {{ pair.label.replace(' (worker)', '') }} | **Worker** | {{ fmtOps(pair.worker.opsPerSec) }} ops/s | {{ pair.worker.mainThread.longTaskCount }} | {{ pair.worker.mainThread.longTaskTotalMs.toFixed(0) }} ms | {{ pair.worker.mainThread.rafP99Ms.toFixed(1) }} ms | {{ pair.worker.mainThread.rafJankFrames }} / {{ pair.worker.mainThread.rafTotalFrames }} | {{ consoleCount(pair.worker, 'consoleErrors') }} | {{ consoleCount(pair.worker, 'consoleWarnings') }} |
+| | No worker | {{ fmtOps(pair.noWorker.opsPerSec) }} ops/s | {{ pair.noWorker.mainThread.longTaskCount }} | {{ pair.noWorker.mainThread.longTaskTotalMs.toFixed(0) }} ms | {{ pair.noWorker.mainThread.rafP99Ms.toFixed(1) }} ms | {{ pair.noWorker.mainThread.rafJankFrames }} / {{ pair.noWorker.mainThread.rafTotalFrames }} | {{ consoleCount(pair.noWorker, 'consoleErrors') }} | {{ consoleCount(pair.noWorker, 'consoleWarnings') }} |
 </template>
 
 </div>
 
 <p style="color: var(--vp-c-text-3); font-size: 0.85rem; margin-top: 1rem;">
-<strong>Long Tasks</strong>: browser tasks that block the main thread for >50 ms (fewer = better UI responsiveness). <strong>rAF P99</strong>: 99th percentile requestAnimationFrame gap (closer to 16.7 ms = smoother). <strong>Jank frames</strong>: rAF callbacks delayed by >50 ms.
+<strong>Long Tasks</strong>: browser tasks that block the main thread for >50 ms (fewer = better UI responsiveness). <strong>rAF P99</strong>: 99th percentile requestAnimationFrame gap (closer to 16.7 ms = smoother). <strong>Jank frames</strong>: rAF callbacks delayed by >50 ms. <strong>Errors / Warns</strong>: browser console errors and warnings observed during the benchmark (0 = clean).
 </p>
 
 </div>
@@ -375,6 +431,24 @@ One of datasole's key features is off-main-thread WebSocket transport via Web Wo
 
 <p style="color: var(--vp-c-text-3); font-size: 0.8rem;">
 Total main-thread blocking time (ms) during 3-second sustained load. Lower is better. Worker transport should show near-zero blocking.
+</p>
+
+</div>
+
+<div v-else-if="loaded">
+<p>Not enough data points for trends yet.</p>
+</div>
+
+## Console errors & warnings over time
+
+<div v-if="loaded && history.filter(e => e.benchmarks && e.benchmarks.length > 0).length > 1">
+
+<div style="max-width: 800px; margin: 1rem 0;">
+<canvas ref="consoleCanvas"></canvas>
+</div>
+
+<p style="color: var(--vp-c-text-3); font-size: 0.8rem;">
+Total console errors (red) and warnings (amber) summed across all benchmark scenarios per run. Zero is the target — any non-zero value indicates a correctness or deprecation issue under load.
 </p>
 
 </div>
@@ -403,7 +477,9 @@ Each benchmark connects a real browser client (datasole IIFE bundle in headless 
 
 Additionally, 6 **main-thread comparison** benchmarks run each workload twice (with and without Web Worker transport) and measure Long Tasks, rAF jitter, and jank frames to quantify the off-main-thread benefit.
 
-All benchmarks run as part of the CI gate on every push to `main`.
+Every benchmark also records the number of **browser console errors and warnings** emitted during the test. These are first-class correctness indicators — any non-zero count under sustained load signals a runtime issue (unhandled rejection, deprecation, failed assertion, etc.) that should be investigated.
+
+All benchmarks run in **isolation** (separate Playwright process, own browser instance) as part of the CI gate on every push to `main`.
 
 <style>
 .bench-table table {

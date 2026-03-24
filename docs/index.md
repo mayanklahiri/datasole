@@ -126,9 +126,10 @@ Measured end-to-end with headless Chromium against a live Node.js server — not
 | **CRDT sync**              |    **~1,300 ops/s** | Conflict-free counter increments with full round-trip sync                        |
 | **Mixed workload**         |    **p50 < 0.4 ms** | RPC + events + state combined — sub-millisecond median under mixed load           |
 | **Main-thread blocking**   |       **near zero** | With Web Worker transport, the UI thread sees no Long Tasks even under flood load |
+| **Console errors**         |            **zero** | Zero browser console errors or warnings across all benchmark scenarios            |
 
 <p style="font-size: 0.82rem; color: var(--vp-c-text-3); margin-top: -0.5rem;">
-3 s sustained load per scenario, single Node.js process, Chromium browser. Main-thread impact measured via Long Tasks API + rAF jitter.
+3 s sustained load per scenario, single Node.js process, Chromium browser. Main-thread impact measured via Long Tasks API + rAF jitter. Console health tracked per-scenario.
 <a href="/datasole/performance">Full benchmark results, historical trends, and charts →</a>
 </p>
 

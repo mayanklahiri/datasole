@@ -151,6 +151,11 @@ interface MainThreadSummary {
   rafTotalFrames: number;
 }
 
+interface ConsoleSummary {
+  consoleErrors: number;
+  consoleWarnings: number;
+}
+
 interface BenchScenarioSummary {
   name: string;
   opsPerSec: number;
@@ -158,6 +163,7 @@ interface BenchScenarioSummary {
   p95Ms: number;
   p99Ms: number;
   totalOps: number;
+  console?: ConsoleSummary;
   mainThread?: MainThreadSummary;
 }
 
@@ -207,6 +213,7 @@ function appendToHistory(metrics: BuildMetrics): void {
         p95Ms: s.p95Ms,
         p99Ms: s.p99Ms,
         totalOps: s.totalOps,
+        ...(s.console ? { console: s.console } : {}),
         ...(s.mainThread ? { mainThread: s.mainThread } : {}),
       }))
     : null;
