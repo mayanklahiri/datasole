@@ -6,7 +6,7 @@ description: Server API reference, configuration, executor models, rate limiting
 
 # Server API
 
-> **New here?** Start with the [Tutorials](tutorials.md) — they build from a 10-line server to production configuration with thread pools, Redis, and rate limiting.
+> **New here?** Start with the [Developer Guide](developer-guide.md) for integration-first setup, then use [Tutorials](tutorials.md) for the full step-by-step build.
 
 ## Quick Start
 

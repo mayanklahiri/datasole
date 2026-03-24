@@ -6,6 +6,8 @@ description: Complete, copy-paste examples organized by pattern. Every example i
 
 # Examples
 
+This page is a reference catalog. For primary onboarding, start with the [Developer Guide](developer-guide.md).
+
 Quick-reference examples organized by **what you want to build**. Each is self-contained — copy the server and client code, run, and it works.
 
 For step-by-step learning, see the [Tutorials](tutorials.md).

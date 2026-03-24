@@ -11,13 +11,10 @@ hero:
     alt: datasole
   actions:
     - theme: brand
-      text: Get started in 2 minutes
-      link: /tutorials
+      text: Get started
+      link: /developer-guide
     - theme: alt
-      text: See live examples
-      link: /examples
-    - theme: alt
-      text: Wire Protocol Spec
+      text: Protocol Spec
       link: /protocol
     - theme: alt
       text: GitHub
@@ -91,7 +88,7 @@ features:
   - icon:
       src: /features/tutorial.jpg
     title: Progressive tutorial
-    details: '10 steps from hello-world to production. Each step adds one concept in ~10 lines of code. Every step has a working example and e2e screenshot.'
+    details: 'Start with the Developer Guide for integration into existing apps, then use the 10-step tutorial for a full walkthrough from hello-world to production.'
 ---
 
 ## Seven composable patterns

@@ -6,7 +6,7 @@ description: Client API reference, Worker setup, and framework integration.
 
 # Client API
 
-> **New here?** Start with the [Tutorials](tutorials.md) — they build from a 10-line hello world to a full real-time app, with runnable code at every step.
+> **New here?** Start with the [Developer Guide](developer-guide.md) for integration-first setup, then use [Tutorials](tutorials.md) for the full step-by-step build.
 
 ## DatasoleClient
 

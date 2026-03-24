@@ -154,6 +154,7 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 - Demo dependencies upgraded to latest versions (React 19, Vue 3, Express 5, NestJS 11, Vite 8, TypeScript 6)
 - React demo client walkthrough in docs replaced `useDatasole` prop-drilling pattern with `DatasoleProvider` + hooks
 - Vue demo client walkthrough in docs replaced manual `onMounted`/`onUnmounted` with composable-based pattern
+- Docs onboarding IA refreshed: new Developer Guide landing path, Getting Started sidebar now prioritizes Developer Guide and removes Examples, and homepage CTAs were shortened (`Get started`, `Protocol Spec`)
 
 ### Fixed
 

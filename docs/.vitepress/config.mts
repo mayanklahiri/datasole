@@ -39,7 +39,7 @@ export default withMermaid(
       siteTitle: 'datasole',
       logo: '/datasole-logo.png',
       nav: [
-        { text: 'Guide', link: '/tutorials' },
+        { text: 'Developer Guide', link: '/developer-guide' },
         { text: 'API', link: '/client' },
         { text: 'About', link: '/about' },
         {
@@ -51,9 +51,9 @@ export default withMermaid(
         {
           text: 'Getting Started',
           items: [
+            { text: 'Developer Guide', link: '/developer-guide' },
             { text: 'Tutorials', link: '/tutorials' },
             { text: 'Demos', link: '/demos' },
-            { text: 'Examples', link: '/examples' },
             { text: 'Integrations', link: '/integrations' },
           ],
         },
