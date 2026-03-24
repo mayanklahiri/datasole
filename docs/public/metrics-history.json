@@ -251,14 +251,14 @@
     ]
   },
   {
-    "timestamp": "2026-03-24T19:56:49.551Z",
+    "timestamp": "2026-03-24T20:40:15.845Z",
     "system": {
       "platform": "linux",
       "osRelease": "6.14.0-1017-azure",
       "arch": "x64",
       "cpuModel": "AMD EPYC 7763 64-Core Processor",
       "cpuCount": 4,
-      "totalMemoryBytes": 16771563520,
+      "totalMemoryBytes": 16767225856,
       "nodeVersion": "24.14.0"
     },
     "coverage": {
@@ -277,9 +277,9 @@
       {
         "name": "rpc-echo",
         "opsPerSec": 33,
-        "p50Ms": 0.86,
-        "p95Ms": 4.31,
-        "p99Ms": 7.16,
+        "p50Ms": 0.88,
+        "p95Ms": 4.14,
+        "p99Ms": 6.54,
         "totalOps": 100,
         "console": {
           "consoleErrors": 0,
@@ -289,9 +289,9 @@
       {
         "name": "rpc-concurrent",
         "opsPerSec": 37,
-        "p50Ms": 0.58,
-        "p95Ms": 3001.34,
-        "p99Ms": 3001.34,
+        "p50Ms": 0.56,
+        "p95Ms": 3002.2,
+        "p99Ms": 3002.2,
         "totalOps": 110,
         "console": {
           "consoleErrors": 0,
@@ -300,11 +300,11 @@
       },
       {
         "name": "server-event-receive",
-        "opsPerSec": 708,
+        "opsPerSec": 718,
         "p50Ms": 0,
         "p95Ms": 0,
         "p99Ms": 0,
-        "totalOps": 2123,
+        "totalOps": 2155,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -312,11 +312,11 @@
       },
       {
         "name": "state-sync-receive",
-        "opsPerSec": 182,
+        "opsPerSec": 184,
         "p50Ms": 0,
         "p95Ms": 0,
         "p99Ms": 0,
-        "totalOps": 546,
+        "totalOps": 552,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -324,11 +324,11 @@
       },
       {
         "name": "client-event-emit",
-        "opsPerSec": 79361,
+        "opsPerSec": 67506,
         "p50Ms": 0.01,
         "p95Ms": 0.02,
-        "p99Ms": 0.04,
-        "totalOps": 238082,
+        "p99Ms": 0.05,
+        "totalOps": 202517,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -336,11 +336,11 @@
       },
       {
         "name": "crdt-increment",
-        "opsPerSec": 954,
-        "p50Ms": 0.95,
-        "p95Ms": 2.14,
-        "p99Ms": 3.7,
-        "totalOps": 2862,
+        "opsPerSec": 928,
+        "p50Ms": 1.01,
+        "p95Ms": 2.09,
+        "p99Ms": 3.43,
+        "totalOps": 2784,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -348,11 +348,11 @@
       },
       {
         "name": "binary-frame-1kb",
-        "opsPerSec": 2319,
+        "opsPerSec": 2409,
         "p50Ms": 0,
         "p95Ms": 0,
         "p99Ms": 0,
-        "totalOps": 6957,
+        "totalOps": 7227,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -361,9 +361,9 @@
       {
         "name": "rpc-small-payload",
         "opsPerSec": 33,
-        "p50Ms": 0.89,
-        "p95Ms": 7.08,
-        "p99Ms": 9.43,
+        "p50Ms": 0.78,
+        "p95Ms": 3.89,
+        "p99Ms": 6.84,
         "totalOps": 100,
         "console": {
           "consoleErrors": 0,
@@ -373,10 +373,10 @@
       {
         "name": "rpc-large-json",
         "opsPerSec": 33,
-        "p50Ms": 32.76,
-        "p95Ms": 56.47,
-        "p99Ms": 65.03,
-        "totalOps": 99,
+        "p50Ms": 30.58,
+        "p95Ms": 53.38,
+        "p99Ms": 57.15,
+        "totalOps": 100,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -386,8 +386,8 @@
         "name": "two-way-latency",
         "opsPerSec": 36,
         "p50Ms": 4.13,
-        "p95Ms": 410.32,
-        "p99Ms": 411.45,
+        "p95Ms": 410.26,
+        "p99Ms": 411.14,
         "totalOps": 107,
         "console": {
           "consoleErrors": 0,
@@ -397,9 +397,9 @@
       {
         "name": "mixed-workload",
         "opsPerSec": 34,
-        "p50Ms": 0.64,
-        "p95Ms": 1.28,
-        "p99Ms": 4.54,
+        "p50Ms": 0.68,
+        "p95Ms": 1.63,
+        "p99Ms": 4.87,
         "totalOps": 101,
         "console": {
           "consoleErrors": 0,
@@ -408,11 +408,11 @@
       },
       {
         "name": "main-thread-heavy-flood-worker",
-        "opsPerSec": 2456,
+        "opsPerSec": 2561,
         "p50Ms": 0,
         "p95Ms": 0,
         "p99Ms": 0,
-        "totalOps": 7369,
+        "totalOps": 7684,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -421,20 +421,20 @@
           "longTaskCount": 0,
           "longTaskTotalMs": 0,
           "longTaskMaxMs": 0,
-          "rafMedianMs": 16.58,
-          "rafP99Ms": 47.38,
+          "rafMedianMs": 16.53,
+          "rafP99Ms": 40.74,
           "rafJankFrames": 1,
-          "rafDroppedFrames": 4,
-          "rafTotalFrames": 179
+          "rafDroppedFrames": 3,
+          "rafTotalFrames": 176
         }
       },
       {
         "name": "main-thread-event-flood-worker",
-        "opsPerSec": 896,
+        "opsPerSec": 893,
         "p50Ms": 0,
         "p95Ms": 0,
         "p99Ms": 0,
-        "totalOps": 2688,
+        "totalOps": 2678,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -443,7 +443,7 @@
           "longTaskCount": 0,
           "longTaskTotalMs": 0,
           "longTaskMaxMs": 0,
-          "rafMedianMs": 16.67,
+          "rafMedianMs": 16.63,
           "rafP99Ms": 17.43,
           "rafJankFrames": 0,
           "rafDroppedFrames": 0,
@@ -453,9 +453,9 @@
       {
         "name": "main-thread-rpc-echo-worker",
         "opsPerSec": 33,
-        "p50Ms": 18.54,
-        "p95Ms": 33.15,
-        "p99Ms": 35.04,
+        "p50Ms": 17.2,
+        "p95Ms": 28.18,
+        "p99Ms": 28.89,
         "totalOps": 100,
         "console": {
           "consoleErrors": 0,
@@ -466,19 +466,19 @@
           "longTaskTotalMs": 0,
           "longTaskMaxMs": 0,
           "rafMedianMs": 16.67,
-          "rafP99Ms": 30.3,
+          "rafP99Ms": 25.83,
           "rafJankFrames": 0,
-          "rafDroppedFrames": 6,
-          "rafTotalFrames": 1870
+          "rafDroppedFrames": 0,
+          "rafTotalFrames": 1869
         }
       },
       {
         "name": "main-thread-heavy-flood-no-worker",
-        "opsPerSec": 2140,
+        "opsPerSec": 2123,
         "p50Ms": 0,
         "p95Ms": 0,
         "p99Ms": 0,
-        "totalOps": 6419,
+        "totalOps": 6368,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -487,11 +487,11 @@
           "longTaskCount": 0,
           "longTaskTotalMs": 0,
           "longTaskMaxMs": 0,
-          "rafMedianMs": 101.13,
-          "rafP99Ms": 104.46,
+          "rafMedianMs": 101.07,
+          "rafP99Ms": 110.52,
           "rafJankFrames": 40,
           "rafDroppedFrames": 40,
-          "rafTotalFrames": 41
+          "rafTotalFrames": 42
         }
       },
       {
@@ -500,7 +500,7 @@
         "p50Ms": 0,
         "p95Ms": 0,
         "p99Ms": 0,
-        "totalOps": 2719,
+        "totalOps": 2718,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -509,19 +509,19 @@
           "longTaskCount": 0,
           "longTaskTotalMs": 0,
           "longTaskMaxMs": 0,
-          "rafMedianMs": 16.68,
-          "rafP99Ms": 17.41,
+          "rafMedianMs": 16.67,
+          "rafP99Ms": 17.45,
           "rafJankFrames": 0,
           "rafDroppedFrames": 0,
-          "rafTotalFrames": 180
+          "rafTotalFrames": 181
         }
       },
       {
         "name": "main-thread-rpc-echo-no-worker",
         "opsPerSec": 33,
-        "p50Ms": 18.23,
-        "p95Ms": 30.08,
-        "p99Ms": 31.61,
+        "p50Ms": 15.94,
+        "p95Ms": 28.27,
+        "p99Ms": 30.02,
         "totalOps": 100,
         "console": {
           "consoleErrors": 0,
@@ -532,10 +532,10 @@
           "longTaskTotalMs": 0,
           "longTaskMaxMs": 0,
           "rafMedianMs": 16.67,
-          "rafP99Ms": 28.43,
+          "rafP99Ms": 25.43,
           "rafJankFrames": 0,
           "rafDroppedFrames": 0,
-          "rafTotalFrames": 1869
+          "rafTotalFrames": 1866
         }
       }
     ]
