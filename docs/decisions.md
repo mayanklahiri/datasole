@@ -161,3 +161,23 @@ description: Architecture Decision Records for the datasole project.
   - Validate `PostgresBackend` `tableName` as a safe SQL identifier before interpolation.
 - **Consequences:** Declarative backend config works; distributed backends can be brought up safely; non-async executor models no longer silently break the protocol. Trade-off: thread models do not yet provide CPU isolation—only the same routing path as `async`.
 - **Worker asset headers:** `datasole-worker.iife.min.js` uses the same COOP/COEP as the main bundle, but **`Cross-Origin-Resource-Policy: cross-origin`** instead of `same-origin`. `CORP: same-origin` on the worker script breaks `new Worker()` for typical HTML pages that do not enable cross-origin isolation; `cross-origin` keeps workers loadable for both COEP test pages and normal SPAs.
+
+## ADR-017: Contract-first integration style for apps, docs, and generated code
+
+- **Status:** Accepted
+- **Date:** 2026-03-24
+- **Context:** Raw string literals for RPC methods, event names, and state keys drift between client and server, break refactors, and tempt LLMs to invent inconsistent APIs. Tutorials and demos need a single pattern that is both type-safe and easy to copy.
+- **Decision:** Production-oriented examples use a shared **`AppContract` extending `DatasoleContract`**, colocated with **`enum` (or equivalent const-key maps) for `RpcMethod`, `Event`, and `StateKey`**. The same module is imported on client and server. Public docs and agent-generated snippets should default to this pattern unless the snippet is intentionally minimal (e.g. one-liner hello world).
+- **Consequences:** End-to-end typing, grep-friendly method names, and alignment with `RpcParams` / `RpcResult` / `EventData` / `StateValue` helpers. Agents and humans produce compatible code more often. Trade-off: slightly more boilerplate than string-only examples.
+
+## ADR-018: Server extension surface — what exists vs. what agents must not invent
+
+- **Status:** Accepted
+- **Date:** 2026-03-24
+- **Context:** Automated coding agents often hallucinate framework hooks (custom middleware chains, injectable rate-limiter classes, multiple backends per server). Documenting the **actual** extension points reduces bad patches and impossible APIs.
+- **Decision:** Treat the following as canonical for analysis, codegen, and review:
+  1. **One `StateBackend` per `DatasoleServer`** — multi-store setups use a **composite/facade** implementing `StateBackend`, not multiple `stateBackend` options (see ADR-005).
+  2. **Rate limiting** — `BackendRateLimiter` is internal; configuration is **`rateLimit`** (`defaultRule`, `rules`, `keyExtractor`) plus shared storage via the same `StateBackend`. There is **no** public `rateLimiter: RateLimiter` constructor option.
+  3. **Authentication** — **`authHandler`** runs on the **HTTP WebSocket upgrade** only (`IncomingMessage` → `AuthResult`). There is no per-frame auth callback on the datasole protocol.
+  4. **Metrics** — extend via **`MetricsExporter`** (`export(snapshot)` → string); transport-level counters only. Application/business metrics belong in the host app’s observability stack.
+- **Consequences:** Agents can safely wire Redis/Postgres backends, tune limits, and add JWT/cookie auth without inventing unsupported constructor options. Trade-off: users who need a different rate-limit **algorithm** must implement storage semantics compatible with `StateBackend` keys (e.g. `rl:*`) or contribute upstream—not inject a new limiter class.

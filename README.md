@@ -20,6 +20,22 @@
   <strong><a href="https://mayanklahiri.github.io/datasole/">Documentation</a></strong> · <strong><a href="https://mayanklahiri.github.io/datasole/tutorials">Tutorials</a></strong> · <strong><a href="https://mayanklahiri.github.io/datasole/client">API Reference</a></strong>
 </p>
 
+## Project snapshot
+
+_Snapshot captured **2026-03-24 20:30:23 UTC** (run `npm test -- --coverage` and `npm run build` locally to refresh)._
+
+|                                                      |                                  |
+| ---------------------------------------------------- | -------------------------------: |
+| **npm version**                                      |                            1.0.0 |
+| **Unit tests**                                       |            491 passed (50 files) |
+| **Coverage (lines / branches / funcs / statements)** | 88.2% / 74.65% / 87.01% / 87.05% |
+| **Playwright e2e**                                   |       48 core + 9 demo scenarios |
+| **Client IIFE + worker (gzip)**                      |  22.3 KB + 15.3 KB = **37.6 KB** |
+| **Server CJS entry (gzip)**                          |                          17.3 KB |
+| **Shared CJS entry (gzip)**                          |                           4.1 KB |
+| **`.d.ts` declaration files**                        |                              206 |
+| **Bundled client + worker raw (gz)**                 |         703.7 KB (181.3 KB gzip) |
+
 ## Why datasole?
 
 You're building something realtime. You've evaluated the options:
@@ -315,7 +331,7 @@ Numbers vary by machine. Live data: [Performance Benchmarks](https://mayanklahir
 
 ## Test coverage
 
-485 unit tests plus core and demo Playwright coverage across desktop/mobile viewports. `npm run gate` is the non-performance developer gate; `npm run gate:full` is the exhaustive CI/nightly gate that adds benchmarks, metrics, docs, and bot-authored `[skip ci]` artifact refresh commits on `main`.
+491 unit tests plus core and demo Playwright coverage across desktop/mobile viewports. `npm run gate` is the non-performance developer gate; `npm run gate:full` is the exhaustive CI/nightly gate that adds benchmarks, metrics, docs, and bot-authored `[skip ci]` artifact refresh commits on `main`.
 
 ## Architecture Diagram
 

@@ -12,6 +12,12 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 
 ### Added
 
+#### Documentation & ADRs
+
+- **ADR-017** — Contract-first integration style (`AppContract` + enums) for apps, docs, and generated code
+- **ADR-018** — Canonical server extension surface (one `StateBackend`, `rateLimit` config, upgrade-only `authHandler`, `MetricsExporter`); avoids hallucinated hooks in agentic tooling
+- **README** — Project snapshot table (version, tests, coverage, bundles) with capture timestamp
+
 #### Architecture
 
 - **Composable layer architecture**: DatasoleServer decomposed into Transport, Executor, Backends, and Primitives layers [ADR-012]

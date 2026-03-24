@@ -73,7 +73,7 @@ It runs `npm run gate` plus:
 - `docs/developer-guide.md` — Contract-first setup + framework integration patterns
 - `docs/configuration.md` — Consolidated server/client configuration reference
 - `docs/architecture.md` — System design, wire protocol, data flow
-- `docs/decisions.md` — Architecture Decision Records (ADRs)
+- `docs/decisions.md` — Architecture Decision Records (ADRs); **ADR-017** (contract-first + enums), **ADR-018** (server extension surface for tools/agents)
 - `docs/contributing.md` — Build commands, PR guidelines
 
 When adding user-facing features, update `docs/tutorials.md` and/or `docs/developer-guide.md` with runnable examples.
