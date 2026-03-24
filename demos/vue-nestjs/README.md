@@ -38,6 +38,16 @@ const memoryPct = computed(() =>
 
 Everything works because datasole updates `ref.value` from the Web Worker thread — Vue's reactivity system picks it up instantly and re-renders only what changed. The main thread stays free for smooth 60 fps animations.
 
+## What It Does
+
+Three panels demonstrate datasole's core data-flow patterns:
+
+| Panel          | Pattern                       | Composable Used                                     |
+| -------------- | ----------------------------- | --------------------------------------------------- |
+| Server Metrics | Server → client broadcast     | `useDatasoleEvent<Metrics>('system-metrics')`       |
+| Chat Room      | Client ↔ server state sync    | `useDatasoleState<ChatMessage[]>('chat:messages')`  |
+| RPC Random     | Client → server request/reply | `useDatasoleClient()` → `ds.rpc('randomNumber', …)` |
+
 ## Quickstart
 
 ```bash
@@ -79,22 +89,60 @@ Override backend port with `PORT` env var.
 
 ## Server-Side Integration
 
+NestJS integration follows the standard module/service pattern:
+
+### `app.module.ts`
+
+```typescript
+@Module({
+  imports: hasClientBuild ? [ServeStaticModule.forRoot({ rootPath: clientDist })] : [],
+  providers: [DatasoleService],
+  exports: [DatasoleService],
+})
+export class AppModule {}
+```
+
+### `datasole.service.ts`
+
+```typescript
+@Injectable()
+export class DatasoleService implements OnModuleDestroy {
+  readonly ds = new DatasoleServer();
+
+  async init(): Promise<void> {
+    // Register event handlers, RPC methods, state, and metrics broadcast
+    this.ds.on('chat:send', (payload) => {
+      /* ... */
+    });
+    this.ds.rpc('randomNumber', async ({ min, max }) => {
+      /* ... */
+    });
+    this.ds.setState('chat:messages', this.chatHistory);
+  }
+
+  onModuleDestroy(): void {
+    this.ds.close();
+  }
+}
+```
+
+### `main.ts`
+
 ```typescript
 import 'reflect-metadata';
-import { NestFactory } from '@nestjs/core';
-import { DatasoleServer } from 'datasole/server';
 
-const app = await NestFactory.create(AppModule);
+const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-// Serve datasole worker IIFE for web worker transport
+// Serve datasole worker IIFE (registered before NestJS middleware)
 const expressApp = app.getHttpAdapter().getInstance();
 expressApp.get('/datasole-worker.iife.min.js', (_req, res) => {
   res.sendFile(workerPath);
 });
 
 // Attach datasole to NestJS's underlying HTTP server
-const ds = new DatasoleServer();
-ds.attach(app.getHttpServer());
+const datasoleService = app.get(DatasoleService);
+await datasoleService.init();
+datasoleService.ds.attach(app.getHttpServer());
 
 await app.listen(4002);
 ```
@@ -104,30 +152,66 @@ Key points:
 - `DatasoleServer` defaults to `thread-pool` concurrency with 4 Node.js `worker_threads`
 - `reflect-metadata` must be imported **before** any NestJS code
 - `app.getHttpServer()` returns the raw Node.js `http.Server` — this is what `ds.attach()` expects
-- The worker file route is registered via the Express adapter, **before** NestJS handles requests
+- The worker file route is registered via the Express adapter **before** NestJS middleware handles requests
 - `@nestjs/serve-static` serves the Vite-built client from `dist/client/` in production
+- `OnModuleDestroy` ensures graceful cleanup of the datasole server and metrics interval
 
 ## Client-Side Integration
 
-The `useDatasole()` composable (called once at the app root) creates the client, connects, and provides it to all descendants via `inject()`:
+### 1. Initialize at the app root
 
-```typescript
-// App.vue
+`useDatasole()` creates the client, connects, and provides it to all descendants via Vue's `provide`/`inject`:
+
+```vue
+<!-- App.vue -->
+<script setup lang="ts">
 import { useDatasole } from './composables/useDatasole';
-useDatasole(); // once at root — provides client to entire tree
+useDatasole();
+</script>
 ```
 
-Child components consume data with zero boilerplate:
+### 2. Consume data in any SFC
+
+Child components import composables — no prop drilling, no context wrapper components:
 
 ```typescript
-// Any child SFC
-const metrics = useDatasoleEvent<Metrics>('system-metrics'); // server broadcasts → ref
+const metrics = useDatasoleEvent<Metrics>('system-metrics'); // broadcast → ref
 const messages = useDatasoleState<ChatMsg[]>('chat:messages'); // server state → ref
 const ds = useDatasoleClient(); // raw client for emit/rpc
 const conn = useConnectionState(); // 'connected' | 'disconnected' | ...
 ```
 
-No context wrapper components, no store modules, no actions/mutations. The composable returns a reactive `Ref` that updates when the server pushes data. Bind it in your template and forget about it.
+### 3. How it works
+
+- `useDatasole()` creates and provides the `DatasoleClient` via `provide()`/`inject()` — called once at the root
+- `useDatasoleEvent` watches the client ref and registers/unregisters event listeners automatically
+- `useDatasoleState` subscribes via `client.subscribeState()` — cleanup calls `sub.unsubscribe()` automatically via `onUnmounted`
+- All composables return reactive `Ref`s — bind them in `<template>` and Vue handles the rest
+
+### 4. Deriving values
+
+Use Vue's `computed` for any derivation from server data — standard Vue idiom, no store getters:
+
+```typescript
+const uptimeDisplay = computed(() => {
+  const s = Math.floor(metrics.value.uptime / 1000);
+  return `${Math.floor(s / 60)}m ${s % 60}s`;
+});
+
+const totalMessages = computed(() => metrics.value.messagesIn + metrics.value.messagesOut);
+```
+
+### 5. Animations
+
+Vue's `<TransitionGroup>` works directly with the reactive data:
+
+```vue
+<TransitionGroup name="msg" tag="div">
+  <div v-for="msg in messages" :key="msg.id" class="chat-msg">
+    {{ msg.text }}
+  </div>
+</TransitionGroup>
+```
 
 ## Vite Dev Proxy
 
@@ -143,10 +227,29 @@ proxy: {
 - `/__ds` — WebSocket upgrade for the datasole connection
 - `/datasole-worker.iife.min.js` — Worker script fetched by the browser
 
+## Testing
+
+This demo is tested as part of the parent project's e2e suite:
+
+```bash
+# from repo root
+npm run test:e2e:demos
+```
+
+The Playwright e2e test:
+
+1. Runs `npm install` in this directory (if `node_modules/` is absent)
+2. Builds production assets (`npm run build`)
+3. Starts the server in production mode (`npm start`)
+4. Navigates to `http://localhost:4002`
+5. Verifies real-time metric updates arrive within 5 seconds
+6. Captures screenshots for visual regression
+
 ## Framework Quirks
 
-- `reflect-metadata` must be imported before any NestJS code
+- `reflect-metadata` must be imported before any NestJS code — this is a NestJS/decorator requirement
 - `tsconfig.server.json` enables `experimentalDecorators` and `emitDecoratorMetadata` (required by NestJS decorators)
-- `@nestjs/serve-static` is used in production to serve the Vite-built client from `dist/client/`
+- `@nestjs/serve-static` serves the Vite-built client from `dist/client/` in production
 - Datasole attaches directly to the raw `http.Server` via `app.getHttpServer()` — no NestJS WebSocket gateway needed
-- Worker file route must be registered via `app.getHttpAdapter().getInstance()` before static file serving kicks in
+- The worker file route must be registered via `app.getHttpAdapter().getInstance()` before static file serving kicks in
+- Vue's `<script setup lang="ts">` is the recommended SFC syntax — all components in this demo use it

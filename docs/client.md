@@ -155,7 +155,8 @@ function useDatasole(url: string) {
 function useLiveState<T>(client: DatasoleClient, key: string): T | null {
   const [state, setState] = useState<T | null>(null);
   useEffect(() => {
-    client.subscribeState<T>(key, setState);
+    const sub = client.subscribeState<T>(key, setState);
+    return () => sub.unsubscribe();
   }, [client, key]);
   return state;
 }
@@ -178,15 +179,19 @@ import { onMounted, onUnmounted, ref } from 'vue';
 
 const client = new DatasoleClient({ url: 'wss://example.com' });
 const dashboard = ref<Record<string, unknown>>({});
+let stateSub: { unsubscribe(): void } | null = null;
 
 onMounted(() => {
   client.connect();
-  client.subscribeState('dashboard', (s) => {
+  stateSub = client.subscribeState('dashboard', (s) => {
     dashboard.value = s;
   });
 });
 
-onUnmounted(() => client.disconnect());
+onUnmounted(() => {
+  stateSub?.unsubscribe();
+  client.disconnect();
+});
 </script>
 
 <template>
@@ -209,11 +214,13 @@ export function useDatasole(url: string) {
 
 export function useLiveState<T>(client: DatasoleClient, key: string): Ref<T | null> {
   const state = ref<T | null>(null) as Ref<T | null>;
+  let sub: { unsubscribe(): void } | null = null;
   onMounted(() => {
-    client.subscribeState<T>(key, (s) => {
+    sub = client.subscribeState<T>(key, (s) => {
       state.value = s;
     });
   });
+  onUnmounted(() => sub?.unsubscribe());
   return state;
 }
 ```

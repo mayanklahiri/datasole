@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { DatasoleClient } from 'datasole/client';
 import type { ConnectionState } from 'datasole/client';
 
@@ -19,20 +19,17 @@ const DatasoleContext = createContext<DatasoleContextValue>({
  * and makes the client available to all descendants via hooks.
  */
 export function DatasoleProvider({ children }: { children: ReactNode }) {
-  const clientRef = useRef<DatasoleClient | null>(null);
   const [client, setClient] = useState<DatasoleClient | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
 
   useEffect(() => {
     const c = new DatasoleClient({ url: `ws://${window.location.host}` });
-    clientRef.current = c;
     setClient(c);
     c.connect();
     const interval = setInterval(() => setConnectionState(c.getConnectionState()), 500);
     return () => {
       clearInterval(interval);
       c.disconnect();
-      clientRef.current = null;
     };
   }, []);
 
@@ -81,7 +78,8 @@ export function useDatasoleState<T>(key: string): T | null {
 
   useEffect(() => {
     if (!client) return;
-    return client.subscribeState(key, (val: T) => setData(val));
+    const sub = client.subscribeState(key, (val: T) => setData(val));
+    return () => sub.unsubscribe();
   }, [client, key]);
 
   return data;

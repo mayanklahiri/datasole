@@ -19,21 +19,21 @@
   }, 500);
 
   // ─── Username ─────────────────────────────────────────────────────
-  var username = 'user-' + Math.random().toString(36).slice(2, 7);
+  const username = 'user-' + Math.random().toString(36).slice(2, 7);
 
   // ─── Metrics ──────────────────────────────────────────────────────
-  var metricsEl = document.getElementById('metrics-content');
+  const metricsEl = document.getElementById('metrics-content');
 
   function formatUptime(ms) {
-    var s = Math.floor(ms / 1000);
-    var h = Math.floor(s / 3600);
-    var m = Math.floor((s % 3600) / 60);
+    let s = Math.floor(ms / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
     s = s % 60;
     return (h > 0 ? h + 'h ' : '') + m + 'm ' + s + 's';
   }
 
   ds.on('system-metrics', function (ev) {
-    var d = ev.data;
+    const d = ev.data;
     metricsEl.className = 'metrics-grid';
     metricsEl.innerHTML =
       '<div class="metric-card">' +
@@ -95,14 +95,14 @@
   });
 
   // ─── Chat ─────────────────────────────────────────────────────────
-  var chatMessages = document.getElementById('chat-messages');
-  var chatEmpty = document.getElementById('chat-empty');
-  var chatInput = document.getElementById('chat-input');
-  var chatSend = document.getElementById('chat-send');
-  var seenIds = new Set();
+  const chatMessages = document.getElementById('chat-messages');
+  const chatEmpty = document.getElementById('chat-empty');
+  const chatInput = document.getElementById('chat-input');
+  const chatSend = document.getElementById('chat-send');
+  const seenIds = new Set();
 
   function formatTime(ts) {
-    var d = new Date(ts);
+    const d = new Date(ts);
     return (
       d.getHours().toString().padStart(2, '0') +
       ':' +
@@ -113,7 +113,7 @@
   }
 
   function escapeHtml(str) {
-    var div = document.createElement('div');
+    const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
   }
@@ -122,7 +122,7 @@
     if (seenIds.has(msg.id)) return;
     seenIds.add(msg.id);
     if (chatEmpty) chatEmpty.style.display = 'none';
-    var el = document.createElement('div');
+    const el = document.createElement('div');
     el.className = 'chat-msg';
     el.innerHTML =
       '<div class="author">' +
@@ -151,9 +151,9 @@
   });
 
   function sendChat() {
-    var text = chatInput.value.trim();
+    const text = chatInput.value.trim();
     if (!text) return;
-    ds.emit('chat:send', { text: text, username: username });
+    ds.emit('chat:send', { text, username });
     chatInput.value = '';
   }
 
@@ -163,27 +163,25 @@
   });
 
   // ─── RPC ──────────────────────────────────────────────────────────
-  var rpcCall = document.getElementById('rpc-call');
-  var rpcResult = document.getElementById('rpc-result');
-  var rpcHistory = document.getElementById('rpc-history');
-  var rpcMin = document.getElementById('rpc-min');
-  var rpcMax = document.getElementById('rpc-max');
-  var history = [];
+  const rpcCall = document.getElementById('rpc-call');
+  const rpcResult = document.getElementById('rpc-result');
+  const rpcHistory = document.getElementById('rpc-history');
+  const rpcMin = document.getElementById('rpc-min');
+  const rpcMax = document.getElementById('rpc-max');
+  const history = [];
 
   rpcCall.addEventListener('click', async function () {
-    var min = parseInt(rpcMin.value, 10) || 1;
-    var max = parseInt(rpcMax.value, 10) || 100;
+    let min = parseInt(rpcMin.value, 10) || 1;
+    let max = parseInt(rpcMax.value, 10) || 100;
     if (min > max) {
-      var t = min;
-      min = max;
-      max = t;
+      [min, max] = [max, min];
     }
 
     rpcCall.disabled = true;
-    var start = performance.now();
+    const start = performance.now();
     try {
-      var data = await ds.rpc('randomNumber', { min: min, max: max });
-      var elapsed = (performance.now() - start).toFixed(1);
+      const data = await ds.rpc('randomNumber', { min, max });
+      const elapsed = (performance.now() - start).toFixed(1);
 
       rpcResult.innerHTML =
         '<div class="rpc-result-value">' +
@@ -197,7 +195,7 @@
         elapsed +
         ' ms</div>';
 
-      history.unshift({ value: data.value, min: min, max: max, ms: elapsed });
+      history.unshift({ value: data.value, min, max, ms: elapsed });
       if (history.length > 10) history.pop();
       renderHistory();
     } catch (err) {
@@ -214,7 +212,7 @@
       rpcHistory.innerHTML = '';
       return;
     }
-    var html = '<div class="rpc-history-title">History</div>';
+    let html = '<div class="rpc-history-title">History</div>';
     history.forEach(function (h) {
       html +=
         '<div class="rpc-history-item">' +

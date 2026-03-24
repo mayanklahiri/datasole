@@ -8,19 +8,10 @@ import { DatasoleService } from './datasole.service.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const clientDist = resolve(__dirname, '../../dist/client');
-
-const imports: unknown[] = [];
-
-if (existsSync(clientDist)) {
-  imports.push(
-    ServeStaticModule.forRoot({
-      rootPath: clientDist,
-    }),
-  );
-}
+const hasClientBuild = existsSync(clientDist);
 
 @Module({
-  imports: imports as Parameters<typeof Module>[0]['imports'],
+  imports: hasClientBuild ? [ServeStaticModule.forRoot({ rootPath: clientDist })] : [],
   providers: [DatasoleService],
   exports: [DatasoleService],
 })

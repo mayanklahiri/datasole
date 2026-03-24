@@ -44,6 +44,16 @@ return (
 
 Everything works because datasole updates state from the Web Worker thread — React re-renders only what changed and the main thread stays free for smooth 60 fps animations.
 
+## What It Does
+
+Three panels demonstrate datasole's core data-flow patterns:
+
+| Panel          | Pattern                       | Hook Used                                           |
+| -------------- | ----------------------------- | --------------------------------------------------- |
+| Server Metrics | Server → client broadcast     | `useDatasoleEvent<Metrics>('system-metrics')`       |
+| Chat Room      | Client ↔ server state sync    | `useDatasoleState<ChatMessage[]>('chat:messages')`  |
+| RPC Random     | Client → server request/reply | `useDatasoleClient()` → `ds.rpc('randomNumber', …)` |
+
 ## Quickstart
 
 ```bash
@@ -85,6 +95,8 @@ Override backend port with `PORT` env var.
 
 ## Server-Side Integration
 
+`server/index.ts` sets up Express 5 with `DatasoleServer`:
+
 ```typescript
 import express from 'express';
 import { createServer } from 'http';
@@ -92,28 +104,37 @@ import { DatasoleServer } from 'datasole/server';
 
 const app = express();
 
-// Serve the datasole worker IIFE for web worker transport
+// 1. Serve the datasole worker IIFE (must appear before catch-all)
 app.get('/datasole-worker.iife.min.js', (_req, res) => {
   res.sendFile(dsWorkerPath);
 });
 
-// In production, serve Vite-built client
+// 2. In production, serve Vite-built client as static files
 app.use(express.static('dist/client'));
+app.get('/{*splat}', (_req, res) => {
+  res.sendFile(resolve(clientDist, 'index.html'));
+});
 
+// 3. Attach datasole to the underlying Node.js HTTP server
 const httpServer = createServer(app);
 const ds = new DatasoleServer();
 ds.attach(httpServer);
+
+httpServer.listen(4001);
 ```
 
 Key points:
 
 - `DatasoleServer` defaults to `thread-pool` concurrency with 4 Node.js `worker_threads`
-- The worker IIFE file must be served at `/datasole-worker.iife.min.js` (or a custom path matching `workerUrl`)
-- The route for the worker file must appear **before** any catch-all SPA route
+- The worker IIFE must be served at `/datasole-worker.iife.min.js` (or a custom path matching `workerUrl`)
+- The worker route must appear **before** any catch-all SPA route
+- Express 5 uses `/{*splat}` syntax for catch-all routes (not the old `*`)
 
 ## Client-Side Integration
 
-The `DatasoleProvider` component (wrapping your app root) creates the client, connects, and makes it available to all descendants via React context:
+### 1. Provider at the app root
+
+`DatasoleProvider` creates the client, connects, and makes it available via React context:
 
 ```tsx
 // App.tsx
@@ -132,17 +153,35 @@ export function App() {
 }
 ```
 
-Child components consume data with zero boilerplate:
+### 2. Consume data with hooks
+
+Child components import hooks — no prop drilling, no context boilerplate:
 
 ```tsx
-// Any child component
-const metrics = useDatasoleEvent<Metrics>('system-metrics'); // server broadcasts → state
+const metrics = useDatasoleEvent<Metrics>('system-metrics'); // broadcast → state
 const messages = useDatasoleState<ChatMsg[]>('chat:messages'); // server state → state
 const ds = useDatasoleClient(); // raw client for emit/rpc
 const conn = useConnectionState(); // 'connected' | 'disconnected' | ...
 ```
 
-No context wrapper boilerplate beyond `DatasoleProvider`, no store modules, no actions/reducers. The hook returns current state and re-renders the component when the server pushes data. Render it in JSX and forget about it.
+### 3. How it works
+
+- `DatasoleProvider` connects on mount, disconnects on unmount (StrictMode safe)
+- `useDatasoleEvent` registers a listener via `client.on()` — cleanup runs `client.off()` automatically
+- `useDatasoleState` subscribes via `client.subscribeState()` — cleanup calls `sub.unsubscribe()` automatically
+- All hooks return plain React state — re-renders are driven by `useState` setters called from the Web Worker thread
+
+### 4. Deriving values
+
+Use `useMemo` for any derivation from server data — standard React idiom, no store selectors:
+
+```tsx
+const uptimeDisplay = useMemo(() => formatUptime(metrics?.uptime ?? 0), [metrics?.uptime]);
+const totalMessages = useMemo(
+  () => (metrics?.messagesIn ?? 0) + (metrics?.messagesOut ?? 0),
+  [metrics?.messagesIn, metrics?.messagesOut],
+);
+```
 
 ## Vite Dev Proxy
 
@@ -158,9 +197,27 @@ proxy: {
 - `/__ds` — WebSocket upgrade for the datasole connection
 - `/datasole-worker.iife.min.js` — Worker script fetched by the browser
 
+## Testing
+
+This demo is tested as part of the parent project's e2e suite:
+
+```bash
+# from repo root
+npm run test:e2e:demos
+```
+
+The Playwright e2e test:
+
+1. Runs `npm install` in this directory (if `node_modules/` is absent)
+2. Builds production assets (`npm run build`)
+3. Starts the server in production mode (`npm start`)
+4. Navigates to `http://localhost:4001`
+5. Verifies real-time metric updates arrive within 5 seconds
+6. Captures screenshots for visual regression
+
 ## Notes
 
-- `DatasoleProvider` connects on mount, disconnects on unmount (StrictMode safe)
 - Production build: `vite build` outputs to `dist/client/`, Express serves it as static files
-- Web Worker transport keeps the main thread free for React rendering
-- Express 5 uses `/{*splat}` syntax for catch-all routes (not `*`)
+- Web Worker transport keeps the main thread free for React rendering and animations
+- React 19's automatic memoization via the compiler makes `useMemo`/`useCallback` optional in many cases, but this demo uses them explicitly to demonstrate the pattern
+- Express 5 automatically catches rejected promises from handlers (no unhandled rejection crashes)

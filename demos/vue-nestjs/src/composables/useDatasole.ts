@@ -97,9 +97,10 @@ export function useDatasoleState<T>(key: string): Ref<T | null> {
       cleanup?.();
       cleanup = null;
       if (!client) return;
-      cleanup = client.subscribeState(key, (val: T) => {
+      const sub = client.subscribeState(key, (val: T) => {
         data.value = val;
       });
+      cleanup = () => sub.unsubscribe();
     },
     { immediate: true },
   );

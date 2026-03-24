@@ -13,19 +13,20 @@ const PORT = parseInt(process.env.PORT || '4002', 10);
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Serve datasole worker IIFE for web worker transport
+  // Serve datasole worker IIFE for web worker transport.
+  // Registered on the underlying Express instance before NestJS middleware
+  // so the route is resolved before @nestjs/serve-static's catch-all.
   const dsWorkerPath = resolve(
     __dirname,
     '../../node_modules/datasole/dist/client/datasole-worker.iife.min.js',
   );
   if (existsSync(dsWorkerPath)) {
-    const expressApp = app.getHttpAdapter().getInstance();
-    expressApp.get(
-      '/datasole-worker.iife.min.js',
-      (_req: unknown, res: { sendFile: (p: string) => void }) => {
-        res.sendFile(dsWorkerPath);
-      },
-    );
+    const expressApp = app.getHttpAdapter().getInstance() as {
+      get(path: string, handler: (req: unknown, res: { sendFile(p: string): void }) => void): void;
+    };
+    expressApp.get('/datasole-worker.iife.min.js', (_req, res) => {
+      res.sendFile(dsWorkerPath);
+    });
   }
 
   const datasoleService = app.get(DatasoleService);

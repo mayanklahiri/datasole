@@ -1,6 +1,20 @@
 # Vanilla JS Demo
 
-Pure browser JavaScript + Node.js HTTP server. Zero frameworks, zero build step.
+Pure browser JavaScript + Node.js HTTP server. Zero frameworks, zero build step, zero dependencies beyond datasole.
+
+This demo proves that datasole works without any build tooling or UI framework — ideal for prototyping, embedding in legacy apps, or learning how datasole works under the hood.
+
+## What It Does
+
+Three panels demonstrate datasole's core data-flow patterns:
+
+| Panel          | Pattern                       | API Used                               |
+| -------------- | ----------------------------- | -------------------------------------- |
+| Server Metrics | Server → client broadcast     | `ds.on('system-metrics', handler)`     |
+| Chat Room      | Client ↔ server state sync    | `ds.subscribeState()` + `ds.emit()`    |
+| RPC Random     | Client → server request/reply | `ds.rpc('randomNumber', { min, max })` |
+
+All communication runs over a single WebSocket via a Web Worker (off the main thread).
 
 ## Quickstart
 
@@ -22,6 +36,8 @@ Open [http://localhost:4000](http://localhost:4000).
 npm start
 ```
 
+No build step needed — `public/` files are served directly.
+
 ## Stack
 
 | Layer  | Technology                                     |
@@ -40,40 +56,88 @@ PORT=8080 npm start
 
 ## Server-Side Integration
 
+`server.mjs` is a single-file Node.js HTTP server (ESM, no framework):
+
 ```javascript
+import { createServer } from 'http';
 import { DatasoleServer } from 'datasole/server';
 
 const ds = new DatasoleServer();
-// Default: thread-pool concurrency (4 workers), no extra config needed
+
+// Register event handlers, RPC methods, state, and metrics broadcast
+ds.on('chat:send', (payload) => {
+  /* ... */
+});
+ds.rpc('randomNumber', async ({ min, max }) => {
+  /* ... */
+});
+ds.setState('chat:messages', chatHistory);
+
+// Attach to the raw Node.js HTTP server
+const httpServer = createServer(serveStatic);
 ds.attach(httpServer);
+
+httpServer.listen(4000);
 ```
 
-The server uses `DatasoleServer` with default `thread-pool` concurrency (4 Node.js `worker_threads`). No additional server config is required.
+Key points:
 
-The Node.js HTTP server explicitly serves two datasole client files from `node_modules/datasole/dist/client/`:
-
-- `/datasole.iife.min.js` — the client IIFE bundle loaded via `<script>` tag
-- `/datasole-worker.iife.min.js` — the Web Worker IIFE loaded by the client for off-thread WebSocket
+- `DatasoleServer` defaults to `thread-pool` concurrency (4 Node.js `worker_threads`)
+- `ds.attach(httpServer)` upgrades WebSocket connections on the `/__ds` path
+- The server explicitly serves two datasole client files from `node_modules/datasole/dist/client/`:
+  - `/datasole.iife.min.js` — the client IIFE loaded via `<script>` tag
+  - `/datasole-worker.iife.min.js` — the Web Worker IIFE for off-thread WebSocket transport
 
 ## Client-Side Integration
+
+`public/index.html` loads the datasole IIFE bundle via a `<script>` tag. The global `Datasole` namespace exposes `DatasoleClient`:
 
 ```html
 <script src="/datasole.iife.min.js"></script>
 <script>
   const ds = new Datasole.DatasoleClient({
     url: 'ws://' + location.host,
-    // useWorker: true (default) — WebSocket runs in Web Worker
+    // useWorker: true (default) — WebSocket runs in a Web Worker
     // workerUrl: '/datasole-worker.iife.min.js' (default)
   });
   ds.connect();
 </script>
 ```
 
-The client defaults to `useWorker: true`, offloading the WebSocket connection, binary frame encoding/decoding, and compression to a Web Worker. The worker script is loaded from `/datasole-worker.iife.min.js` (configurable via `workerUrl`).
+From there, all three patterns are plain JavaScript:
+
+```javascript
+// 1. Listen to broadcast events
+ds.on('system-metrics', (ev) => updateDOM(ev.data));
+
+// 2. Subscribe to server-managed state
+ds.subscribeState('chat:messages', (messages) => renderMessages(messages));
+
+// 3. Call an RPC method
+const result = await ds.rpc('randomNumber', { min: 1, max: 100 });
+```
+
+## Testing
+
+This demo is tested as part of the parent project's e2e suite:
+
+```bash
+# from repo root
+npm run test:e2e:demos
+```
+
+The Playwright e2e test:
+
+1. Runs `npm install` in this directory (if `node_modules/` is absent)
+2. Starts the server in production mode (`npm start`)
+3. Navigates to `http://localhost:4000`
+4. Verifies real-time metric updates arrive within 5 seconds
+5. Captures screenshots for visual regression
 
 ## Notes
 
-- No build step — `public/` files are served directly
+- No build step — `public/` files are served directly by the Node.js HTTP server
 - `npm run dev` uses `node --watch` for auto-restart on server file changes
-- Web Worker transport keeps the main thread free for UI rendering
+- Web Worker transport keeps the main thread free for DOM rendering
 - Set `useWorker: false` only for environments without Web Worker support (e.g., SSR)
+- The IIFE bundle exposes `window.Datasole` — use this for `<script>`-tag integration
