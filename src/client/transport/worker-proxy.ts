@@ -26,12 +26,14 @@ export class WorkerProxy {
       const openHandler = (event: MessageEvent) => {
         const msg = event.data;
         if (msg.type === 'open') {
+          this.worker?.removeEventListener('message', openHandler);
           resolve();
         } else if (msg.type === 'error') {
+          this.worker?.removeEventListener('message', openHandler);
           reject(new Error('WebSocket connection failed in worker'));
         }
       };
-      this.worker.addEventListener('message', openHandler, { once: false });
+      this.worker.addEventListener('message', openHandler);
 
       this.worker.addEventListener('message', (event: MessageEvent) => {
         if (!event.data || typeof event.data !== 'object') return;

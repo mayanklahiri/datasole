@@ -14,6 +14,14 @@ describe('StateStore', () => {
     expect(s.getState()).toEqual({ a: 1, b: 2 });
   });
 
+  it('subscribe fires immediately with current state', () => {
+    const s = new StateStore({ x: 1 });
+    const h = vi.fn();
+    s.subscribe(h);
+    expect(h).toHaveBeenCalledTimes(1);
+    expect(h.mock.calls[0]![0]).toEqual({ x: 1 });
+  });
+
   it('subscribe fires on update', () => {
     const s = new StateStore({ x: 1 });
     const h = vi.fn();
@@ -27,6 +35,8 @@ describe('StateStore', () => {
     const s = new StateStore({ x: 0 });
     const h = vi.fn();
     const sub = s.subscribe(h);
+    expect(h).toHaveBeenCalledTimes(1);
+    h.mockClear();
     sub.unsubscribe();
     s.applyPatches([{ op: 'replace', path: '/x', value: 9 }]);
     expect(h).not.toHaveBeenCalled();

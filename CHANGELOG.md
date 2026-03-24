@@ -134,7 +134,7 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 - Performance dashboard with historical benchmark trends (throughput, latency, main-thread impact)
 - Composability documentation showing mix-and-match data-flow patterns
 - Competitive analysis (vs Socket.IO, Liveblocks, PartyKit, Yjs, Automerge)
-- 15 Architecture Decision Records (ADRs)
+- 16 Architecture Decision Records (ADRs)
 - `AGENTS.md` for AI coding assistants with integration patterns and codebase-health skill
 - File-level docblocks on all source, test, and build modules
 - `.prettierignore` to exclude build artifacts, lockfiles, and binaries from formatting
@@ -160,6 +160,14 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 
 - ESM server/shared import compatibility (`.mjs` extensions, bundled shared deps)
 - `@eslint/js` added as explicit dev dependency for ESLint 10 compatibility
+- `DatasoleServer` honors `backendConfig` (mutually exclusive with `stateBackend`) and exposes `initialize()` for backends with `connect()` (Redis, Postgres) [ADR-016]
+- `thread` / `thread-pool` executors delegate frame routing to the same `AsyncExecutor` path as `async` instead of dropping frames [ADR-016]
+- `PostgresBackend` rejects unsafe `tableName` values before SQL interpolation
+- Vue + NestJS demo: `DatasoleServer.attach()` runs before `listen()`; client uses default worker transport again
+- Worker runtime asset (`datasole-worker.iife.min.js`) uses `Cross-Origin-Resource-Policy: cross-origin` (other isolation headers unchanged) so `new Worker()` works for typical SPAs and for COEP-enabled pages (e2e / SharedArrayBuffer)
+- **`DatasoleClient.connect()`**: disposes any existing worker/WebSocket transport before opening a new one (reconnect no longer orphans the previous Worker, which could strand the session in `reconnecting` and break demo e2e on slow CI runners)
+- **Client `StateStore`**: subscribers receive the current snapshot immediately on subscribe; incoming `STATE_PATCH` / `STATE_SNAPSHOT` frames create the per-key store if none exists yet (avoids dropped patches before the first subscriber)
+- **Demo chat servers**: initial `setState('chat:messages', chatHistory)` now passes `[...chatHistory]` — `MemoryBackend` retains the array by reference; pushing into the same array and then `setState([...chatHistory])` previously produced an empty diff and no broadcast
 
 ### Removed
 

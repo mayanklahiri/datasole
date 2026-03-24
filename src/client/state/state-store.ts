@@ -27,6 +27,11 @@ export class StateStore<T = unknown> {
   /** Subscribe to state updates and receive an unsubscribe handle. */
   subscribe(handler: (state: T) => void): StateSubscription {
     this.subscribers.add(handler);
+    try {
+      handler(this.state);
+    } catch {
+      // Same isolation as notify — bad handlers must not break subscribe.
+    }
     return {
       unsubscribe: () => this.subscribers.delete(handler),
     };

@@ -31,15 +31,20 @@ export function useDatasole() {
   provide(CONN_KEY, connectionState);
 
   onMounted(() => {
-    const client = new DatasoleClient<AppContract>({
-      url: `ws://${window.location.host}`,
-      useWorker: false,
-    });
-    ds.value = client;
-    client.connect();
-    interval = setInterval(() => {
-      connectionState.value = client.getConnectionState();
-    }, 500);
+    void (async () => {
+      const client = new DatasoleClient<AppContract>({
+        url: `ws://${window.location.host}`,
+      });
+      ds.value = client;
+      interval = setInterval(() => {
+        connectionState.value = client.getConnectionState();
+      }, 500);
+      try {
+        await client.connect();
+      } catch {
+        /* connect errors surface via connectionState + browser console */
+      }
+    })();
   });
 
   onUnmounted(() => {

@@ -1,35 +1,46 @@
 /**
- * Thread executor: spawns a worker thread per connection for isolation.
+ * Thread executor: intended for one `worker_threads` worker per connection.
+ *
+ * Until that isolation ships, frame routing delegates to {@link AsyncExecutor}
+ * so the protocol stack remains fully operational.
  */
+import type { Connection } from '../transport/connection';
+
+import { AsyncExecutor } from './async-executor';
+import type { FrameRouter } from './frame-router';
 import type { ConnectionExecutor, ConnectionMeta, ExecutorSend, ExecutorOptions } from './types';
 
 export class ThreadExecutor implements ConnectionExecutor {
   readonly model = 'thread' as const;
-  private send: ExecutorSend | null = null;
-  private connections = new Map<string, { meta: ConnectionMeta }>();
+  private readonly delegate = new AsyncExecutor();
 
-  constructor(private readonly options: Partial<ExecutorOptions> = {}) {}
+  constructor(_options: Partial<ExecutorOptions> = {}) {}
+
+  get router(): FrameRouter {
+    return this.delegate.router;
+  }
 
   init(send: ExecutorSend): void {
-    this.send = send;
+    this.delegate.init(send);
   }
 
   addConnection(connectionId: string, meta: ConnectionMeta): void {
-    this.connections.set(connectionId, { meta });
+    this.delegate.addConnection(connectionId, meta);
   }
 
   dispatch(connectionId: string, compressedFrame: Uint8Array): void {
-    // Thread isolation: in a real implementation, this would postMessage to a Worker
-    // For now, frames are dispatched to the send interface
-    void compressedFrame;
-    void connectionId;
+    this.delegate.dispatch(connectionId, compressedFrame);
+  }
+
+  setConnection(connectionId: string, conn: Connection): void {
+    this.delegate.setConnection(connectionId, conn);
   }
 
   removeConnection(connectionId: string): void {
-    this.connections.delete(connectionId);
+    this.delegate.removeConnection(connectionId);
   }
 
   async shutdown(): Promise<void> {
-    this.connections.clear();
+    await this.delegate.shutdown();
   }
 }

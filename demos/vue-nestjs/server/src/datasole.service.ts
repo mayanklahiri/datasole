@@ -13,15 +13,18 @@ export class DatasoleService implements OnModuleDestroy {
   private readonly chatHistory: ChatMessage[] = [];
 
   async init(): Promise<void> {
-    await this.ds.setState(StateKey.ChatMessages, this.chatHistory);
+    await this.ds.initialize();
+    await this.ds.setState(StateKey.ChatMessages, [...this.chatHistory]);
 
     this.ds.events.on(Event.ChatSend, (payload) => {
       const { text, username } = payload.data;
       const msg: ChatMessage = { id: this.rng.uuid(), text, username, ts: Date.now() };
       this.chatHistory.push(msg);
       if (this.chatHistory.length > 50) this.chatHistory.shift();
-      this.ds.setState(StateKey.ChatMessages, [...this.chatHistory]);
-      this.ds.broadcast(Event.ChatMessage, msg);
+      void (async () => {
+        await this.ds.setState(StateKey.ChatMessages, [...this.chatHistory]);
+        this.ds.broadcast(Event.ChatMessage, msg);
+      })();
     });
 
     this.ds.rpc.register(RpcMethod.RandomNumber, async ({ min, max }) => {

@@ -23,6 +23,7 @@ const MIME = {
 
 // ─── Datasole ──────────────────────────────────────────────────────
 const ds = new DatasoleServer();
+await ds.initialize();
 const rng = createSeededRandom();
 
 // ─── Chat ──────────────────────────────────────────────────────────
@@ -33,11 +34,13 @@ ds.events.on(Event.ChatSend, (payload) => {
   const msg = { id: rng.uuid(), text, username, ts: Date.now() };
   chatHistory.push(msg);
   if (chatHistory.length > 50) chatHistory.shift();
-  ds.setState(StateKey.ChatMessages, [...chatHistory]);
-  ds.broadcast(Event.ChatMessage, msg);
+  void (async () => {
+    await ds.setState(StateKey.ChatMessages, [...chatHistory]);
+    ds.broadcast(Event.ChatMessage, msg);
+  })();
 });
 
-await ds.setState(StateKey.ChatMessages, chatHistory);
+await ds.setState(StateKey.ChatMessages, [...chatHistory]);
 
 // ─── RPC ───────────────────────────────────────────────────────────
 ds.rpc.register(RpcMethod.RandomNumber, async ({ min, max }) => {

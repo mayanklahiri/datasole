@@ -86,6 +86,29 @@ describe('StaticAssetServer', () => {
     expect(res.body.length).toBe(0);
   });
 
+  it('serves worker runtime without COEP isolation headers', () => {
+    const server = new StaticAssetServer('/__ds', {
+      client: Buffer.from('client-body'),
+      worker: Buffer.from('worker-body'),
+    });
+    const res = createMockResponse();
+
+    const handled = server.handleRequest(
+      {
+        method: 'GET',
+        url: '/__ds/datasole-worker.iife.min.js',
+        headers: { host: 'localhost' },
+      } as never,
+      res as never,
+    );
+
+    expect(handled).toBe(true);
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['Cross-Origin-Embedder-Policy']).toBe('require-corp');
+    expect(res.headers['Cross-Origin-Resource-Policy']).toBe('cross-origin');
+    expect(res.body.toString('utf8')).toBe('worker-body');
+  });
+
   it('ignores unknown paths', () => {
     const server = new StaticAssetServer('/__ds', {
       client: Buffer.from('client-body'),

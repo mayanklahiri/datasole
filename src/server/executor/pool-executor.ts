@@ -1,37 +1,46 @@
 /**
  * Pool executor: fixed thread pool with least-connections assignment.
+ *
+ * Until `worker_threads`-backed isolation lands, frame routing uses the same
+ * {@link AsyncExecutor} path as the `async` model so RPC/events/state stay functional.
  */
+import type { Connection } from '../transport/connection';
+
+import { AsyncExecutor } from './async-executor';
+import type { FrameRouter } from './frame-router';
 import type { ConnectionExecutor, ConnectionMeta, ExecutorSend, ExecutorOptions } from './types';
 
 export class PoolExecutor implements ConnectionExecutor {
   readonly model = 'thread-pool' as const;
-  private send: ExecutorSend | null = null;
-  private connections = new Map<string, { meta: ConnectionMeta }>();
-  private readonly poolSize: number;
+  private readonly delegate = new AsyncExecutor();
 
-  constructor(options: Partial<ExecutorOptions> = {}) {
-    this.poolSize = options.poolSize ?? 4;
+  constructor(_options: Partial<ExecutorOptions> = {}) {}
+
+  get router(): FrameRouter {
+    return this.delegate.router;
   }
 
   init(send: ExecutorSend): void {
-    this.send = send;
+    this.delegate.init(send);
   }
 
   addConnection(connectionId: string, meta: ConnectionMeta): void {
-    this.connections.set(connectionId, { meta });
+    this.delegate.addConnection(connectionId, meta);
   }
 
   dispatch(connectionId: string, compressedFrame: Uint8Array): void {
-    // Pool: round-robin or least-connections dispatch to worker threads
-    void compressedFrame;
-    void connectionId;
+    this.delegate.dispatch(connectionId, compressedFrame);
+  }
+
+  setConnection(connectionId: string, conn: Connection): void {
+    this.delegate.setConnection(connectionId, conn);
   }
 
   removeConnection(connectionId: string): void {
-    this.connections.delete(connectionId);
+    this.delegate.removeConnection(connectionId);
   }
 
   async shutdown(): Promise<void> {
-    this.connections.clear();
+    await this.delegate.shutdown();
   }
 }

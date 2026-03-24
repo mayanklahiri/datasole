@@ -89,6 +89,12 @@ export class DatasoleClient<T extends DatasoleContract> {
 
   /** Establish the transport connection and start frame routing. */
   async connect(): Promise<void> {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    await this.disposeTransport();
+
     this.state = 'connecting';
 
     if (this.options.useWorker && typeof Worker !== 'undefined') {
@@ -107,6 +113,12 @@ export class DatasoleClient<T extends DatasoleContract> {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+    await this.disposeTransport();
+    this.state = 'disconnected';
+  }
+
+  /** Close worker/WebSocket transport without changing `this.state` (used before reconnect). */
+  private async disposeTransport(): Promise<void> {
     this.rpcClient.clearPending();
     if (this.workerProxy) {
       await this.workerProxy.disconnect();
@@ -117,7 +129,6 @@ export class DatasoleClient<T extends DatasoleContract> {
       await this.transport.disconnect();
       this.transport = null;
     }
-    this.state = 'disconnected';
   }
 
   /** Get the current connection lifecycle state. */
@@ -216,14 +227,16 @@ export class DatasoleClient<T extends DatasoleContract> {
         this.eventEmitter.emit(event, data);
       },
       onStatePatch: (key, patches) => {
-        const store = this.stateStores.get(key);
-        store?.applyPatches(patches as StatePatch[]);
+        if (!this.stateStores.has(key)) {
+          this.stateStores.set(key, new StateStore<unknown>(undefined));
+        }
+        this.stateStores.get(key)!.applyPatches(patches as StatePatch[]);
       },
       onStateSnapshot: (key, data) => {
-        const store = this.stateStores.get(key);
-        if (store) {
-          store.applyPatches([{ op: 'replace', path: '', value: data }]);
+        if (!this.stateStores.has(key)) {
+          this.stateStores.set(key, new StateStore<unknown>(undefined));
         }
+        this.stateStores.get(key)!.applyPatches([{ op: 'replace', path: '', value: data }]);
       },
       onCrdtState: (key, state) => {
         this.crdtStore?.mergeRemoteState(key, state as CrdtState);

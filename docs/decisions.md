@@ -148,3 +148,16 @@ description: Architecture Decision Records for the datasole project.
   - `{path}/datasole-worker.iife.min.js`
     Server responses include ETag, `If-None-Match` handling, and `304 Not Modified` support.
 - **Consequences:** Integrations no longer need bespoke runtime asset routes. Server build packaging must always include the client and worker production bundles.
+
+## ADR-016: backendConfig wiring, `initialize()`, and thread executors delegating to async routing
+
+- **Status:** Accepted
+- **Date:** 2026-03-24
+- **Context:** `DatasoleServerOptions.backendConfig` was documented but ignored; Redis/Postgres backends require `connect()` before use; `thread` / `thread-pool` executors dropped frames on the floor while sharing the same public API as `async`.
+- **Decision:**
+  - Resolve `stateBackend` vs `backendConfig` (mutually exclusive); `createBackend(backendConfig)` when no explicit `stateBackend` is passed.
+  - Expose `await datasoleServer.initialize()` to run optional backend `connect()` (no-op for `MemoryBackend`).
+  - Implement `ThreadExecutor` and `PoolExecutor` as thin wrappers around `AsyncExecutor` so frame routing and `wireFrameHandlers` behave identically until real `worker_threads` isolation exists.
+  - Validate `PostgresBackend` `tableName` as a safe SQL identifier before interpolation.
+- **Consequences:** Declarative backend config works; distributed backends can be brought up safely; non-async executor models no longer silently break the protocol. Trade-off: thread models do not yet provide CPU isolation—only the same routing path as `async`.
+- **Worker asset headers:** `datasole-worker.iife.min.js` uses the same COOP/COEP as the main bundle, but **`Cross-Origin-Resource-Policy: cross-origin`** instead of `same-origin`. `CORP: same-origin` on the worker script breaks `new Worker()` for typical HTML pages that do not enable cross-origin isolation; `cross-origin` keeps workers loadable for both COEP test pages and normal SPAs.

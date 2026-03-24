@@ -65,10 +65,11 @@ test.describe('Task Board', () => {
 
     const updates = await page.evaluate(() => window.__stateUpdates);
     const boardUpdate = updates.find(
-      (u: { key: string; state: Record<string, unknown> }) => u.key === 'taskboard',
+      (u: { key: string; state: Record<string, unknown> | undefined }) =>
+        u.key === 'taskboard' && u.state != null && 'tasks' in u.state,
     );
     expect(boardUpdate).toBeDefined();
-    const tasks = boardUpdate!.state['tasks'] as Array<{ title: string }>;
+    const tasks = boardUpdate!.state!['tasks'] as Array<{ title: string }>;
     expect(tasks.length).toBe(1);
     expect(tasks[0]!.title).toBe('E2E task');
 

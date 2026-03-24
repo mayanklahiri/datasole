@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type WebSocket from 'ws';
 
+import { MemoryBackend } from '../../../src/server/backends/memory';
 import { PNCounter } from '../../../src/shared/crdt';
 import {
   createLiveTestServer,
@@ -18,6 +19,32 @@ let srv: LiveTestServer<TestContract>;
 
 afterEach(async () => {
   if (srv) await srv.close();
+});
+
+describe('DatasoleServer — construction', () => {
+  it('rejects both stateBackend and backendConfig', async () => {
+    const { DatasoleServer: DS } = await import('../../../src/server/server');
+    expect(
+      () =>
+        new DS({
+          stateBackend: new MemoryBackend(),
+          backendConfig: { type: 'memory' },
+        }),
+    ).toThrow(/both/);
+  });
+});
+
+describe('DatasoleServer — thread-pool executor', () => {
+  it('routes RPC frames like async', async () => {
+    srv = await createLiveTestServer<TestContract>({
+      executor: { model: 'thread-pool', poolSize: 2 },
+    });
+    srv.ds.rpc.register(TestRpc.Echo, async (params: unknown) => params);
+    const ws = await srv.connectWs();
+    const res = await rpc(ws, 'echo', { x: 1 }, 1);
+    expect(res.result).toEqual({ x: 1 });
+    ws.close();
+  });
 });
 
 describe('DatasoleServer — RPC via live WebSocket', () => {

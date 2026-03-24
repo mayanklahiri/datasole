@@ -27,11 +27,11 @@ export function DatasoleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const c = new DatasoleClient<AppContract>({ url: `ws://${window.location.host}` });
     setClient(c);
-    c.connect();
-    const interval = setInterval(() => setConnectionState(c.getConnectionState()), 500);
+    void c.connect().then(() => setConnectionState(c.getConnectionState()));
+    const interval = setInterval(() => setConnectionState(c.getConnectionState()), 100);
     return () => {
       clearInterval(interval);
-      c.disconnect();
+      void c.disconnect();
     };
   }, []);
 

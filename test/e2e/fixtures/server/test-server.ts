@@ -66,6 +66,8 @@ export async function startTestServer(): Promise<TestServerResult> {
     },
   });
 
+  await ds.initialize();
+
   // --- RPC handlers ---
   ds.rpc.register(TestRpc.Echo, async (params) => {
     log(`RPC echo: ${JSON.stringify(params)}`);

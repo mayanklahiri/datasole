@@ -5,6 +5,14 @@ import { EventEmitter } from 'events';
 
 import type { StateBackend, PostgresBackendOptions } from './types';
 
+/** Unquoted PostgreSQL identifier: letters, digits, underscore; safe to interpolate after validation. */
+function assertValidSqlIdentifier(name: string, label: string): string {
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
+    throw new Error(`${label} must be a simple SQL identifier (letters, digits, underscore only).`);
+  }
+  return name;
+}
+
 type PgPool = {
   query(text: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
   connect(): Promise<PgPoolClient>;
@@ -27,7 +35,10 @@ export class PostgresBackend implements StateBackend {
 
   constructor(options?: PostgresBackendOptions) {
     this.connectionString = options?.connectionString ?? 'postgresql://localhost:5432/datasole';
-    this.tableName = options?.tableName ?? 'datasole_state';
+    this.tableName = assertValidSqlIdentifier(
+      options?.tableName ?? 'datasole_state',
+      'PostgresBackend tableName',
+    );
     this.keyPrefix = options?.prefix ?? '';
   }
 

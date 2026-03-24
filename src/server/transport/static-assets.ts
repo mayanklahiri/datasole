@@ -82,20 +82,38 @@ export class StaticAssetServer {
       return true;
     }
     if (url.pathname === this.workerPath && this.workerAsset) {
-      this.sendAsset(this.workerAsset, req, res);
+      // `Cross-Origin-Resource-Policy: same-origin` on the worker script breaks `new Worker()`
+      // when the HTML document does not use COEP (typical SPAs). `cross-origin` keeps the bundle
+      // loadable under COEP (e2e / SharedArrayBuffer) and without document-level COEP (demos).
+      this.sendAsset(this.workerAsset, req, res, { workerScript: true });
       return true;
     }
     return false;
   }
 
-  private sendAsset(asset: StaticAsset, req: IncomingMessage, res: ServerResponse): void {
+  private sendAsset(
+    asset: StaticAsset,
+    req: IncomingMessage,
+    res: ServerResponse,
+    opts: { workerScript?: boolean } = {},
+  ): void {
+    const isolationHeaders = opts.workerScript
+      ? {
+          'Cross-Origin-Opener-Policy': 'same-origin',
+          'Cross-Origin-Embedder-Policy': 'require-corp',
+          'Cross-Origin-Resource-Policy': 'cross-origin',
+        }
+      : {
+          'Cross-Origin-Opener-Policy': 'same-origin',
+          'Cross-Origin-Embedder-Policy': 'require-corp',
+          'Cross-Origin-Resource-Policy': 'same-origin',
+        };
+
     if (req.headers['if-none-match'] === asset.etag) {
       res.writeHead(304, {
         ETag: asset.etag,
         'Cache-Control': 'public, max-age=31536000, immutable',
-        'Cross-Origin-Opener-Policy': 'same-origin',
-        'Cross-Origin-Embedder-Policy': 'require-corp',
-        'Cross-Origin-Resource-Policy': 'same-origin',
+        ...isolationHeaders,
       });
       res.end();
       return;
@@ -106,9 +124,7 @@ export class StaticAssetServer {
       'Content-Length': String(asset.body.length),
       ETag: asset.etag,
       'Cache-Control': 'public, max-age=31536000, immutable',
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Embedder-Policy': 'require-corp',
-      'Cross-Origin-Resource-Policy': 'same-origin',
+      ...isolationHeaders,
     });
     if (req.method === 'HEAD') {
       res.end();

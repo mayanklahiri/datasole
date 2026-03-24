@@ -8,11 +8,12 @@ const PORT = parseInt(process.env.PORT || '4002', 10);
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  await app.init();
 
   const datasoleService = app.get(DatasoleService);
   await datasoleService.init();
-  await app.listen(PORT);
   datasoleService.ds.attach(app.getHttpServer());
+  await app.listen(PORT);
   console.log(`\n  Vue+NestJS demo server running at http://localhost:${PORT}\n`);
 }
 

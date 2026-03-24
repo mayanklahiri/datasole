@@ -45,6 +45,10 @@ describe('PostgresBackend', () => {
     expect(backend).toBeDefined();
   });
 
+  it('rejects unsafe tableName', () => {
+    expect(() => new PostgresBackend({ tableName: 'foo;drop' })).toThrow(/identifier/);
+  });
+
   describe('connect()', () => {
     it('creates table and sets up LISTEN', async () => {
       const backend = new PostgresBackend();

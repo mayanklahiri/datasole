@@ -50,24 +50,20 @@ test.describe('React + Express Demo', () => {
       timeout: CONNECTION_TIMEOUT_MS,
     });
 
-    let delivered = false;
-    for (let attempt = 0; attempt < 3 && !delivered; attempt++) {
-      const message = `Hello from React e2e! ${Date.now()}-${attempt}`;
-      await page.fill('.chat-input-bar input', message);
-      await page.press('.chat-input-bar input', 'Enter');
-      delivered = await page
-        .waitForFunction(
-          (msg) =>
-            Array.from(document.querySelectorAll('.chat-messages .chat-msg .body')).some((el) =>
-              (el.textContent ?? '').includes(msg),
-            ),
-          message,
-          { timeout: Math.floor(UI_SETTLE_TIMEOUT_MS / 3) },
-        )
-        .then(() => true)
-        .catch(() => false);
-    }
-    expect(delivered).toBe(true);
+    const chatInput = page.locator('.chat-input-bar input');
+    const message = `Hello from React e2e! ${Date.now()}`;
+    await chatInput.click();
+    await chatInput.fill(message);
+    await expect(chatInput).toHaveValue(message);
+    await page.locator('.chat-input-bar .btn').click();
+    await expect(chatInput).toHaveValue('', { timeout: 5000 });
+    await expect(page.locator('.chat-panel .msg-count')).toHaveText('1', {
+      timeout: UI_SETTLE_TIMEOUT_MS,
+    });
+    await expect(page.locator('.chat-messages .chat-msg .body').first()).toContainText(
+      'Hello from React e2e!',
+      { timeout: 5000 },
+    );
 
     await snap(page, testInfo, 'demo-react-express-chat');
   });

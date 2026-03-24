@@ -17,10 +17,12 @@ import type { RpcRequest, StatePatch } from '../shared/types';
 import type { DataChannel, LiveStateConfig } from '../shared/types/data-flow';
 
 import type { ServerAdapter } from './adapters/types';
+import { createBackend } from './backends/factory';
 import { MemoryBackend } from './backends/memory';
 import type { BackendConfig, StateBackend } from './backends/types';
 import { AsyncExecutor } from './executor/async-executor';
 import { createExecutor } from './executor/factory';
+import type { FrameRouter } from './executor/frame-router';
 import type { ConnectionExecutor, ExecutorOptions } from './executor/types';
 import { MetricsCollector } from './metrics';
 import type { MetricsExporter } from './metrics/types';
@@ -246,7 +248,16 @@ export class DatasoleServer<T extends DatasoleContract> {
     this.maxConnections = options.maxConnections ?? 10_000;
     this.maxEventNameLength = options.maxEventNameLength ?? 256;
 
-    this.backend = options.stateBackend ?? new MemoryBackend();
+    if (options.stateBackend != null && options.backendConfig != null) {
+      throw new Error('DatasoleServer: pass either stateBackend or backendConfig, not both.');
+    }
+    if (options.stateBackend != null) {
+      this.backend = options.stateBackend;
+    } else if (options.backendConfig != null) {
+      this.backend = createBackend(options.backendConfig);
+    } else {
+      this.backend = new MemoryBackend();
+    }
     this.metrics = new MetricsCollector();
     this.rateLimiter = new BackendRateLimiter(this.backend);
     this.rateLimitConfig = options.rateLimit ?? { defaultRule: DEFAULT_RATE_LIMIT_RULE };
@@ -281,11 +292,21 @@ export class DatasoleServer<T extends DatasoleContract> {
     this.channelManager = new ChannelManager(channelDeps);
   }
 
-  private wireFrameHandlers(): void {
-    if (!(this.executor instanceof AsyncExecutor)) return;
-    const asyncExec = this.executor;
+  private getFrameRouter(): FrameRouter | null {
+    if (this.executor instanceof AsyncExecutor) {
+      return this.executor.router;
+    }
+    if ('router' in this.executor) {
+      return (this.executor as { router: FrameRouter }).router;
+    }
+    return null;
+  }
 
-    asyncExec.router.register(Opcode.RPC_REQ, async (conn, frame) => {
+  private wireFrameHandlers(): void {
+    const router = this.getFrameRouter();
+    if (!router) return;
+
+    router.register(Opcode.RPC_REQ, async (conn, frame) => {
       const request = deserialize<RpcRequest>(frame.payload);
       const ctx: RpcContext = {
         auth: conn.info.auth,
@@ -296,7 +317,7 @@ export class DatasoleServer<T extends DatasoleContract> {
       this.sendToConnection(conn, Opcode.RPC_RES, frame.correlationId, response);
     });
 
-    asyncExec.router.register(Opcode.EVENT_C2S, async (conn, frame) => {
+    router.register(Opcode.EVENT_C2S, async (conn, frame) => {
       const payload = deserialize<{ event: string; data: unknown }>(frame.payload);
       if (
         typeof payload.event !== 'string' ||
@@ -308,11 +329,11 @@ export class DatasoleServer<T extends DatasoleContract> {
       this.events.emit(payload.event as keyof T['events'] & string, payload.data as never);
     });
 
-    asyncExec.router.register(Opcode.PING, async (conn, frame) => {
+    router.register(Opcode.PING, async (conn, frame) => {
       this.sendToConnection(conn, Opcode.PONG, frame.correlationId, null);
     });
 
-    asyncExec.router.register(Opcode.CRDT_OP, async (conn, frame) => {
+    router.register(Opcode.CRDT_OP, async (conn, frame) => {
       const payload = deserialize<{ key: string; op: CrdtOperation }>(frame.payload);
       const result = this.crdt.apply(conn.info.id, { ...payload.op, key: payload.key });
       if (result) {
@@ -347,6 +368,18 @@ export class DatasoleServer<T extends DatasoleContract> {
       frameData = compress(frameData);
     }
     this.transport.broadcastRaw(frameData);
+  }
+
+  /**
+   * Optional async handshake for backends that need it (Redis, Postgres, or a
+   * custom `StateBackend` with `connect()`). No-op for `MemoryBackend`. Call
+   * before {@link attach} when using distributed backends.
+   */
+  async initialize(): Promise<void> {
+    const b = this.backend as { connect?: () => Promise<void> };
+    if (typeof b.connect === 'function') {
+      await b.connect();
+    }
   }
 
   /** Attach datasole transport + runtime asset serving to an HTTP server. */
