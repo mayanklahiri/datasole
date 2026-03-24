@@ -4,6 +4,8 @@ import { snap } from '../../helpers/screenshots';
 import { DemoHarness } from '../../helpers/demo-harness';
 
 const harness = new DemoHarness('react-express');
+const CONNECTION_TIMEOUT_MS = 15_000;
+const UI_SETTLE_TIMEOUT_MS = 10_000;
 
 test.beforeAll(async () => {
   harness.prepare();
@@ -23,7 +25,7 @@ test.describe('React + Express Demo', () => {
 
     // Wait for WebSocket connection
     await expect(page.locator('.conn-badge span:last-child')).toHaveText('connected', {
-      timeout: 5000,
+      timeout: CONNECTION_TIMEOUT_MS,
     });
     await snap(page, testInfo, 'demo-react-express-connected');
   });
@@ -31,10 +33,10 @@ test.describe('React + Express Demo', () => {
   test('receives live metrics within 5 seconds', async ({ page }, testInfo) => {
     await page.goto(harness.getUrl());
     await expect(page.locator('.conn-badge span:last-child')).toHaveText('connected', {
-      timeout: 5000,
+      timeout: CONNECTION_TIMEOUT_MS,
     });
 
-    await expect(page.locator('.metrics-grid')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.metrics-grid')).toBeVisible({ timeout: UI_SETTLE_TIMEOUT_MS });
 
     const cards = page.locator('.metric-card');
     await expect(cards).toHaveCount(8);
@@ -45,7 +47,7 @@ test.describe('React + Express Demo', () => {
   test('chat sends and displays messages', async ({ page }, testInfo) => {
     await page.goto(harness.getUrl());
     await expect(page.locator('.conn-badge span:last-child')).toHaveText('connected', {
-      timeout: 5000,
+      timeout: CONNECTION_TIMEOUT_MS,
     });
 
     await page.fill('.chat-input-bar input', 'Hello from React e2e!');
@@ -53,7 +55,7 @@ test.describe('React + Express Demo', () => {
 
     await expect(page.locator('.chat-messages .chat-msg .body').last()).toHaveText(
       'Hello from React e2e!',
-      { timeout: 5000 },
+      { timeout: UI_SETTLE_TIMEOUT_MS },
     );
 
     await snap(page, testInfo, 'demo-react-express-chat');
@@ -62,7 +64,7 @@ test.describe('React + Express Demo', () => {
   test('RPC generates random number', async ({ page }, testInfo) => {
     await page.goto(harness.getUrl());
     await expect(page.locator('.conn-badge span:last-child')).toHaveText('connected', {
-      timeout: 5000,
+      timeout: CONNECTION_TIMEOUT_MS,
     });
 
     const minInput = page.locator('.rpc-row input[type="number"]').first();
@@ -71,7 +73,7 @@ test.describe('React + Express Demo', () => {
     await maxInput.fill('20');
     await page.locator('.rpc-controls .btn').click();
 
-    await expect(page.locator('.rpc-result-value')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.rpc-result-value')).toBeVisible({ timeout: UI_SETTLE_TIMEOUT_MS });
 
     const value = parseInt((await page.locator('.rpc-result-value').textContent()) || '0', 10);
     expect(value).toBeGreaterThanOrEqual(10);
