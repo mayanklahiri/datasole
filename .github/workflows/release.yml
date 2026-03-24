@@ -42,16 +42,21 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            demos/vanilla/package-lock.json
+            demos/react-express/package-lock.json
+            demos/vue-nestjs/package-lock.json
           registry-url: https://registry.npmjs.org
 
-      - run: npm ci
+      - run: npm run install:all
 
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json', 'demos/vanilla/package-lock.json', 'demos/react-express/package-lock.json', 'demos/vue-nestjs/package-lock.json') }}
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
@@ -107,7 +112,7 @@ jobs:
 
       # ── Full quality gate ──────────────────────────────────────────
       - name: Run quality gate
-        run: npm run gate
+        run: npm run gate:full
 
       - name: Print build metrics
         if: always()

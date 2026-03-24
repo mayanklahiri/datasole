@@ -300,7 +300,7 @@ A browser downloads the client IIFE + worker for a total of **~36 KB gzip** — 
 
 ## Performance (end-to-end, headless Chromium)
 
-Every CI run measures end-to-end performance — a real browser client connected to a real Node.js server via binary WebSocket, 3 seconds of sustained load per scenario:
+The exhaustive CI/nightly gate measures end-to-end performance — a real browser client connected to a real Node.js server via binary WebSocket, 3 seconds of sustained load per scenario:
 
 | Scenario                  |   Ops/sec |     P50 |    P95 |
 | ------------------------- | --------: | ------: | -----: |
@@ -316,7 +316,7 @@ Numbers vary by machine. Live data: [Performance Benchmarks](https://mayanklahir
 
 ## Test coverage
 
-476 unit tests + 45 e2e tests (Playwright, headless Chromium, desktop + mobile viewports). CI matrix on Node 22 LTS and Node 24. Quality gate (`npm run gate`) enforces format, lint, types, build, test, coverage, e2e, metrics, and docs on every push.
+477 unit tests plus core and demo Playwright coverage across desktop/mobile viewports. `npm run gate` is the non-performance developer gate; `npm run gate:full` is the exhaustive CI/nightly gate that adds benchmarks, metrics, docs, and bot-authored `[skip ci]` artifact refresh commits on `main`.
 
 ## Tutorial
 

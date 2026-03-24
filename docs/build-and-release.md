@@ -6,9 +6,9 @@ description: Quality gate, build pipeline, dist artifacts, and publishing workfl
 
 # Build & Release
 
-## Quality Gate
+## Quality Gates
 
-The quality gate is the single command that validates everything:
+The default developer gate is:
 
 ```bash
 npm run gate
@@ -17,19 +17,32 @@ npm run gate
 Pipeline (runs in order, stops on first failure):
 
 ```
-clean → format:check → lint → build → test+coverage → e2e → collect-metrics → docs:build → gate:summary
+clean → format:check → lint → build:all → test+coverage → e2e(core) → e2e(demos) → gate:summary
 ```
 
 `npm run dist` is an alias for `npm run gate`.
 
+The exhaustive CI/nightly gate is:
+
+```bash
+npm run gate:full
+```
+
+It runs:
+
+```
+npm run gate → bench → docs:build → collect-metrics → gate:summary
+```
+
 ### Gate enforcement
 
-| Trigger                 | What runs                                      |
-| ----------------------- | ---------------------------------------------- |
-| **Pre-commit**          | `lint-staged` (format + lint staged .ts files) |
-| **Pre-push**            | `npm run gate` (full pipeline)                 |
-| **CI (GitHub Actions)** | `npm run gate` on push/PR to `main`            |
-| **npm publish**         | `npm run gate` via `prepublishOnly`            |
+| Trigger                 | What runs                                     |
+| ----------------------- | --------------------------------------------- |
+| **Pre-commit**          | `lint-staged`, then `npm run gate`            |
+| **Pre-push**            | `npm run gate`                                |
+| **CI (GitHub Actions)** | `npm run gate:full` on push/PR to `main`      |
+| **Nightly deps**        | `npm run gate:full`, then bot artifact commit |
+| **npm publish**         | `npm run gate:full` via `prepublishOnly`      |
 
 ### Gate output
 
@@ -73,7 +86,7 @@ On success, the gate prints a summary:
 
 ## Reports
 
-After `npm run gate`, the `reports/` directory contains:
+After `npm run gate:full`, the `reports/` directory contains:
 
 | File                 | Contents                                                          |
 | -------------------- | ----------------------------------------------------------------- |
@@ -95,10 +108,9 @@ npm publish
 
 GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to `main`:
 
-1. Matrix: Node.js 22 (LTS), 24 (latest)
-2. `npm ci`
-3. `npx playwright install --with-deps chromium`
-4. `npm run gate` (the full quality pipeline)
-5. Upload `reports/`, `coverage/`, `docs-site/dist/` as artifacts
-6. Print `build-metrics.md` to step summary
-7. Deploy docs site to GitHub Pages (on push to `main`, from the Node 24 job)
+1. `npm run install:all`
+2. `npx playwright install --with-deps chromium`
+3. `npm run gate:full` (root build, demo builds, unit tests, integration/demo e2e, core e2e, benchmarks, metrics, docs)
+4. Upload `reports/`, `coverage/`, `docs-site/dist/` as artifacts
+5. On pushes to `main`, commit verified generated artifacts back to `main` with `[skip ci]`
+6. Deploy docs site to GitHub Pages

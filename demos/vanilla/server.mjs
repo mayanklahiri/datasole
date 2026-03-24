@@ -64,11 +64,18 @@ setInterval(() => {
 }, 2000);
 
 // ─── Static file serving ───────────────────────────────────────────
-const iifePath = resolve(__dirname, 'node_modules/datasole/dist/client/datasole.iife.min.js');
-const workerPath = resolve(
-  __dirname,
-  'node_modules/datasole/dist/client/datasole-worker.iife.min.js',
-);
+const iifePath =
+  [
+    resolve(__dirname, '../../dist/client/datasole.iife.min.js'),
+    resolve(__dirname, 'node_modules/datasole/dist/client/datasole.iife.min.js'),
+  ].find((p) => existsSync(p)) ??
+  resolve(__dirname, 'node_modules/datasole/dist/client/datasole.iife.min.js');
+const workerPath =
+  [
+    resolve(__dirname, '../../dist/client/datasole-worker.iife.min.js'),
+    resolve(__dirname, 'node_modules/datasole/dist/client/datasole-worker.iife.min.js'),
+  ].find((p) => existsSync(p)) ??
+  resolve(__dirname, 'node_modules/datasole/dist/client/datasole-worker.iife.min.js');
 
 function serveStatic(req, res) {
   const url = req.url.split('?')[0];

@@ -7,19 +7,18 @@ globs: ["src/**/*.ts", "test/**/*.ts", "build/**", "docs/**"]
 
 ## Quality Gate
 
-Two gate levels: `npm run gate` (local, fast, no bench) and `npm run gate:full` (CI, includes perf benchmarks).
+`npm run gate` is the developer gate. It runs:
+format:check → lint → build(all packages) → unit tests + coverage → integration/demo e2e → core e2e → gate:summary
+
+`npm run gate:full` is the exhaustive CI/nightly gate. It adds:
+benchmarks → collect-metrics → docs:build
 
 **Run `npm run gate` after making changes.** It is enforced by:
-- pre-commit hook: lint-staged (format + lint staged .ts files)
-- pre-push hook: `npm run gate` (no bench — fast for iteration)
-- CI: `npm run gate:full` + demo install/build. Auto-commits artifacts with `[skip ci]`
-- Nightly: upgrades all deps, runs `gate:full`, commits with `[skip ci]`
+- pre-commit hook: `lint-staged` + `npm run gate`
+- pre-push hook: `npm run gate`
+- CI/nightly: `npm run gate:full`
 
 `npm run dist` is an alias for `npm run gate`.
-
-## Commit Messages
-
-Lead with **intention** (the _why_), not a list of what changed. Use Conventional Commits types (`feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `perf`, `ci`, `build`). Include `[ADR-XXX]` when applicable. Bot/CI commits use `[skip ci]` to prevent re-triggering.
 
 ## Documentation
 
@@ -33,6 +32,16 @@ Canonical documentation lives in `docs/`. Consult before making structural chang
 ## Architecture Decisions
 
 All ADRs in `docs/decisions.md`. When changing deps, protocol, build, transport, state sync, adapters, public API, or the quality gate pipeline: check existing ADRs, add new ones if needed, reference in commit messages.
+
+## Commit Messages
+
+- Start the title with the intent behind the change, not just the files touched
+- Use this body format:
+  1. 2-3 short lines summarizing the intent behind the commit
+  2. 1-5 brief bullet points describing the concrete changes
+  3. if the commit adds new features, options, or capabilities, a separate section calling them out
+- The intent summary should explain why the change exists, using session context, user goals, bugs, regressions, ADRs, or workflow constraints as evidence
+- Generated-artifact or bot commits should still explain intent (`publish verified artifacts`, `publish verified nightly upgrades`), not just `update files`
 
 ## Code Organization
 

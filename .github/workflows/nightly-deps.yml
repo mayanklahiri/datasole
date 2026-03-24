@@ -14,7 +14,7 @@ permissions:
 jobs:
   update-deps:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
         with:
@@ -25,25 +25,29 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            demos/vanilla/package-lock.json
+            demos/react-express/package-lock.json
+            demos/vue-nestjs/package-lock.json
 
       - name: Install npm-check-updates
         run: npm install -g npm-check-updates
 
-      # ── Check for outdated packages ────────────────────────────────
       - name: Check for updates
         id: ncu
         run: |
           HAS_UPDATES=false
 
           echo "### Root package" >> /tmp/ncu-report.txt
-          ncu --peer --format group 2>&1 | tee -a /tmp/ncu-report.txt
-          ncu --peer --errorLevel 2 2>/dev/null || HAS_UPDATES=true
+          ncu --format group 2>&1 | tee -a /tmp/ncu-report.txt
+          ncu --errorLevel 2 2>/dev/null || HAS_UPDATES=true
 
           for d in demos/vanilla demos/react-express demos/vue-nestjs; do
             echo "" >> /tmp/ncu-report.txt
             echo "### $d" >> /tmp/ncu-report.txt
-            (cd "$d" && ncu --peer --reject datasole --format group 2>&1 | tee -a /tmp/ncu-report.txt)
-            (cd "$d" && ncu --peer --reject datasole --errorLevel 2 2>/dev/null) || HAS_UPDATES=true
+            (cd "$d" && ncu --reject datasole --format group 2>&1 | tee -a /tmp/ncu-report.txt)
+            (cd "$d" && ncu --reject datasole --errorLevel 2 2>/dev/null) || HAS_UPDATES=true
           done
 
           if [ "$HAS_UPDATES" = "true" ]; then
@@ -57,25 +61,27 @@ jobs:
             echo "No dependency updates available." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      # ── Apply updates to root and all demos ────────────────────────
       - name: Apply updates
         if: steps.ncu.outputs.updates == 'true'
         run: |
-          ncu -u --peer
+          ncu -u
           npm install
           for d in demos/vanilla demos/react-express demos/vue-nestjs; do
             echo "--- Updating $d ---"
-            (cd "$d" && ncu -u --peer --reject datasole && npm install)
+            (cd "$d" && ncu -u --reject datasole && npm install)
           done
 
-      # ── Playwright browsers ────────────────────────────────────────
+      - name: Install all packages from lockfiles
+        if: steps.ncu.outputs.updates == 'true'
+        run: npm run install:all
+
       - name: Cache Playwright browsers
         if: steps.ncu.outputs.updates == 'true'
         id: playwright-cache
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json', 'demos/vanilla/package-lock.json', 'demos/react-express/package-lock.json', 'demos/vue-nestjs/package-lock.json') }}
 
       - name: Install Playwright browsers
         if: steps.ncu.outputs.updates == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
@@ -85,23 +91,10 @@ jobs:
         if: steps.ncu.outputs.updates == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      # ── Full quality gate (unit + e2e + bench) ─────────────────────
-      - name: Run full quality gate with updated dependencies
+      - name: Run exhaustive verification
         if: steps.ncu.outputs.updates == 'true'
         run: npm run gate:full
 
-      # ── Build demo apps (validates demos still build after upgrades) ─
-      - name: Build demo apps
-        if: steps.ncu.outputs.updates == 'true'
-        run: |
-          for d in demos/react-express demos/vue-nestjs; do
-            if [ -f "$d/package.json" ]; then
-              echo "--- building $d ---"
-              (cd "$d" && npm run build)
-            fi
-          done
-
-      # ── Gate metrics summary ───────────────────────────────────────
       - name: Append gate metrics to summary
         if: steps.ncu.outputs.updates == 'true'
         run: |
@@ -110,28 +103,37 @@ jobs:
             cat reports/build-metrics.md >> "$GITHUB_STEP_SUMMARY"
           fi
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Full gate (including benchmarks) passed with updated dependencies." >> "$GITHUB_STEP_SUMMARY"
+          echo "Quality gate passed with updated dependencies." >> "$GITHUB_STEP_SUMMARY"
 
-      # ── Commit all updated artifacts and push ──────────────────────
-      # [skip ci] prevents CI from re-running tests we just completed here.
-      - name: Commit updated packages and gate baselines
+      - name: Commit and push verified update to main
         if: steps.ncu.outputs.updates == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Stage package manifests, locks, and any gate artifacts that changed.
-          git add package.json package-lock.json
-          git add demos/*/package.json demos/*/package-lock.json
-          git add docs/public/metrics-history.json docs/public/screenshots/ || true
-          if git diff --cached --quiet; then
-            echo "No dependency or gate baseline changes to commit."
+
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No dependency or generated artifact changes to commit."
             exit 0
           fi
-          git commit -m "chore(deps): upgrade all dependencies to latest compatible versions [skip ci]"
-          git pull --rebase --autostash origin main
-          git push origin main
 
-      # ── Artifact uploads ───────────────────────────────────────────
+          git add -A .
+
+          if git diff --cached --quiet; then
+            echo "No dependency or generated artifact changes to commit."
+            exit 0
+          fi
+
+          printf '%s\n' \
+            'chore(deps): publish verified nightly upgrades [skip ci]' \
+            '' \
+            'Refresh dependencies to keep the repo current and secure, then preserve the' \
+            'generated artifacts produced by the exhaustive post-upgrade verification run so' \
+            'main stays aligned with the exact code that passed builds, demos, end-to-end,' \
+            'and performance checks.' \
+            > /tmp/nightly-upgrade-commit.txt
+          git commit -F /tmp/nightly-upgrade-commit.txt
+          git push origin HEAD:main
+
       - name: Upload reports
         if: steps.ncu.outputs.updates == 'true'
         uses: actions/upload-artifact@v5

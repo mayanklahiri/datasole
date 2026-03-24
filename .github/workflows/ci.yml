@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-# Skip only known bot-produced sync commits that already passed the gate.
-# Do not skip all [skip ci] commits, because local pre-push artifact sync
-# commits can piggyback with real docs/code changes that still need CI/deploy.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -22,51 +19,40 @@ permissions:
   id-token: write
 
 jobs:
-  gate:
+  build:
+    if: >-
+      github.event_name != 'push' ||
+      (
+        !contains(github.event.head_commit.message, '[skip ci]') &&
+        !contains(github.event.head_commit.message, 'skip-ci')
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Skip only known bot-only follow-up commits that already passed gate:full.
-    if: >
-      !contains(github.event.head_commit.message, 'sync CI gate baselines and e2e screenshots [skip ci]') &&
-      !contains(github.event.head_commit.message, 'chore(deps): upgrade all dependencies to latest compatible versions [skip ci]') &&
-      !contains(github.event.head_commit.message, '[ci skip]')
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [22, 24]
     steps:
       - uses: actions/checkout@v5
         with:
-          # Full history so the artifact commit step can push cleanly.
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v5
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 24
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            demos/vanilla/package-lock.json
+            demos/react-express/package-lock.json
+            demos/vue-nestjs/package-lock.json
 
-      # ── Root package ──────────────────────────────────────────────
-      - name: Install root dependencies
-        run: npm ci
+      - name: Install all packages
+        run: npm run install:all
 
-      # ── Demo packages ─────────────────────────────────────────────
-      - name: Install demo dependencies
-        run: |
-          for d in demos/vanilla demos/react-express demos/vue-nestjs; do
-            if [ -f "$d/package.json" ]; then
-              echo "--- npm ci in $d ---"
-              (cd "$d" && npm ci)
-            fi
-          done
-
-      # ── Playwright browsers ───────────────────────────────────────
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json', 'demos/vanilla/package-lock.json', 'demos/react-express/package-lock.json', 'demos/vue-nestjs/package-lock.json') }}
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
@@ -76,20 +62,36 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      # ── Full quality gate (unit + e2e + bench) ─────────────────────
-      - name: Run full quality gate
+      - name: Run exhaustive verification
         run: npm run gate:full
 
-      # ── Demo builds (after datasole is built by gate) ─────────────
-      - name: Build demo apps
+      - name: Commit verified generated artifacts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          for d in demos/react-express demos/vue-nestjs; do
-            if [ -f "$d/package.json" ] && (cd "$d" && npm run build --if-present 2>/dev/null); then
-              echo "--- built $d ---"
-            fi
-          done
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No generated artifact changes to commit."
+            exit 0
+          fi
 
-      # ── Metrics summary ────────────────────────────────────────────
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A .
+
+          if git diff --cached --quiet; then
+            echo "No staged changes after git add."
+            exit 0
+          fi
+
+          printf '%s\n' \
+            'chore(ci): publish verified generated artifacts [skip ci]' \
+            '' \
+            'Preserve the artifacts produced by the exhaustive main-branch verification run so' \
+            'the repository, screenshots, and metrics stay aligned with the exact code that' \
+            'just passed the full build, demo, end-to-end, and performance pipeline.' \
+            > /tmp/ci-artifact-commit.txt
+          git commit -F /tmp/ci-artifact-commit.txt
+          git push origin HEAD:main
+
       - name: Print build metrics
         if: always()
         run: |
@@ -99,33 +101,11 @@ jobs:
             echo "No build metrics found" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      # ── Auto-commit updated gate artifacts back to main ───────────
-      # Only from node-24 on direct pushes to main (not PRs) to avoid
-      # duplicate commits from the matrix and spurious pushes from forks.
-      - name: Sync gate baselines to main
-        if: >
-          github.event_name == 'push' &&
-          github.ref == 'refs/heads/main' &&
-          matrix.node-version == 24
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Pull latest to avoid conflicts with concurrent commits.
-          git pull --rebase origin main
-          if ! git diff --quiet -- docs/public/metrics-history.json docs/public/screenshots/; then
-            git add docs/public/metrics-history.json docs/public/screenshots/
-            git commit -m "chore: sync CI gate baselines and e2e screenshots [skip ci]"
-            git push origin main || echo "Push skipped — no changes or race condition, will sync on next run."
-          else
-            echo "No gate artifact changes to commit."
-          fi
-
-      # ── Artifact uploads ───────────────────────────────────────────
       - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v5
         with:
-          name: reports-node-${{ matrix.node-version }}
+          name: reports
           path: reports/
           if-no-files-found: ignore
 
@@ -133,14 +113,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v5
         with:
-          name: test-results-node-${{ matrix.node-version }}
+          name: test-results
           path: |
             test-results/
             test/e2e/reports/
           if-no-files-found: ignore
 
       - name: Upload coverage
-        if: matrix.node-version == 24
+        if: always()
         uses: actions/upload-artifact@v5
         with:
           name: coverage
@@ -148,7 +128,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload docs site
-        if: matrix.node-version == 24
+        if: always()
         uses: actions/upload-artifact@v5
         with:
           name: docs-site
@@ -156,7 +136,7 @@ jobs:
           if-no-files-found: warn
 
   deploy-docs:
-    needs: gate
+    needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5

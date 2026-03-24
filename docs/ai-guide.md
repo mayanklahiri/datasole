@@ -36,9 +36,9 @@ docs/           Canonical documentation (these pages)
 npm run gate
 ```
 
-Runs: clean → format:check → lint → build → test (coverage) → e2e → collect-metrics → docs:build → gate:summary.
+Runs the developer gate: clean → format:check → lint → build:all → test (coverage) → core e2e → demo/integration e2e → gate:summary.
 
-**Must pass before every push.** Enforced by pre-push hook and CI.
+`npm run gate:full` adds benchmarks, metrics collection, and docs build. CI/nightly use `npm run gate:full`; local hooks use `npm run gate`.
 
 ## Key conventions
 
@@ -47,6 +47,7 @@ Runs: clean → format:check → lint → build → test (coverage) → e2e → 
 - Architecture decisions recorded in `docs/decisions.md`
 - Changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Barrel exports via `index.ts` in each directory
+- Commit messages should lead with intent; the title and first few body lines explain why the change exists
 
 ## Integration patterns
 
@@ -63,5 +64,5 @@ Ask the agent: _"Run the codebase-health skill"_ — this performs a 7-phase aud
 3. **Doc-code alignment** — cross-reference `docs/*.md` API refs against `src/` → fix discrepancies
 4. **README alignment** — verify bundle sizes, feature claims, code examples
 5. **AGENTS.md alignment** — verify project structure and gate steps
-6. **Regenerate** — `npm run gate` to rebuild everything
+6. **Regenerate** — `npm run gate` for local validation or `npm run gate:full` when validating CI/nightly behavior
 7. **Commit** — stage and commit all fixes

@@ -1,11 +1,11 @@
 import { createServer } from 'http';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import os from 'os';
 import express from 'express';
 import { DatasoleServer } from 'datasole/server';
-import { createSeededRandom } from '../../seeded-random.js';
+import { createSeededRandom } from '../../seeded-random.mjs';
 import { AppContract, RpcMethod, Event, StateKey, ChatMessage } from '../shared/contract';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -14,13 +14,14 @@ const PORT = parseInt(process.env.PORT || '4001', 10);
 const app = express();
 
 // Serve datasole worker IIFE for web worker transport (before static/catch-all)
-const dsWorkerPath = resolve(
-  __dirname,
-  '../node_modules/datasole/dist/client/datasole-worker.iife.min.js',
-);
-if (existsSync(dsWorkerPath)) {
+const dsWorkerPathCandidates = [
+  resolve(__dirname, '../../../dist/client/datasole-worker.iife.min.js'),
+  resolve(__dirname, '../node_modules/datasole/dist/client/datasole-worker.iife.min.js'),
+];
+const dsWorkerPath = dsWorkerPathCandidates.find((p) => existsSync(p));
+if (dsWorkerPath) {
   app.get('/datasole-worker.iife.min.js', (_req, res) => {
-    res.sendFile(dsWorkerPath);
+    res.type('application/javascript').send(readFileSync(dsWorkerPath));
   });
 }
 
@@ -52,7 +53,7 @@ ds.events.on(Event.ChatSend, (payload: { data: { text: string; username: string 
   ds.broadcast(Event.ChatMessage, msg);
 });
 
-ds.setState(StateKey.ChatMessages, chatHistory);
+await ds.setState(StateKey.ChatMessages, chatHistory);
 
 // ─── RPC ───────────────────────────────────────────────────────────
 ds.rpc.register(RpcMethod.RandomNumber, async ({ min, max }: { min: number; max: number }) => {
