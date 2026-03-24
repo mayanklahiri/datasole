@@ -5,13 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-_No unreleased changes._
-
----
-
-## [1.0.0] — 2026-03-20
+## [1.0.0] — Unreleased
 
 Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping tool;
 1.0.0 is a production-grade, binary-framed, realtime full-stack TypeScript framework.
@@ -85,6 +79,10 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 - GitHub repository link and contextual help text in each demo component
 - Demo e2e test suite (`npm run test:e2e:demos`) with Playwright: installs, builds, starts in production mode, validates real-time features, and generates screenshots
 - Demo build artifacts included in build summary when present
+- React demo: `DatasoleProvider` context + `useDatasoleEvent` / `useDatasoleState` / `useDatasoleClient` hooks — no Redux, no Zustand, just hooks that return state
+- Vue demo: `useDatasole()` provide/inject composable + `useDatasoleEvent` / `useDatasoleState` / `useDatasoleClient` composables — no Vuex, no Pinia, just reactive refs
+- CSS animations in React and Vue demos: connection dot pulse, message slide-in, RPC result pop, history slide-in, hover glow on metric cards, message count and avg latency badges
+- Derived values in React (`useMemo`) and Vue (`computed`) demos to showcase idiomatic framework integration
 
 #### Testing & Quality
 
@@ -101,7 +99,9 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
   - Mixed workload (concurrent RPC + events + state)
   - Main-thread blocking comparison: worker vs no-worker with 4× CPU throttling, measuring Long Tasks, rAF jitter, jank frames, and dropped frames
 - Keyed screenshot baselines with pixelmatch pixel-diff comparison
-- Unified quality gate (`npm run gate`): format → lint → build → unit tests → e2e → metrics → docs → summary
+- Browser console error/warning tracking per benchmark scenario (recorded in metrics table and time-series graphs)
+- System info collection in benchmarks (OS, CPU, cores, memory, Node.js version) displayed on performance dashboard
+- Unified quality gate (`npm run gate`): format → lint → build → unit tests → e2e → benchmarks → metrics → docs → summary
 - Pre-commit (lint-staged) and pre-push (full gate) git hooks
 - CI: GitHub Actions matrix on Node 22 LTS and Node 24
 - Nightly dependency update workflow includes all demo packages
@@ -121,6 +121,7 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 - 17 Architecture Decision Records (ADRs)
 - `AGENTS.md` for AI coding assistants with integration patterns and codebase-health skill
 - File-level docblocks on all source, test, and build modules
+- `.prettierignore` to exclude build artifacts, lockfiles, and binaries from formatting
 
 ### Changed
 
@@ -130,6 +131,13 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 - Default branch renamed from `master` to `main`
 - Compression detection uses zlib magic byte instead of size-threshold heuristic for reliable identification of pre-compressed frames
 - Main Playwright config excludes demo specs (run separately via `test:e2e:demos`)
+- Performance benchmarks run in isolation via dedicated Playwright config (`playwright.bench.config.ts`, `workers: 1`, sequential execution)
+- Metrics history deduplicates by calendar date (one entry per day, latest wins)
+- `format` / `format:check` scripts widened from narrow `src/test` globs to `prettier --write .` (covers entire project via `.prettierignore`)
+- `lint-staged` expanded to cover `build/`, `test/e2e/`, `demos/`, `docs/` file types in addition to `src/` and `test/unit/`
+- Demo dependencies upgraded to latest versions (React 19, Vue 3, Express 5, NestJS 11, Vite 8, TypeScript 6)
+- React demo client walkthrough in docs replaced `useDatasole` prop-drilling pattern with `DatasoleProvider` + hooks
+- Vue demo client walkthrough in docs replaced manual `onMounted`/`onUnmounted` with composable-based pattern
 
 ### Fixed
 
