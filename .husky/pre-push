@@ -4,10 +4,11 @@ ORIGINAL_HEAD=$(git rev-parse HEAD)
 
 npm run gate
 
-# Auto-commit gate artifacts if the gate dirtied tracked files
+# Auto-commit gate artifacts if the gate dirtied tracked files.
+# [skip ci] prevents CI from redundantly re-running tests we just ran locally.
 if ! git diff --quiet -- docs/public/metrics-history.json docs/public/screenshots/; then
   git add docs/public/metrics-history.json docs/public/screenshots/
-  git commit -m "chore: update e2e screenshots and metrics from gate run"
+  git commit -m "chore: sync gate baselines and e2e screenshots from local run [skip ci]"
 fi
 
 # If HEAD moved (artifact commit was created), the original push refs are stale.

@@ -14,7 +14,7 @@ permissions:
 jobs:
   update-deps:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
         with:
@@ -29,6 +29,7 @@ jobs:
       - name: Install npm-check-updates
         run: npm install -g npm-check-updates
 
+      # ── Check for outdated packages ────────────────────────────────
       - name: Check for updates
         id: ncu
         run: |
@@ -56,6 +57,7 @@ jobs:
             echo "No dependency updates available." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # ── Apply updates to root and all demos ────────────────────────
       - name: Apply updates
         if: steps.ncu.outputs.updates == 'true'
         run: |
@@ -66,6 +68,7 @@ jobs:
             (cd "$d" && ncu -u --reject datasole && npm install)
           done
 
+      # ── Playwright browsers ────────────────────────────────────────
       - name: Cache Playwright browsers
         if: steps.ncu.outputs.updates == 'true'
         id: playwright-cache
@@ -82,10 +85,23 @@ jobs:
         if: steps.ncu.outputs.updates == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Run quality gate
+      # ── Full quality gate (unit + e2e + bench) ─────────────────────
+      - name: Run full quality gate with updated dependencies
         if: steps.ncu.outputs.updates == 'true'
-        run: npm run gate
+        run: npm run gate:full
 
+      # ── Build demo apps (validates demos still build after upgrades) ─
+      - name: Build demo apps
+        if: steps.ncu.outputs.updates == 'true'
+        run: |
+          for d in demos/react-express demos/vue-nestjs; do
+            if [ -f "$d/package.json" ]; then
+              echo "--- building $d ---"
+              (cd "$d" && npm run build)
+            fi
+          done
+
+      # ── Gate metrics summary ───────────────────────────────────────
       - name: Append gate metrics to summary
         if: steps.ncu.outputs.updates == 'true'
         run: |
@@ -94,18 +110,24 @@ jobs:
             cat reports/build-metrics.md >> "$GITHUB_STEP_SUMMARY"
           fi
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Quality gate passed with updated dependencies." >> "$GITHUB_STEP_SUMMARY"
+          echo "Full gate (including benchmarks) passed with updated dependencies." >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Commit and push to main
+      # ── Commit all updated artifacts and push ──────────────────────
+      # [skip ci] prevents CI from re-running tests we just completed here.
+      - name: Commit updated packages and gate baselines
         if: steps.ncu.outputs.updates == 'true'
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main
+          # Stage package manifests, locks, and any gate artifacts that changed.
           git add package.json package-lock.json
           git add demos/*/package.json demos/*/package-lock.json
-          git commit -m "chore(deps): nightly dependency update"
+          git add docs/public/metrics-history.json docs/public/screenshots/ || true
+          git commit -m "chore(deps): upgrade all dependencies to latest compatible versions [skip ci]"
           git push origin main
 
+      # ── Artifact uploads ───────────────────────────────────────────
       - name: Upload reports
         if: steps.ncu.outputs.updates == 'true'
         uses: actions/upload-artifact@v5

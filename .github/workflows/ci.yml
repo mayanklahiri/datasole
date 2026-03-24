@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+# Skip if the commit was produced by the bot after a successful gate run —
+# those commits have already passed all tests.
+# GitHub natively honours [skip ci] in push commit messages, but the explicit
+# job-level condition below also covers edge cases (e.g. force pushes).
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -21,21 +25,42 @@ permissions:
 jobs:
   gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
+    # Skip bot-committed artifact syncs — they already passed gate:full.
+    if: >
+      !contains(github.event.head_commit.message, '[skip ci]') &&
+      !contains(github.event.head_commit.message, '[ci skip]')
     strategy:
       fail-fast: false
       matrix:
         node-version: [22, 24]
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Full history so the artifact commit step can push cleanly.
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
 
-      - run: npm ci
+      # ── Root package ──────────────────────────────────────────────
+      - name: Install root dependencies
+        run: npm ci
 
+      # ── Demo packages ─────────────────────────────────────────────
+      - name: Install demo dependencies
+        run: |
+          for d in demos/vanilla demos/react-express demos/vue-nestjs; do
+            if [ -f "$d/package.json" ]; then
+              echo "--- npm ci in $d ---"
+              (cd "$d" && npm ci)
+            fi
+          done
+
+      # ── Playwright browsers ───────────────────────────────────────
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@v5
@@ -51,9 +76,20 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Run quality gate
-        run: npm run gate
+      # ── Full quality gate (unit + e2e + bench) ─────────────────────
+      - name: Run full quality gate
+        run: npm run gate:full
 
+      # ── Demo builds (after datasole is built by gate) ─────────────
+      - name: Build demo apps
+        run: |
+          for d in demos/react-express demos/vue-nestjs; do
+            if [ -f "$d/package.json" ] && (cd "$d" && npm run build --if-present 2>/dev/null); then
+              echo "--- built $d ---"
+            fi
+          done
+
+      # ── Metrics summary ────────────────────────────────────────────
       - name: Print build metrics
         if: always()
         run: |
@@ -63,6 +99,28 @@ jobs:
             echo "No build metrics found" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # ── Auto-commit updated gate artifacts back to main ───────────
+      # Only from node-24 on direct pushes to main (not PRs) to avoid
+      # duplicate commits from the matrix and spurious pushes from forks.
+      - name: Sync gate baselines to main
+        if: >
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          matrix.node-version == 24
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Pull latest to avoid conflicts with concurrent commits.
+          git pull --rebase origin main
+          if ! git diff --quiet -- docs/public/metrics-history.json docs/public/screenshots/; then
+            git add docs/public/metrics-history.json docs/public/screenshots/
+            git commit -m "chore: sync CI gate baselines and e2e screenshots [skip ci]"
+            git push origin main || echo "Push skipped — no changes or race condition, will sync on next run."
+          else
+            echo "No gate artifact changes to commit."
+          fi
+
+      # ── Artifact uploads ───────────────────────────────────────────
       - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v5

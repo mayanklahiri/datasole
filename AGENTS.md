@@ -18,31 +18,59 @@
 - `docs/` — Canonical documentation (Markdown)
 - `docs-site/` — Static documentation site generator
 
+## Commit Message Convention
+
+Commit titles and the opening lines of the body MUST express the **intention** — the goal, problem solved, or capability unlocked — not just a description of the mechanical change. Infer the intent from session context, user instructions, and surrounding code, not only from the diff.
+
+**Format:** `<type>(<scope>): <intention-driven title> [ADR-XXX if applicable]`
+
+**Intention vs. description — examples:**
+
+| ❌ Describes the change                | ✅ States the intention                                                        |
+| -------------------------------------- | ------------------------------------------------------------------------------ |
+| `add [skip ci] to bot commits`         | `prevent redundant CI re-runs after bot artifact commits`                      |
+| `update metrics-history.json`          | `sync gate baselines so regressions are caught against current state`          |
+| `remove ProcessExecutor`               | `simplify concurrency surface to three well-understood models`                 |
+| `fix eslint-disable in client.test.ts` | `eliminate type suppressions so refactoring tools can follow types end-to-end` |
+
+**Rules:**
+
+- The title answers "why are we doing this?" not "what did we change?"
+- The body (if present) explains the reasoning, trade-offs, or constraints — not the file list
+- Keep the title under 72 characters; wrap body at 100
+- Auto-generated bot commits MUST include `[skip ci]` at the end of the title to prevent redundant CI re-runs
+
 ## Quality Gate
 
-**Before committing or pushing, run the quality gate:**
+Two gate levels exist — choose based on context:
 
-```bash
-npm run gate
-```
+| Command             | Used by             | Includes                                                                            |
+| ------------------- | ------------------- | ----------------------------------------------------------------------------------- |
+| `npm run gate`      | local pre-push hook | clean → format → lint → build → unit tests → e2e (functional only) → metrics → docs |
+| `npm run gate:full` | CI and nightly      | everything in `gate` **plus** all performance/bench tests                           |
 
-This is the single command that validates everything. It runs, in order:
+**Steps in `gate` (local fast gate):**
 
 1. `clean` — remove dist/, reports/, coverage/, docs-site/dist/
 2. `format:check` — Prettier formatting validation
 3. `lint` — ESLint + TypeScript type check (`tsc --noEmit`)
 4. `build` — Rollup multi-target bundle (client IIFE/ESM/CJS, worker, server ESM/CJS)
 5. `test --coverage` — Vitest unit tests with v8 coverage
-6. `test:e2e` — Playwright e2e tests (builds first, headless Chromium, production artifacts)
+6. `test:e2e` — Playwright e2e tests (functional suite only; bench excluded via `@bench` tag)
 7. `collect-metrics` — Bundle sizes, coverage, e2e results, docs stats → `reports/`
 8. `docs:build` — Generate static documentation site
 9. `gate:summary` — Print pass/fail summary with statistics
 
-**The gate MUST pass before any push.** This is enforced by:
+**Additional step in `gate:full` (CI gate):**
 
-- **pre-commit hook**: `lint-staged` (format + lint staged files)
-- **pre-push hook**: `npm run gate` (full pipeline)
-- **CI**: GitHub Actions runs `npm run gate` on every push/PR to `main`
+10. `gate:bench` — Playwright performance/load benchmarks
+
+**Enforcement:**
+
+- **pre-commit hook**: `lint-staged` (format + lint staged files only)
+- **pre-push hook**: `npm run gate` (functional tests, no bench — fast enough for local iteration)
+- **CI (`ci.yml`)**: `npm run gate:full` on every non-`[skip ci]` push/PR to `main`
+- **Nightly (`nightly-deps.yml`)**: `npm run gate:full` after dependency upgrades
 
 `npm run dist` is an alias for `npm run gate`.
 
