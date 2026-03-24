@@ -15,6 +15,7 @@ import pixelmatch from 'pixelmatch';
 const SCREENSHOT_DIR = path.resolve(__dirname, '../../../.screenshots');
 const MAX_DIFF_RATIO = 0.01;
 const UPDATE_SCREENSHOTS = process.env.DATASOLE_UPDATE_SCREENSHOTS === '1';
+const WRITE_DOCS_SCREENSHOTS = process.env.DATASOLE_WRITE_DOCS_SCREENSHOTS === '1';
 
 function ensureDir(dir: string): void {
   mkdirSync(dir, { recursive: true });
@@ -44,7 +45,7 @@ export async function snap(page: Page, testInfo: TestInfo, key: string): Promise
 
   if (!existsSync(baselinePath)) {
     writeFileSync(baselinePath, buffer);
-    if (tag === 'desktop') {
+    if (tag === 'desktop' && WRITE_DOCS_SCREENSHOTS) {
       copyToDocsScreenshots(key, buffer);
     }
     return;
@@ -55,7 +56,7 @@ export async function snap(page: Page, testInfo: TestInfo, key: string): Promise
 
   if (baseline.width !== current.width || baseline.height !== current.height) {
     writeFileSync(baselinePath, buffer);
-    if (tag === 'desktop') {
+    if (tag === 'desktop' && WRITE_DOCS_SCREENSHOTS) {
       copyToDocsScreenshots(key, buffer);
     }
     return;
@@ -73,7 +74,7 @@ export async function snap(page: Page, testInfo: TestInfo, key: string): Promise
   if (diffRatio > MAX_DIFF_RATIO) {
     if (UPDATE_SCREENSHOTS) {
       writeFileSync(baselinePath, buffer);
-      if (tag === 'desktop') {
+      if (tag === 'desktop' && WRITE_DOCS_SCREENSHOTS) {
         copyToDocsScreenshots(key, buffer);
       }
       return;
