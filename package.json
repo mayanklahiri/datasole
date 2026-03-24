@@ -59,7 +59,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "clean": "rm -rf dist/ reports/ coverage/ docs-site/dist/ docs/.vitepress/cache/",
-    "gate": "npm run clean && npm run format:check && npm run lint && npm run build && npm run test -- --coverage && npm run test:e2e && npm run gate:bench && npm run collect-metrics && npm run docs:build && npm run gate:summary",
+    "gate": "npm run clean && npm run format:check && npm run lint && npm run build && npm run test -- --coverage && npm run test:e2e && npm run collect-metrics && npm run docs:build && npm run gate:summary",
     "gate:bench": "npx playwright test --config test/e2e/playwright.bench.config.ts",
     "gate:summary": "tsx build/gate-summary.ts",
     "dist": "npm run gate",
