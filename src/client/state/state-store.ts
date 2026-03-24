@@ -13,15 +13,18 @@ export class StateStore<T = unknown> {
     this.state = initial;
   }
 
+  /** Return current local snapshot value. */
   getState(): T {
     return this.state;
   }
 
+  /** Apply RFC 6902 patch list and notify subscribers. */
   applyPatches(patches: StatePatch[]): void {
     this.state = applyPatch(this.state, patches);
     this.notify();
   }
 
+  /** Subscribe to state updates and receive an unsubscribe handle. */
   subscribe(handler: (state: T) => void): StateSubscription {
     this.subscribers.add(handler);
     return {

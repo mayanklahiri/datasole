@@ -20,10 +20,12 @@ export class RpcClient {
   >();
   private sendFn: SendFn | null = null;
 
+  /** Provide transport send function used for encoded RPC request frames. */
   setSendFn(fn: SendFn): void {
     this.sendFn = fn;
   }
 
+  /** Send RPC request and resolve/reject once a matching response arrives. */
   async call<TResult = unknown>(
     method: string,
     params?: unknown,
@@ -59,6 +61,7 @@ export class RpcClient {
     });
   }
 
+  /** Resolve/reject one pending call by correlation id. */
   handleResponse(correlationId: number, response: RpcResponse): void {
     const entry = this.pending.get(correlationId);
     if (!entry) return;
@@ -72,10 +75,12 @@ export class RpcClient {
     }
   }
 
+  /** Allocate the next correlation id. */
   nextCorrelationId(): number {
     return ++this.correlationCounter;
   }
 
+  /** Reject all pending calls (used during disconnect/reconnect transitions). */
   clearPending(): void {
     for (const [, entry] of this.pending) {
       if (entry.timer) clearTimeout(entry.timer);

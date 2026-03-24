@@ -14,7 +14,7 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 
 #### Architecture
 
-- **Composable layer architecture**: DatasoleServer decomposed into Transport, Executor, Backends, and Primitives layers [ADR-018]
+- **Composable layer architecture**: DatasoleServer decomposed into Transport, Executor, Backends, and Primitives layers [ADR-012]
 - **Type-safe contracts**: `DatasoleContract` generic type parameter required on `DatasoleServer<T>` and `DatasoleClient<T>`
 - **Enum-based keys**: RPC methods, events, and state keys use TypeScript enums shared between client and server
 - **Backend as distribution layer**: All stateful services (EventBus, CrdtManager, SyncChannel, RateLimiter) receive StateBackend via constructor injection

@@ -70,12 +70,13 @@ It runs `npm run gate` plus:
 
 - `docs/tutorials.md` — Progressive tutorials (start here for learning)
 - `docs/demos.md` — Full-app demos with Vanilla, React+Express, Vue+NestJS walkthroughs
-- `docs/examples.md` — Copy-paste recipes by pattern
+- `docs/developer-guide.md` — Contract-first setup + framework integration patterns
+- `docs/configuration.md` — Consolidated server/client configuration reference
 - `docs/architecture.md` — System design, wire protocol, data flow
 - `docs/decisions.md` — Architecture Decision Records (ADRs)
 - `docs/contributing.md` — Build commands, PR guidelines
 
-When adding user-facing features, update `docs/tutorials.md` and/or `docs/examples.md` with runnable examples.
+When adding user-facing features, update `docs/tutorials.md` and/or `docs/developer-guide.md` with runnable examples.
 
 ## Architecture Decisions
 
@@ -127,7 +128,7 @@ When making changes:
 
 - TypeScript strict mode; no `any` in public APIs
 - Use `unknown` with type guards instead of `any`
-- **Zero `eslint-disable`** — fix the type or the code, never suppress the rule (see ADR-020)
+- **Zero `eslint-disable`** — fix the type or the code, never suppress the rule (see ADR-013)
 - **Zero `as any`** — use generics, `unknown` + guards, or typed interfaces. `as never` is acceptable at generic variance boundaries; `as unknown as T` for test doubles
 - **`catch (e: unknown)`** — never `catch (e: any)`. Use `e instanceof Error` guards
 - **Commit messages lead with intent** — the title states the purpose, then the body uses this format: (a) 2-3 short lines summarizing intent, (b) 1-5 brief bullets describing changes, (c) a separate section for any new features, options, or capabilities
@@ -198,7 +199,7 @@ server.ready(() => {
 
 Browser: IIFE bundle via `<script>` tag — global is `window.Datasole`, use `new Datasole.DatasoleClient(opts)`.
 
-**Docs:** `docs/integrations.md` — full copy-paste examples per stack; `docs/examples.md` — pattern recipes.
+**Docs:** `docs/developer-guide.md` — contract-first setup with framework integrations.
 
 **Client API:** The RPC method is `client.rpc(method, params)` (not `call()`). State: `client.subscribeState(key, handler)`. Events: `client.on(event, handler)`, `client.emit(event, data)`.
 
@@ -206,7 +207,7 @@ Browser: IIFE bundle via `<script>` tag — global is `window.Datasole`, use `ne
 
 - SSR / App Router — client code must run in a client boundary (`"use client"` or equivalent)
 - React Native / SSR — pass `useWorker: false` to `DatasoleClient` (no Web Worker in those environments)
-- Browser apps must serve `/datasole-worker.iife.min.js` (the worker IIFE) — `useWorker: true` is now the default
+- Browser apps must serve `/__ds/datasole-worker.iife.min.js` (or `${path}/datasole-worker.iife.min.js`) — `useWorker: true` is now the default
 - Default WebSocket path is `/__ds` (configure `path` / proxy if needed)
 - Next.js requires `transpilePackages: ['datasole']` in `next.config.ts` and `--webpack` flag (Turbopack doesn't resolve subpath exports for linked packages)
 - NestJS requires `import 'reflect-metadata'` before any NestJS imports

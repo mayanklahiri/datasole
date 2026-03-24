@@ -1,4 +1,6 @@
 #!/bin/bash
 
+unset NO_COLOR
+
 npx lint-staged
 npm run gate

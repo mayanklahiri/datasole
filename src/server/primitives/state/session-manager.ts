@@ -43,6 +43,7 @@ export class SessionManager implements RealtimePrimitive {
     }
   }
 
+  /** Load persisted session state for the current connection user. */
   async snapshot(ctx: ConnectionContext): Promise<Record<string, unknown>> {
     const userId = ctx.userId;
     if (!userId) return {};
@@ -57,14 +58,17 @@ export class SessionManager implements RealtimePrimitive {
     return persisted ?? {};
   }
 
+  /** Alias for `snapshot` used in reconnect flows. */
   async restore(ctx: ConnectionContext): Promise<Record<string, unknown>> {
     return this.snapshot(ctx);
   }
 
+  /** Get one session key for a user from in-memory session cache. */
   get<V = unknown>(userId: string, key: string): V | undefined {
     return this.sessions.get(userId)?.get(key)?.data as V | undefined;
   }
 
+  /** Set one session key/value and mark it dirty for flush. */
   set(userId: string, key: string, value: unknown): void {
     let userSession = this.sessions.get(userId);
     if (!userSession) {
@@ -93,6 +97,7 @@ export class SessionManager implements RealtimePrimitive {
     }
   }
 
+  /** Delete a session key for a user. */
   delete(userId: string, key: string): boolean {
     const session = this.sessions.get(userId);
     if (!session) return false;
@@ -103,11 +108,13 @@ export class SessionManager implements RealtimePrimitive {
     return deleted;
   }
 
+  /** Register callback for local session mutation events. */
   onChange(handler: ChangeHandler): () => void {
     this.changeHandlers.add(handler);
     return () => this.changeHandlers.delete(handler);
   }
 
+  /** Persist one user's dirty session values to backend. */
   async flushUser(userId: string): Promise<void> {
     const session = this.sessions.get(userId);
     if (!session) return;
@@ -123,6 +130,7 @@ export class SessionManager implements RealtimePrimitive {
     this.dirtyCount.set(userId, 0);
   }
 
+  /** Flush all users with pending dirty data. */
   async flushAll(): Promise<void> {
     const flushes: Promise<void>[] = [];
     for (const [userId, dirty] of this.dirtyCount) {
@@ -133,12 +141,14 @@ export class SessionManager implements RealtimePrimitive {
     await Promise.all(flushes);
   }
 
+  /** Flush and evict one user's in-memory session cache. */
   async evict(userId: string): Promise<void> {
     await this.flushUser(userId);
     this.sessions.delete(userId);
     this.dirtyCount.delete(userId);
   }
 
+  /** Stop periodic flush and persist remaining dirty session state. */
   async destroy(): Promise<void> {
     if (this.flushTimer) {
       clearInterval(this.flushTimer);

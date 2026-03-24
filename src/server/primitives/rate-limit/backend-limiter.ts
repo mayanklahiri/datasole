@@ -20,6 +20,7 @@ export class BackendRateLimiter implements RateLimiter, RealtimePrimitive {
     this.cleanupInterval = setInterval(() => void this.cleanup(), 60_000);
   }
 
+  /** Check current allowance for a key without consuming quota. */
   async check(key: string, rule: RateLimitRule): Promise<RateLimitResult> {
     const entry = await this.getOrCreate(key, rule);
     return {
@@ -29,6 +30,7 @@ export class BackendRateLimiter implements RateLimiter, RealtimePrimitive {
     };
   }
 
+  /** Consume quota for a key and return updated allowance metadata. */
   async consume(key: string, rule: RateLimitRule, cost = 1): Promise<RateLimitResult> {
     const entry = await this.getOrCreate(key, rule);
     entry.count += cost;
@@ -42,10 +44,12 @@ export class BackendRateLimiter implements RateLimiter, RealtimePrimitive {
     };
   }
 
+  /** Reset all quota accounting for one key. */
   async reset(key: string): Promise<void> {
     await this.backend.delete(`rl:${key}`);
   }
 
+  /** Stop cleanup timer. */
   async destroy(): Promise<void> {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);

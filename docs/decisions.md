@@ -46,31 +46,7 @@ description: Architecture Decision Records for the datasole project.
 - **Decision:** `StateBackend` interface with get/set/delete/subscribe/publish. Built-in: MemoryBackend (default), RedisBackend (optional peer dep), PostgresBackend (optional peer dep). Interface is public for custom backends.
 - **Consequences:** Clean separation of state management from transport. Optional peer deps keep the core lightweight. Trade-off: each backend must implement pub/sub semantics, which is non-trivial for SQL databases.
 
-## ADR-006: Rollup for multi-target bundling
-
-- **Status:** Accepted
-- **Date:** 2026-03-19
-- **Context:** Need IIFE + ESM + CJS client bundles, a worker bundle, and server CJS + ESM bundles. Options: esbuild (fast, less tree-shaking control), tsup (esbuild wrapper), webpack (heavy), Rollup (mature, best tree-shaking).
-- **Decision:** Rollup with @rollup/plugin-typescript, @rollup/plugin-node-resolve, @rollup/plugin-commonjs, @rollup/plugin-terser, @rollup/plugin-replace.
-- **Consequences:** Superior tree-shaking for minimal client bundles. Multi-output from single config. Build is slower than esbuild but acceptable. Trade-off: Rollup configuration is verbose for complex multi-target setups.
-
-## ADR-007: Vitest for unit tests
-
-- **Status:** Accepted
-- **Date:** 2026-03-19
-- **Context:** Need a test runner with native ESM and TypeScript support. Options: Jest (requires ts-jest/transform config), Vitest (native ESM, native TS, same API as Jest).
-- **Decision:** Vitest with @vitest/coverage-v8 for coverage.
-- **Consequences:** Zero configuration for TypeScript. Fast watch mode with HMR. Same describe/it/expect API as Jest. Trade-off: newer ecosystem, fewer plugins than Jest.
-
-## ADR-008: Playwright for e2e tests
-
-- **Status:** Accepted
-- **Date:** 2026-03-19
-- **Context:** Need headless browser automation to test the production IIFE bundle. Options: Puppeteer (Chrome only), Cypress (own runner, heavy), Playwright (multi-browser, lightweight, good API).
-- **Decision:** Playwright with Chromium for e2e tests. Tests load the production build via script tags and assert functional correctness + capture console logs and performance metrics.
-- **Consequences:** Tests validate the actual production artifact. Console error detection catches runtime issues. Performance metrics (page.evaluate + Performance API) enable regression tracking. Trade-off: requires browser binary download in CI.
-
-## ADR-009: Framework-agnostic client with no runtime framework deps
+## ADR-006: Framework-agnostic client with no runtime framework deps
 
 - **Status:** Accepted
 - **Date:** 2026-03-19
@@ -78,7 +54,7 @@ description: Architecture Decision Records for the datasole project.
 - **Decision:** `DatasoleClient` is a plain TypeScript class with no framework imports. Returns plain objects compatible with any reactivity system. Framework-specific hooks/composables can be built on top but are not part of the core.
 - **Consequences:** Maximum compatibility. No framework-specific dependencies in the client bundle. Trade-off: users must write their own integration glue (a few lines per framework).
 
-## ADR-010: Default WebSocket path `/__ds`
+## ADR-007: Default WebSocket path `/__ds`
 
 - **Status:** Accepted
 - **Date:** 2026-03-19
@@ -86,24 +62,7 @@ description: Architecture Decision Records for the datasole project.
 - **Decision:** Default path is `/__ds` (double-underscore prefix convention for framework internals, "ds" for datasole). Configurable via `DatasoleClientOptions.path` and `DatasoleServerOptions.path`.
 - **Consequences:** Avoids collision with common paths like `/ws`, `/socket`, `/api`. The double-underscore convention signals "framework internal". Trade-off: slightly unconventional, but memorable and short.
 
-## ADR-011: Pluggable concurrency models (async / thread / thread-pool)
-
-- **Status:** Superseded by ADR-018
-
-- **Date:** 2026-03-19
-- **Context:** Different deployment scenarios benefit from different concurrency models. Chat apps need lightweight async per-connection; CPU-heavy game logic benefits from thread-per-connection; high-throughput API gateways need pooled threads.
-- **Decision:** `ConnectionExecutor` interface with three implementations: `AsyncExecutor` (default Node.js event loop, no isolation), `ThreadExecutor` (new `worker_threads` per connection), `PoolExecutor` (fixed thread pool with least-connections assignment, **default**). Process-per-connection was removed — the same isolation can be achieved by running CPU-bound work inside a thread-per-connection executor with custom `workerScript`. All RPC, events, and messages are 1:1 mapped from a connected WebSocket to its assigned worker. The main process handles WebSocket I/O and dispatches serialized frames. Selection via `DatasoleServerOptions.executor.model`. Cluster-friendly: no shared mutable state in the main process beyond the connection registry—compatible with `pm2 cluster` mode out of the box.
-- **Consequences:** Three well-defined concurrency models cover all practical workloads. Thread-pool default gives good isolation without fork overhead. Trade-off: thread strategies add serialization cost for frame forwarding.
-
-## ADR-012: Rate limiting with pluggable backends
-
-- **Status:** Superseded by ADR-018
-- **Date:** 2026-03-19
-- **Context:** WebSocket servers need protection against abusive clients. Unlike HTTP rate limiting (well-served by existing middleware), persistent connections require per-connection, per-method rate limiting at the frame level.
-- **Decision:** `RateLimiter` interface with `check`/`consume`/`reset`. Two built-in implementations: `MemoryRateLimiter` (sliding-window counters, suitable for single-process) and `RedisRateLimiter` (atomic INCR+EXPIRE, shares the same Redis connection as the state backend, suitable for clustered deployments). Configurable per-method rules via `RateLimitConfig.rules` map. Default: 100 requests/minute/connection.
-- **Consequences:** Frame-level rate limiting prevents abuse without dropping the WebSocket connection. Redis backend enables consistent limiting across a pm2 cluster. Trade-off: per-frame overhead (one Map lookup or Redis round-trip).
-
-## ADR-013: ConnectionContext as shared per-connection state bag
+## ADR-008: ConnectionContext as shared per-connection state bag
 
 - **Status:** Accepted
 - **Date:** 2026-03-19
@@ -111,15 +70,7 @@ description: Architecture Decision Records for the datasole project.
 - **Decision:** `ConnectionContext` interface, instantiated once per connection from the upgrade auth result, passed as part of `RpcContext` and available to event handlers. Provides typed `get<T>/set/delete` for arbitrary state, plus immutable `auth`, `userId`, `metadata`, `tags`.
 - **Consequences:** Clean, single object for all per-connection state. Auth data from upgrade headers is automatically populated. Custom middleware can enrich context via `set()`. Trade-off: mutable bag can accumulate unbounded state if not disciplined.
 
-## ADR-014: Session manager with configurable persistence flush
-
-- **Status:** Accepted
-- **Date:** 2026-03-19
-- **Context:** Users reconnecting after network drops should not lose accumulated state. Full state persistence after every mutation is wasteful. Change streams are needed for external event-driven systems.
-- **Decision:** `SessionManager` wraps the `StateBackend` with per-user in-memory session maps. Dirty writes accumulate and flush to persistence either (a) when a configurable threshold is reached (`flushThreshold`, default 10 mutations), or (b) on a periodic timer (`flushIntervalMs`, default 5s), or (c) on explicit `flushUser()`/`flushAll()`. Flush triggers `backend.publish()` which feeds the existing change-stream/subscription mechanism. `snapshot()`/`restore()` on reconnect hydrate from persistence.
-- **Consequences:** Reconnections are seamless with minimal persistence I/O. Change streams integrate with existing `StateBackend.subscribe()`. Trade-off: data can be lost between flush intervals if the process crashes; configurable thresholds allow tuning this window per use case.
-
-## ADR-015: CRDT support for bidirectional client ↔ server synchronization
+## ADR-009: CRDT support for bidirectional client ↔ server synchronization
 
 - **Status:** Accepted
 - **Date:** 2026-03-19
@@ -127,7 +78,7 @@ description: Architecture Decision Records for the datasole project.
 - **Decision:** Built-in CRDT primitives in `src/shared/crdt/`: `LWWRegister<T>` (last-writer-wins scalar), `PNCounter` (positive-negative counter with per-node vector), and `LWWMap<T>` (last-writer-wins map of registers). All implement a common `Crdt<T>` interface with `apply(op)`, `merge(state)`, `state()`, and `value()`. Operations are transmitted as `CrdtOperation` frames over the binary protocol. Client-side `CrdtStore` queues local ops for immediate local application + async server sync. Server merges all clients' ops and rebroadcasts the resolved state.
 - **Consequences:** Enables conflict-free collaborative state (counters, presence, shared documents). Reuses the existing binary frame protocol. Trade-off: CRDTs are eventually consistent—no strong ordering guarantees. Current primitives cover common cases; richer CRDTs (OR-Set, RGA for text) can be added later via the `Crdt<T>` interface.
 
-## ADR-016: SyncChannel with configurable flush strategies
+## ADR-010: SyncChannel with configurable flush strategies
 
 - **Status:** Accepted
 - **Date:** 2026-03-19
@@ -135,7 +86,7 @@ description: Architecture Decision Records for the datasole project.
 - **Decision:** `SyncChannel<T>` manages a queue of `StatePatch` operations with three flush strategies: `immediate` (flush on every enqueue), `batched` (flush after N ops or M milliseconds, whichever comes first), and `debounced` (flush after M ms of inactivity). Channels are created per key via `DatasoleServer.createSyncChannel()` with direction (`server-to-client`, `client-to-server`, `bidirectional`) and mode (`json-patch`, `crdt`, `snapshot`).
 - **Consequences:** One API covers all real-time patterns—stock tickers, collaborative editing, form sync, live dashboards. Trade-off: batched/debounced strategies introduce latency; `immediate` is the default for lowest-latency use cases.
 
-## ADR-017: Data flow patterns as composable primitives
+## ADR-011: Data flow patterns as composable primitives
 
 - **Status:** Accepted
 - **Date:** 2026-03-19
@@ -143,7 +94,7 @@ description: Architecture Decision Records for the datasole project.
 - **Decision:** Data flow patterns are defined as the `DataFlowPattern` discriminated union. Each pattern is served by a corresponding subsystem: `RpcDispatcher` for RPC, `EventBus` for events, `SyncChannel` with `json-patch` mode for live data structures, `SyncChannel` with `crdt` mode for bidirectional sync. The framework composes these freely—a single connection can use multiple patterns concurrently. The minimum viable set of use cases is: (1) pure RPC, (2) server event broadcast (e.g. stock ticker), (3) client→server RPC + server→client live state for seamless frontend data binding (React/Vue reactive model backed by server-side state).
 - **Consequences:** Users pick only the patterns they need. Composability avoids framework lock-in to a single paradigm. Trade-off: more concepts to learn, but each is independently useful and well-documented.
 
-## ADR-018: Decompose DatasoleServer into Composable Layers
+## ADR-012: Decompose DatasoleServer into Composable Layers
 
 - **Status:** Accepted
 - **Date:** 2026-03-23
@@ -160,22 +111,11 @@ description: Architecture Decision Records for the datasole project.
   - DatasoleServer/DatasoleClient become generic with required DatasoleContract type parameter
   - All stateful services receive StateBackend via constructor injection
   - EventBus, CrdtManager, SyncChannel, RateLimiter are backend-powered
-  - Old concurrency module (ADR-011) replaced by ConnectionExecutor
+  - Old concurrency module replaced by ConnectionExecutor
 
 - **Consequences:** Breaking API change: all method calls changed (`ds.rpc.register()` vs `ds.rpc()`). DatasoleContract type parameter is required (no DefaultContract). All demos restructured with `shared/contract.ts`. Better testability via constructor injection and interface-first design. Better extensibility: new primitives implement RealtimePrimitive interface. Distribution via backend swap (MemoryBackend → RedisBackend).
 
-## ADR-019: Remove ProcessExecutor, default to thread-pool
-
-- **Status:** Accepted
-- **Date:** 2026-03-23
-
-- **Context:** The `ProcessExecutor` (`child_process` fork per connection) was a stub with no real implementation — the dispatch method was a no-op. Process-per-connection isolation doubles memory per connection, adds IPC serialization overhead, and complicates backend sharing. The same isolation guarantee can be achieved in userland by running CPU-bound work inside a `thread`-model executor with a custom `workerScript`. Meanwhile, the default executor was `async` (single event loop), which provides no isolation at all.
-
-- **Decision:** Remove `ProcessExecutor` entirely. Reduce `ExecutorModel` to three options: `async` (default), `thread`, `thread-pool` (recommended for production). The `async` model remains the default because it is the only fully implemented executor — `thread` and `thread-pool` are stub implementations ready for `workerScript`-based extension. `thread-pool` defaults to `os.availableParallelism()` threads. Threads can initialize their own backend instance or share the parent's — this covers the distributed coordination concern that motivated process isolation.
-
-- **Consequences:** Simpler executor surface (3 models instead of 4). Default is now production-appropriate out of the box. Process-level isolation can still be achieved via pm2 cluster mode or Kubernetes pods. Trade-off: users who specifically need child_process isolation must implement it themselves, but no existing users depended on the stub implementation.
-
-## ADR-020: Zero eslint-disable — fix types, don't suppress rules
+## ADR-013: Zero eslint-disable — fix types, don't suppress rules
 
 - **Status:** Accepted
 - **Date:** 2026-03-23
@@ -190,22 +130,21 @@ description: Architecture Decision Records for the datasole project.
 
 - **Consequences:** All type errors surface at compile time. Refactoring tools can follow types through the entire codebase including tests. No hidden suppressions. Trade-off: slightly more verbose catch blocks and occasionally verbose generic constraints, but this is a feature, not a cost — it forces explicit handling of edge cases.
 
-## ADR-021: Split developer and exhaustive quality gates
+## ADR-014: Standardize demos into client/server/shared layout
 
 - **Status:** Accepted
-- **Date:** 2026-03-23
+- **Date:** 2026-03-24
+- **Context:** Demo projects used mixed top-level layouts (`public/`, `src/`, root `server.mjs`) that made onboarding and framework comparison inconsistent.
+- **Decision:** All demos use top-level `client/`, `server/`, and `shared/` directories. The `shared/` contract is the single source of truth for RPC methods, events, state keys, and payload types.
+- **Consequences:** Better DX and clearer parity across vanilla, React+Express, and Vue+NestJS demos. Build tooling needs path updates for Vite and server entry points.
 
-- **Context:** The old `npm run gate` tried to serve two very different use cases at once: fast local developer validation and exhaustive repository verification. It ran docs generation and metrics collection locally, but still did not validate the entire monorepo shape because demo packages were not explicitly installed everywhere, demo builds were not part of the root build step, and performance benchmarks only ran out-of-band. Pre-push also auto-committed artifacts, which blurred the line between developer intent and CI-generated state. Meanwhile, the nightly dependency upgrade workflow updated dependencies but did not preserve the full set of verified generated artifacts from a post-upgrade run.
+## ADR-015: DatasoleServer serves client runtime assets
 
-- **Decision:** Split validation into two tiers:
-  1. **Developer gate (`npm run gate`)** — non-performance validation only: format, lint, root + demo builds, unit tests with coverage, core e2e, and demo/integration e2e.
-  2. **Exhaustive gate (`npm run gate:full`)** — CI/nightly validation: `npm run gate` plus performance benchmarks, metrics collection, and docs build.
-
-  Operational rules:
-  - `pre-commit` runs `lint-staged` and then `npm run gate`
-  - `pre-push` runs `npm run gate`
-  - main CI and nightly dependency upgrades run `npm run gate:full`
-  - when exhaustive runs on `main` produce tracked artifact changes (screenshots, metrics history, lockfiles, etc.), the bot commits them with `[skip ci]`
-  - the CI workflow ignores `[skip ci]` follow-up commits to avoid infinite loops
-
-- **Consequences:** Local hooks validate correctness without running load/performance scenarios. CI/nightly now verify the whole repository, including demos and benchmarks, before publishing generated artifacts back to `main`. Generated artifacts become a product of verified bot runs instead of local hook side effects. Trade-off: pre-commit is heavier than before, and CI/nightly take longer, but the behavior is explicit and the boundary between developer and bot responsibilities is much cleaner.
+- **Status:** Accepted
+- **Date:** 2026-03-24
+- **Context:** Integrations and demos repeatedly implemented custom routes for `datasole.iife.min.js` and `datasole-worker.iife.min.js`, causing duplication and drift.
+- **Decision:** `DatasoleServer.attach()` serves production client/worker runtime assets at the configured Datasole path with fixed filenames:
+  - `{path}/datasole.iife.min.js`
+  - `{path}/datasole-worker.iife.min.js`
+    Server responses include ETag, `If-None-Match` handling, and `304 Not Modified` support.
+- **Consequences:** Integrations no longer need bespoke runtime asset routes. Server build packaging must always include the client and worker production bundles.

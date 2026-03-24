@@ -8,12 +8,111 @@ description: High-level system design, data flow, protocol specification, and le
 
 > **New to datasole?** Start with the [Tutorials](tutorials.md) — they'll get you from zero to a running app faster than reading architecture docs. Come back here when you're curious about _why_ things work the way they do.
 
+## End-to-end packet lifecycle
+
+```mermaid
+flowchart LR
+    subgraph browserMain ["Browser Main UI Thread"]
+        AppCode["Framework components + app logic"]
+        DatasoleClient["DatasoleClient<T> facade"]
+        RpcClient["RpcClient (pending map / correlation ids)"]
+        EventEmitter["ClientEventEmitter"]
+        StateStore["StateStore map + JSON Patch apply"]
+        CrdtStore["CrdtStore"]
+    end
+
+    subgraph browserWorker ["Browser Web Worker Thread"]
+        WorkerSocket["WebSocket binary transport"]
+        WorkerCodec["serialize/deserialize + frame encode/decode"]
+        WorkerCompression["pako compress/decompress + threshold gate"]
+        WorkerBridge["postMessage or SharedArrayBuffer ring buffer"]
+    end
+
+    subgraph networkLayer ["Network Boundary"]
+        Wire["WebSocket over TCP (binary frames)"]
+    end
+
+    subgraph serverMain ["Server Main Process / Event Loop"]
+        HttpServer["Node HTTP server"]
+        StaticAssets["StaticAssetServer (IIFE + worker runtime)"]
+        UpgradeFlow["WsServer upgrade/auth"]
+        ConnRegistry["Connection registry + metrics"]
+        RateLimitGate["BackendRateLimiter pre-dispatch gate"]
+        TransportCodec["decompress + decode envelope"]
+    end
+
+    subgraph serverExecutor ["Server ConnectionExecutor / Thread Pool"]
+        ExecutorDispatch["dispatch(connectionId, rawFrame)"]
+        FrameRouter["FrameRouter (opcode switch)"]
+        RpcDispatcher["RpcDispatcher"]
+        EventBus["EventBus"]
+        StateManager["StateManager / SyncChannel"]
+        CrdtManager["CrdtManager"]
+    end
+
+    subgraph backendLayer ["StateBackend Distribution Layer"]
+        StateBackend["MemoryBackend / RedisBackend / PostgresBackend"]
+        PubSub["publish/subscribe fanout"]
+    end
+
+    AppCode --> DatasoleClient
+    DatasoleClient -->|"rpc() / emit() / set CRDT op"| RpcClient
+    DatasoleClient --> EventEmitter
+    DatasoleClient --> StateStore
+    DatasoleClient --> CrdtStore
+
+    RpcClient -->|"JSON serialize payload"| WorkerBridge
+    EventEmitter -->|"event payload + metadata"| WorkerBridge
+    StateStore -->|"state subscription handlers"| AppCode
+    CrdtStore -->|"merged state update"| AppCode
+
+    WorkerBridge --> WorkerCodec
+    WorkerCodec -->|"envelope: opcode + correlationId + payloadLength + payload"| WorkerCompression
+    WorkerCompression -->|"if payload > threshold, pako compress"| WorkerSocket
+    WorkerSocket <--> Wire
+
+    Wire --> WorkerSocket
+    WorkerSocket -->|"raw frame bytes"| WorkerCompression
+    WorkerCompression -->|"inflate if compressed"| WorkerCodec
+    WorkerCodec -->|"decoded frame + timestamp"| WorkerBridge
+    WorkerBridge --> DatasoleClient
+    DatasoleClient -->|"RPC_RES"| RpcClient
+    DatasoleClient -->|"EVENT_S2C"| EventEmitter
+    DatasoleClient -->|"STATE_PATCH / STATE_SNAPSHOT"| StateStore
+    DatasoleClient -->|"CRDT_STATE"| CrdtStore
+
+    HttpServer --> StaticAssets
+    HttpServer --> UpgradeFlow
+    UpgradeFlow --> ConnRegistry
+    ConnRegistry --> RateLimitGate
+    RateLimitGate --> TransportCodec
+    TransportCodec --> ExecutorDispatch
+    ExecutorDispatch --> FrameRouter
+
+    FrameRouter -->|"RPC_REQ"| RpcDispatcher
+    FrameRouter -->|"EVENT_C2S"| EventBus
+    FrameRouter -->|"STATE / SYNC frames"| StateManager
+    FrameRouter -->|"CRDT_OP"| CrdtManager
+
+    RpcDispatcher --> StateBackend
+    EventBus --> PubSub
+    StateManager --> StateBackend
+    CrdtManager --> StateBackend
+    StateBackend --> PubSub
+
+    RpcDispatcher -->|"RPC_RES frame encode + optional compress"| ConnRegistry
+    EventBus -->|"EVENT_S2C broadcast frame"| ConnRegistry
+    StateManager -->|"STATE_PATCH broadcast frame"| ConnRegistry
+    CrdtManager -->|"CRDT_STATE broadcast frame"| ConnRegistry
+    ConnRegistry --> Wire
+```
+
 ## Learning Path
 
 ```mermaid
 flowchart TD
     A["Start here"] --> B["<b>Tutorials</b><br/>Run your first server + client in 2 minutes<br/>Build up to a full real-time app in 10 steps"]
-    B --> C["<b>Examples</b><br/>Copy-paste recipes organized by pattern<br/>(RPC, events, live state, CRDT, combos)"]
+    B --> C["<b>Developer Guide</b><br/>Contract-first setup + framework integrations"]
     C --> D["<b>Client API / Server API</b><br/>Comprehensive reference for every method"]
     D --> E["<b>Architecture</b> — you are here<br/>Why the protocol, worker, and sync<br/>model work the way they do"]
     E --> F["<b>State Backends / Metrics</b><br/>Swap persistence, wire up observability"]
@@ -189,12 +288,12 @@ All three nodes converge to the same value regardless of operation order.
 
 ## Further Reading
 
-| Topic                      | Where                               |
-| -------------------------- | ----------------------------------- |
-| Step-by-step learning      | [Tutorials](tutorials.md)           |
-| Copy-paste recipes         | [Examples](examples.md)             |
-| Client methods             | [Client API](client.md)             |
-| Server methods             | [Server API](server.md)             |
-| Persistence options        | [State Backends](state-backends.md) |
-| Observability              | [Metrics](metrics.md)               |
-| Why each decision was made | [ADRs](decisions.md)                |
+| Topic                      | Where                                 |
+| -------------------------- | ------------------------------------- |
+| Step-by-step learning      | [Tutorials](tutorials.md)             |
+| Practical integration flow | [Developer Guide](developer-guide.md) |
+| Client methods             | [Client API](client.md)               |
+| Server methods             | [Server API](server.md)               |
+| Persistence options        | [State Backends](state-backends.md)   |
+| Observability              | [Metrics](metrics.md)                 |
+| Why each decision was made | [ADRs](decisions.md)                  |

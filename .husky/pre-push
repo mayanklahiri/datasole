@@ -1,3 +1,5 @@
 #!/bin/bash
 
+unset NO_COLOR
+
 npm run gate

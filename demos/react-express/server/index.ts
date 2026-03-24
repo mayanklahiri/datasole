@@ -1,7 +1,7 @@
 import { createServer } from 'http';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync } from 'fs';
 import os from 'os';
 import express from 'express';
 import { DatasoleServer } from 'datasole/server';
@@ -12,18 +12,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '4001', 10);
 
 const app = express();
-
-// Serve datasole worker IIFE for web worker transport (before static/catch-all)
-const dsWorkerPathCandidates = [
-  resolve(__dirname, '../../../dist/client/datasole-worker.iife.min.js'),
-  resolve(__dirname, '../node_modules/datasole/dist/client/datasole-worker.iife.min.js'),
-];
-const dsWorkerPath = dsWorkerPathCandidates.find((p) => existsSync(p));
-if (dsWorkerPath) {
-  app.get('/datasole-worker.iife.min.js', (_req, res) => {
-    res.type('application/javascript').send(readFileSync(dsWorkerPath));
-  });
-}
 
 // In production, serve the Vite-built client
 const clientDist = resolve(__dirname, '../dist/client');
@@ -44,7 +32,7 @@ ds.attach(httpServer);
 // ─── Chat ──────────────────────────────────────────────────────────
 const chatHistory: ChatMessage[] = [];
 
-ds.events.on(Event.ChatSend, (payload: { data: { text: string; username: string } }) => {
+ds.events.on(Event.ChatSend, (payload) => {
   const { text, username } = payload.data;
   const msg: ChatMessage = { id: rng.uuid(), text, username, ts: Date.now() };
   chatHistory.push(msg);
@@ -56,7 +44,7 @@ ds.events.on(Event.ChatSend, (payload: { data: { text: string; username: string 
 await ds.setState(StateKey.ChatMessages, chatHistory);
 
 // ─── RPC ───────────────────────────────────────────────────────────
-ds.rpc.register(RpcMethod.RandomNumber, async ({ min, max }: { min: number; max: number }) => {
+ds.rpc.register(RpcMethod.RandomNumber, async ({ min, max }) => {
   return { value: rng.int(Math.floor(min), Math.floor(max)), generatedAt: Date.now() };
 });
 

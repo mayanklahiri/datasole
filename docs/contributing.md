@@ -131,4 +131,4 @@ When writing or updating docs:
 - Every feature should have at least one **runnable example** (both server and client code)
 - Examples should be as short as possible while remaining complete and copy-pasteable
 - Cross-reference related tutorials: `> **Tutorial:** [Name](tutorials.md#anchor)`
-- If adding a new pattern, add it to `docs/tutorials.md` (progressive build-up) and `docs/examples.md` (standalone recipe)
+- If adding a new pattern, add it to `docs/tutorials.md` and the relevant section of `docs/developer-guide.md`

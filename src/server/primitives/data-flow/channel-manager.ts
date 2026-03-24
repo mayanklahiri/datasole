@@ -79,6 +79,7 @@ export class ChannelManager {
 
   constructor(private deps: ChannelManagerDeps) {}
 
+  /** Create or return an existing channel for a live-state config key. */
   create<T>(config: LiveStateConfig<T>): DataChannel {
     if (this.channels.has(config.key)) {
       return this.channels.get(config.key)!;
@@ -101,14 +102,17 @@ export class ChannelManager {
     }
   }
 
+  /** Get channel by key. */
   get(key: string): DataChannel | undefined {
     return this.channels.get(key);
   }
 
+  /** Get all currently managed channels. */
   getAll(): DataChannel[] {
     return [...this.channels.values()];
   }
 
+  /** Close all channels and clear registry. */
   closeAll(): void {
     for (const ch of this.channels.values()) {
       ch.close();

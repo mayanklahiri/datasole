@@ -6,7 +6,7 @@ description: Server API reference, configuration, executor models, rate limiting
 
 # Server API
 
-> **New here?** Start with the [Developer Guide](developer-guide.md) for integration-first setup, then use [Tutorials](tutorials.md) for the full step-by-step build.
+> **New here?** Start with the [Developer Guide](developer-guide.md) for integration-first setup, then use [Tutorials](tutorials.md) for the full step-by-step build. For a condensed options table, see [Configuration Reference](configuration.md#server-options).
 
 ## Quick Start
 

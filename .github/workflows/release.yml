@@ -25,9 +25,6 @@ permissions:
   contents: write
   id-token: write
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -178,7 +175,7 @@ jobs:
       # ── Upload artifacts ───────────────────────────────────────────
       - name: Upload reports
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: release-reports
           path: reports/

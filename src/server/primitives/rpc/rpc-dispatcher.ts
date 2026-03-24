@@ -7,8 +7,11 @@ import type { ConnectionContext } from '../../transport/connection-context';
 import type { RealtimePrimitive } from '../types';
 
 export interface RpcContext {
+  /** Auth payload resolved during upgrade, or null for anonymous connection. */
   auth: { userId?: string; roles?: string[]; metadata?: Record<string, unknown> } | null;
+  /** Stable connection id assigned by transport. */
   connectionId: string;
+  /** Mutable per-connection context bag. */
   connection: ConnectionContext;
 }
 
@@ -20,6 +23,7 @@ export type RpcHandler<TReq = unknown, TRes = unknown> = (
 export class RpcDispatcher<T extends DatasoleContract> implements RealtimePrimitive {
   private handlers = new Map<string, RpcHandler>();
 
+  /** Register a typed RPC handler for a method key in the contract. */
   register<K extends keyof T['rpc'] & string>(
     method: K,
     handler: RpcHandler<T['rpc'][K]['params'], T['rpc'][K]['result']>,
@@ -27,6 +31,7 @@ export class RpcDispatcher<T extends DatasoleContract> implements RealtimePrimit
     this.handlers.set(method, handler as RpcHandler);
   }
 
+  /** Dispatch an RPC request to a registered handler and wrap result/errors. */
   async dispatch(request: RpcRequest, ctx: RpcContext): Promise<RpcResponse> {
     const handler = this.handlers.get(request.method);
     if (!handler) {
@@ -46,6 +51,7 @@ export class RpcDispatcher<T extends DatasoleContract> implements RealtimePrimit
     }
   }
 
+  /** Clear all registered handlers. */
   async destroy(): Promise<void> {
     this.handlers.clear();
   }

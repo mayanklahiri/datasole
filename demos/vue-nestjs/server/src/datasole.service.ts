@@ -15,7 +15,7 @@ export class DatasoleService implements OnModuleDestroy {
   async init(): Promise<void> {
     await this.ds.setState(StateKey.ChatMessages, this.chatHistory);
 
-    this.ds.events.on(Event.ChatSend, (payload: { data: { text: string; username: string } }) => {
+    this.ds.events.on(Event.ChatSend, (payload) => {
       const { text, username } = payload.data;
       const msg: ChatMessage = { id: this.rng.uuid(), text, username, ts: Date.now() };
       this.chatHistory.push(msg);
@@ -24,12 +24,9 @@ export class DatasoleService implements OnModuleDestroy {
       this.ds.broadcast(Event.ChatMessage, msg);
     });
 
-    this.ds.rpc.register(
-      RpcMethod.RandomNumber,
-      async ({ min, max }: { min: number; max: number }) => {
-        return { value: this.rng.int(Math.floor(min), Math.floor(max)), generatedAt: Date.now() };
-      },
-    );
+    this.ds.rpc.register(RpcMethod.RandomNumber, async ({ min, max }) => {
+      return { value: this.rng.int(Math.floor(min), Math.floor(max)), generatedAt: Date.now() };
+    });
 
     this.metricsInterval = setInterval(() => {
       const snap = this.ds.metrics.snapshot();

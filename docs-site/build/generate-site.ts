@@ -161,7 +161,7 @@ function main() {
       <p class="hero-sub">One <code>npm install</code> — you own the server, the data, and the deployment.</p>
       <nav class="hero-actions">
         <a href="${BASE_PATH}/tutorials/" class="btn-primary">Start the tutorial</a>
-        <a href="${BASE_PATH}/examples/" class="btn-secondary">See examples</a>
+        <a href="${BASE_PATH}/developer-guide/" class="btn-secondary">Developer guide</a>
         <a href="https://github.com/mayanklahiri/datasole" class="btn-secondary">GitHub</a>
       </nav>
     </div>
@@ -195,7 +195,7 @@ function main() {
           <li><strong>Single npm package</strong> for client, server, shared types, and Web Worker</li>
           <li>Works with React, Vue 3, Svelte, React Native, vanilla JS, Express, NestJS, Fastify</li>
           <li><a href="${BASE_PATH}/tutorials/">Progressive tutorial</a> — 10 steps from hello world to production deployment</li>
-          <li><a href="${BASE_PATH}/examples/">Copy-paste examples</a> for every data flow pattern</li>
+          <li><a href="${BASE_PATH}/developer-guide/">Contract-first setup guide</a> with framework integrations</li>
           <li><a href="https://github.com/mayanklahiri/datasole/blob/develop/AGENTS.md">AGENTS.md</a> with quality gate, coding conventions, and ADR workflow for AI coding assistants</li>
         </ul>
       </section>

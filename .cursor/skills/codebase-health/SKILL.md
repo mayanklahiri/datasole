@@ -66,8 +66,8 @@ Key files to cross-reference:
 - `docs/server.md` ↔ `src/server/server.ts`
 - `docs/shared.md` ↔ `src/shared/index.ts`
 - `docs/tutorials.md` ↔ actual API
-- `docs/examples.md` ↔ actual API
-- `docs/integrations.md` ↔ actual API
+- `docs/developer-guide.md` ↔ actual API and integration patterns
+- `docs/configuration.md` ↔ actual option defaults and exported types
 - `docs/composability.md` ↔ actual API
 - `docs/metrics.md` ↔ `src/server/metrics/`
 - `docs/state-backends.md` ↔ `src/server/backends/`
@@ -88,7 +88,7 @@ Verify `AGENTS.md` reflects:
 
 - Current project structure (`ls -R src/`)
 - Current quality gate steps (`package.json` scripts)
-- Current integration patterns (match `docs/integrations.md`)
+- Current integration patterns (match `docs/developer-guide.md`)
 
 ### Phase 6 — Regenerate artifacts
 

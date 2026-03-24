@@ -4,8 +4,11 @@
 export type EventName = string;
 
 export interface EventPayload<T = unknown> {
+  /** Logical event key. */
   event: EventName;
+  /** Event payload data for the key. */
   data: T;
+  /** Emission timestamp in unix milliseconds. */
   timestamp: number;
 }
 

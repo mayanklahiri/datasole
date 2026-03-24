@@ -30,17 +30,35 @@ import type { FrameRouter } from './worker/message-handler';
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
 export interface DatasoleClientOptions {
+  /** Base server URL, e.g. `ws://localhost:3000` or `http://localhost:3000`. */
   url: string;
+  /** Datasole endpoint path mounted on the server. @default '/__ds' */
   path?: string;
+  /** Optional authentication payload sent during connection setup. */
   auth?: AuthCredentials;
+  /** Run WebSocket transport in a dedicated Web Worker. @default true */
   useWorker?: boolean;
+  /** Worker script URL. Defaults to `${path}/datasole-worker.iife.min.js`. */
   workerUrl?: string;
+  /** Enable SharedArrayBuffer zero-copy bridge when available. @default false */
   useSharedArrayBuffer?: boolean;
+  /** Automatically reconnect after disconnects. @default true */
   reconnect?: boolean;
+  /** Base reconnect interval in milliseconds. @default 1000 */
   reconnectInterval?: number;
+  /** Maximum reconnect attempts before giving up. @default 10 */
   maxReconnectAttempts?: number;
 }
 
+/**
+ * Browser-side realtime client facade.
+ *
+ * Responsibilities:
+ * - manages WebSocket lifecycle (`connect`/`disconnect`)
+ * - multiplexes typed RPC calls over one socket
+ * - routes event/state/CRDT frames to local stores and handlers
+ * - handles optional worker transport and reconnect backoff
+ */
 export class DatasoleClient<T extends DatasoleContract> {
   private state: ConnectionState = 'disconnected';
   private readonly options: Required<DatasoleClientOptions>;
@@ -55,11 +73,12 @@ export class DatasoleClient<T extends DatasoleContract> {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: DatasoleClientOptions) {
+    const path = options.path ?? DEFAULT_WS_PATH;
     this.options = {
-      path: DEFAULT_WS_PATH,
+      path,
       auth: {},
       useWorker: true,
-      workerUrl: '/datasole-worker.iife.min.js',
+      workerUrl: `${path}/datasole-worker.iife.min.js`,
       useSharedArrayBuffer: false,
       reconnect: true,
       reconnectInterval: 1000,
@@ -68,6 +87,7 @@ export class DatasoleClient<T extends DatasoleContract> {
     };
   }
 
+  /** Establish the transport connection and start frame routing. */
   async connect(): Promise<void> {
     this.state = 'connecting';
 
@@ -81,6 +101,7 @@ export class DatasoleClient<T extends DatasoleContract> {
     this.reconnectAttempts = 0;
   }
 
+  /** Gracefully disconnect and clear all pending RPC calls/timers. */
   async disconnect(): Promise<void> {
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -99,10 +120,12 @@ export class DatasoleClient<T extends DatasoleContract> {
     this.state = 'disconnected';
   }
 
+  /** Get the current connection lifecycle state. */
   getConnectionState(): ConnectionState {
     return this.state;
   }
 
+  /** Call a typed RPC method registered on the server. */
   async rpc<K extends keyof T['rpc'] & string>(
     method: K,
     params?: T['rpc'][K]['params'],
@@ -111,6 +134,7 @@ export class DatasoleClient<T extends DatasoleContract> {
     return this.rpcClient.call<T['rpc'][K]['result']>(method, params, options);
   }
 
+  /** Subscribe to a typed server-to-client event. */
   on<K extends keyof T['events'] & string>(
     event: K,
     handler: (payload: EventPayload<EventData<T, K>>) => void,
@@ -118,6 +142,7 @@ export class DatasoleClient<T extends DatasoleContract> {
     this.eventEmitter.on(event, handler as (payload: EventPayload) => void);
   }
 
+  /** Unsubscribe an event handler registered with `on`. */
   off<K extends keyof T['events'] & string>(
     event: K,
     handler: (payload: EventPayload<EventData<T, K>>) => void,
@@ -125,6 +150,7 @@ export class DatasoleClient<T extends DatasoleContract> {
     this.eventEmitter.off(event, handler as (payload: EventPayload) => void);
   }
 
+  /** Emit a typed client-to-server event. */
   emit<K extends keyof T['events'] & string>(event: K, data?: EventData<T, K>): void {
     const payload = serialize({ event, data });
 
@@ -139,6 +165,7 @@ export class DatasoleClient<T extends DatasoleContract> {
     }
   }
 
+  /** Subscribe to a typed state key synchronized from the server. */
   subscribeState<K extends keyof T['state'] & string>(
     key: K,
     handler: (state: StateValue<T, K>) => void,
@@ -150,16 +177,19 @@ export class DatasoleClient<T extends DatasoleContract> {
     return store.subscribe(handler as (state: unknown) => void);
   }
 
+  /** Read the latest known value for a synchronized state key. */
   getState<K extends keyof T['state'] & string>(key: K): StateValue<T, K> | undefined {
     const store = this.stateStores.get(key);
     return store?.getState() as StateValue<T, K> | undefined;
   }
 
+  /** Register a CRDT store bound to this client connection. */
   registerCrdt(nodeId: string): CrdtStore {
     this.crdtStore = new CrdtStore(nodeId);
     return this.crdtStore;
   }
 
+  /** Return the active CRDT store, if one was registered. */
   getCrdtStore(): CrdtStore | null {
     return this.crdtStore;
   }

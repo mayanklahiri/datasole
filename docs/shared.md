@@ -8,7 +8,7 @@ description: Shared types, protocol constants, codec API, and CRDTs — used by 
 
 Code shared between client and server. Import from `datasole` (root).
 
-> **New here?** See the [Tutorials](tutorials.md) for working examples of every type listed below.
+> **New here?** Start with the [Developer Guide](developer-guide.md) and [Configuration Reference](configuration.md), then come back here for shared type details.
 
 ## Types
 

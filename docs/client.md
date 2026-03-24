@@ -6,7 +6,7 @@ description: Client API reference, Worker setup, and framework integration.
 
 # Client API
 
-> **New here?** Start with the [Developer Guide](developer-guide.md) for integration-first setup, then use [Tutorials](tutorials.md) for the full step-by-step build.
+> **New here?** Start with the [Developer Guide](developer-guide.md) for integration-first setup, then use [Tutorials](tutorials.md) for the full step-by-step build. For all constructor flags in one place, see [Configuration Reference](configuration.md#client-options).
 
 ## DatasoleClient
 
@@ -22,7 +22,7 @@ const client = new DatasoleClient({
     token: 'jwt-token', // Sent as ?token= query parameter on the WebSocket URL
   },
   useWorker: true, // Run WebSocket in Web Worker (default: true)
-  workerUrl: '/datasole-worker.iife.min.js', // Worker script URL (default: /datasole-worker.iife.min.js)
+  workerUrl: '/__ds/datasole-worker.iife.min.js', // Worker script URL (default: `${path}/datasole-worker.iife.min.js`)
   useSharedArrayBuffer: false, // Zero-copy via SAB when available (default: false)
   reconnect: true, // Auto-reconnect on disconnect (default: true)
   reconnectInterval: 1000, // Base delay in ms between attempts (default: 1000)

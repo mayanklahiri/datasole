@@ -1,5 +1,10 @@
 /**
  * DatasoleServer facade: composes transport, executor, backends, and primitives.
+ *
+ * Design intent:
+ * - keep transport and protocol handling isolated from application logic
+ * - expose typed primitives (`rpc`, `events`, `state`, `crdt`) as stable entry points
+ * - route all distributed behavior through a single backend abstraction
  */
 import type { Server as HttpServer } from 'http';
 
@@ -207,12 +212,19 @@ export interface DatasoleServerOptions {
 }
 
 export class DatasoleServer<T extends DatasoleContract> {
+  /** Typed RPC registry/dispatcher (`register`, dispatch lifecycle). */
   readonly rpc: RpcDispatcher<T>;
+  /** Typed event bus for intra-server and broadcast event flows. */
   readonly events: EventBus<T>;
+  /** Typed server-authoritative state manager with diff publishing. */
   readonly state: StateManager<T>;
+  /** CRDT primitive manager for bidirectional conflict-free sync. */
   readonly crdt: CrdtManager;
+  /** Session persistence/restore manager for reconnect flows. */
   readonly sessions: SessionManager;
+  /** Backend-powered frame rate limiter. */
   readonly rateLimiter: BackendRateLimiter;
+  /** In-memory metrics collector + exporter bridge. */
   readonly metrics: MetricsCollector;
 
   private readonly backend: StateBackend;
@@ -337,6 +349,7 @@ export class DatasoleServer<T extends DatasoleContract> {
     this.transport.broadcastRaw(frameData);
   }
 
+  /** Attach datasole transport + runtime asset serving to an HTTP server. */
   attach(server: HttpServer, _adapter?: ServerAdapter): void {
     this.transport.attach(
       server,
@@ -350,6 +363,7 @@ export class DatasoleServer<T extends DatasoleContract> {
     );
   }
 
+  /** Set and broadcast typed state value for a key. */
   async setState<K extends keyof T['state'] & string>(
     key: K,
     value: T['state'][K],
@@ -366,10 +380,12 @@ export class DatasoleServer<T extends DatasoleContract> {
     return patches;
   }
 
+  /** Get the latest typed state value for a key. */
   async getState<K extends keyof T['state'] & string>(key: K): Promise<T['state'][K] | undefined> {
     return this.state.getState(key);
   }
 
+  /** Create and register a sync channel for batched/debounced patch flows. */
   createSyncChannel<V = unknown>(config: SyncChannelConfig<V>): SyncChannel<V> {
     const channel = new SyncChannel(config, this.backend);
     channel.onFlush((patches) => {
@@ -379,27 +395,33 @@ export class DatasoleServer<T extends DatasoleContract> {
     return channel;
   }
 
+  /** Return an existing sync channel by key. */
   getSyncChannel(key: string): SyncChannel | undefined {
     return this.syncChannels.get(key);
   }
 
+  /** Create a high-level data channel (RPC/events/state/CRDT composition). */
   createDataChannel<V = unknown>(config: LiveStateConfig<V>): DataChannel {
     return this.channelManager.create(config);
   }
 
+  /** Return an existing data channel by key. */
   getDataChannel(key: string): DataChannel | undefined {
     return this.channelManager.get(key);
   }
 
+  /** Broadcast a typed server event to local handlers and all clients. */
   broadcast<K extends keyof T['events'] & string>(event: K, data: T['events'][K]): void {
     this.events.emit(event, data as never);
     this.broadcastFrame(Opcode.EVENT_S2C, { event, data, timestamp: Date.now() });
   }
 
+  /** Return currently connected WebSocket client count. */
   getConnectionCount(): number {
     return this.transport.getConnectionCount();
   }
 
+  /** Gracefully shutdown transport, primitives, and backend-powered services. */
   async close(): Promise<void> {
     await this.transport.close();
     await this.sessions.destroy();

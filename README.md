@@ -318,6 +318,12 @@ Numbers vary by machine. Live data: [Performance Benchmarks](https://mayanklahir
 
 477 unit tests plus core and demo Playwright coverage across desktop/mobile viewports. `npm run gate` is the non-performance developer gate; `npm run gate:full` is the exhaustive CI/nightly gate that adds benchmarks, metrics, docs, and bot-authored `[skip ci]` artifact refresh commits on `main`.
 
+## Architecture Diagram
+
+![Architecture diagram](docs/public/architecture-overview.png)
+
+Raw diagram source: [`docs/architecture-overview.mmd`](docs/architecture-overview.mmd).
+
 ## Tutorial
 
 The [tutorial](https://mayanklahiri.github.io/datasole/tutorials) builds from a bare connection to a production deployment in 10 steps:
@@ -337,20 +343,20 @@ The [tutorial](https://mayanklahiri.github.io/datasole/tutorials) builds from a 
 
 ## Documentation
 
-| Document                                 | Contents                                        |
-| ---------------------------------------- | ----------------------------------------------- |
-| **[Tutorials](docs/tutorials.md)**       | Progressive 10-step guide with e2e screenshots  |
-| **[Demos](docs/demos.md)**               | Vanilla, React+Express, Vue+NestJS full apps    |
-| **[Examples](docs/examples.md)**         | Copy-paste recipes organized by pattern         |
-| **[Integrations](docs/integrations.md)** | React, Vue, Next.js, Express, NestJS, AdonisJS  |
-| **[Comparison](docs/comparison.md)**     | Feature matrix vs Socket.IO, Ably, Pusher, etc. |
-| [Client API](docs/client.md)             | All client methods and options                  |
-| [Server API](docs/server.md)             | All server methods and options                  |
-| [Architecture](docs/architecture.md)     | Wire protocol, diagrams, data flow              |
-| [State Backends](docs/state-backends.md) | Memory, Redis, Postgres configuration           |
-| [Metrics](docs/metrics.md)               | Prometheus and OpenTelemetry setup              |
-| [Decisions](docs/decisions.md)           | Architecture Decision Records                   |
-| [Contributing](docs/contributing.md)     | Dev setup, commands, PR guidelines              |
+| Document                                       | Contents                                             |
+| ---------------------------------------------- | ---------------------------------------------------- |
+| **[Developer Guide](docs/developer-guide.md)** | Contract-first setup with server/client integrations |
+| **[Tutorials](docs/tutorials.md)**             | Progressive 10-step guide with e2e screenshots       |
+| **[Demos](docs/demos.md)**                     | Vanilla, React+Express, Vue+NestJS full apps         |
+| **[Configuration](docs/configuration.md)**     | Consolidated server/client options reference         |
+| **[Comparison](docs/comparison.md)**           | Feature matrix vs Socket.IO, Ably, Pusher, etc.      |
+| [Client API](docs/client.md)                   | All client methods and options                       |
+| [Server API](docs/server.md)                   | All server methods and options                       |
+| [Architecture](docs/architecture.md)           | Wire protocol, diagrams, data flow                   |
+| [State Backends](docs/state-backends.md)       | Memory, Redis, Postgres configuration                |
+| [Metrics](docs/metrics.md)                     | Prometheus and OpenTelemetry setup                   |
+| [Decisions](docs/decisions.md)                 | Architecture Decision Records                        |
+| [Contributing](docs/contributing.md)           | Dev setup, commands, PR guidelines                   |
 
 For AI coding agents, see [AGENTS.md](AGENTS.md) — it covers the quality gate, coding conventions, and ADR workflow.
 

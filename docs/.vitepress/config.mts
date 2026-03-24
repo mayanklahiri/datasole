@@ -54,7 +54,6 @@ export default withMermaid(
             { text: 'Developer Guide', link: '/developer-guide' },
             { text: 'Tutorials', link: '/tutorials' },
             { text: 'Demos', link: '/demos' },
-            { text: 'Integrations', link: '/integrations' },
           ],
         },
         {
@@ -69,6 +68,7 @@ export default withMermaid(
         {
           text: 'API Reference',
           items: [
+            { text: 'Configuration', link: '/configuration' },
             { text: 'Client', link: '/client' },
             { text: 'Server', link: '/server' },
             { text: 'Shared', link: '/shared' },

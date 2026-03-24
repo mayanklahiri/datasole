@@ -16,22 +16,27 @@ export class FallbackTransport {
   private onCloseHandler: ((code: number, reason: string) => void) | null = null;
   private onErrorHandler: (() => void) | null = null;
 
+  /** Register frame receive handler. */
   onMessage(handler: MessageHandler): void {
     this.onMessageHandler = handler;
   }
 
+  /** Register open callback. */
   onOpen(handler: () => void): void {
     this.onOpenHandler = handler;
   }
 
+  /** Register close callback. */
   onClose(handler: (code: number, reason: string) => void): void {
     this.onCloseHandler = handler;
   }
 
+  /** Register error callback. */
   onError(handler: () => void): void {
     this.onErrorHandler = handler;
   }
 
+  /** Open direct WebSocket connection (no worker). */
   async connect(url: string, _protocols?: string[]): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       this.ws = new WebSocket(url);
@@ -64,6 +69,7 @@ export class FallbackTransport {
     });
   }
 
+  /** Send encoded frame bytes over WebSocket. */
   send(data: Uint8Array): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error('WebSocket not connected');
@@ -71,6 +77,7 @@ export class FallbackTransport {
     this.ws.send(data);
   }
 
+  /** Encode/compress a frame and send it over WebSocket. */
   sendFrame(frame: Frame): void {
     let encoded = encodeFrame(frame);
     if (encoded.length > COMPRESSION_THRESHOLD) {
@@ -79,11 +86,13 @@ export class FallbackTransport {
     this.send(encoded);
   }
 
+  /** Close active WebSocket connection. */
   async disconnect(): Promise<void> {
     this.ws?.close();
     this.ws = null;
   }
 
+  /** Return true if websocket is currently open. */
   isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
   }

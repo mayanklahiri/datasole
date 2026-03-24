@@ -111,13 +111,13 @@ export class DatasoleService implements OnModuleDestroy {
 
   async init(): Promise<void> {
     // Register event handlers, RPC methods, state, and metrics broadcast
-    this.ds.on('chat:send', (payload) => {
+    this.ds.events.on('chat:send', (payload) => {
       /* ... */
     });
-    this.ds.rpc('randomNumber', async ({ min, max }) => {
+    this.ds.rpc.register('randomNumber', async ({ min, max }) => {
       /* ... */
     });
-    this.ds.setState('chat:messages', this.chatHistory);
+    await this.ds.setState('chat:messages', this.chatHistory);
   }
 
   onModuleDestroy(): void {
@@ -133,12 +133,6 @@ import 'reflect-metadata';
 
 const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-// Serve datasole worker IIFE (registered before NestJS middleware)
-const expressApp = app.getHttpAdapter().getInstance();
-expressApp.get('/datasole-worker.iife.min.js', (_req, res) => {
-  res.sendFile(workerPath);
-});
-
 // Attach datasole to NestJS's underlying HTTP server
 const datasoleService = app.get(DatasoleService);
 await datasoleService.init();
@@ -152,7 +146,7 @@ Key points:
 - `DatasoleServer` defaults to `thread-pool` concurrency with 4 Node.js `worker_threads`
 - `reflect-metadata` must be imported **before** any NestJS code
 - `app.getHttpServer()` returns the raw Node.js `http.Server` — this is what `ds.attach()` expects
-- The worker file route is registered via the Express adapter **before** NestJS middleware handles requests
+- Datasole runtime assets are auto-served under `/__ds`
 - `@nestjs/serve-static` serves the Vite-built client from `dist/client/` in production
 - `OnModuleDestroy` ensures graceful cleanup of the datasole server and metrics interval
 
@@ -215,17 +209,16 @@ Vue's `<TransitionGroup>` works directly with the reactive data:
 
 ## Vite Dev Proxy
 
-In `vite.config.ts`, two paths are proxied to the NestJS backend:
+In `vite.config.ts`, datasole path traffic is proxied to the NestJS backend:
 
 ```typescript
 proxy: {
   '/__ds': { target: 'http://localhost:4002', ws: true },
-  '/datasole-worker.iife.min.js': { target: 'http://localhost:4002' },
+  '/__ds/datasole-worker.iife.min.js': { target: 'http://localhost:4002' },
 }
 ```
 
-- `/__ds` — WebSocket upgrade for the datasole connection
-- `/datasole-worker.iife.min.js` — Worker script fetched by the browser
+- `/__ds` — WebSocket + runtime asset path
 
 ## Testing
 
@@ -251,5 +244,5 @@ The Playwright e2e test:
 - `tsconfig.server.json` enables `experimentalDecorators` and `emitDecoratorMetadata` (required by NestJS decorators)
 - `@nestjs/serve-static` serves the Vite-built client from `dist/client/` in production
 - Datasole attaches directly to the raw `http.Server` via `app.getHttpServer()` — no NestJS WebSocket gateway needed
-- The worker file route must be registered via `app.getHttpAdapter().getInstance()` before static file serving kicks in
+- Datasole runtime assets are auto-served by `ds.attach(app.getHttpServer())`
 - Vue's `<script setup lang="ts">` is the recommended SFC syntax — all components in this demo use it

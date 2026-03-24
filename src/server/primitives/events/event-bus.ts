@@ -14,6 +14,7 @@ export class EventBus<T extends DatasoleContract> implements RealtimePrimitive {
 
   constructor(private readonly backend: StateBackend) {}
 
+  /** Subscribe to a typed event key from the contract. */
   on<K extends keyof T['events'] & string>(
     event: K,
     handler: (payload: EventPayload<EventData<T, K>>) => void,
@@ -37,6 +38,7 @@ export class EventBus<T extends DatasoleContract> implements RealtimePrimitive {
     this.handlers.get(event)!.add(handler as InternalHandler);
   }
 
+  /** Remove a previously registered event handler. */
   off<K extends keyof T['events'] & string>(
     event: K,
     handler: (payload: EventPayload<EventData<T, K>>) => void,
@@ -44,6 +46,7 @@ export class EventBus<T extends DatasoleContract> implements RealtimePrimitive {
     this.handlers.get(event)?.delete(handler as InternalHandler);
   }
 
+  /** Emit a typed event and publish through the configured backend. */
   emit<K extends keyof T['events'] & string>(event: K, data: EventData<T, K>): void {
     const payload: EventPayload = { event, data, timestamp: Date.now() };
     // Publish to backend — the subscription set up in on() delivers to all handlers.
@@ -51,6 +54,7 @@ export class EventBus<T extends DatasoleContract> implements RealtimePrimitive {
     void this.backend.publish(`evt:${event}`, payload);
   }
 
+  /** Unsubscribe all backend listeners and clear handlers. */
   async destroy(): Promise<void> {
     for (const unsub of this.unsubscribers) {
       unsub();

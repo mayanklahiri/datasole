@@ -16,6 +16,7 @@ export class CrdtStore {
     this.nodeId = nodeId;
   }
 
+  /** Register a CRDT instance for a key using one of the built-in CRDT types. */
   register<T>(key: string, type: 'lww-register', initialValue: T): LWWRegister<T>;
   register(key: string, type: 'pn-counter'): PNCounter;
   register<T>(key: string, type: 'lww-map'): LWWMap<T>;
@@ -38,10 +39,12 @@ export class CrdtStore {
     return crdt;
   }
 
+  /** Get registered CRDT instance for a key. */
   get<T extends Crdt>(key: string): T | undefined {
     return this.crdts.get(key) as T | undefined;
   }
 
+  /** Apply one remote operation for a registered key. */
   applyRemote(key: string, op: CrdtOperation): void {
     const crdt = this.crdts.get(key);
     if (crdt) {
@@ -49,6 +52,7 @@ export class CrdtStore {
     }
   }
 
+  /** Merge remote CRDT state for a registered key. */
   mergeRemoteState(key: string, state: CrdtState): void {
     const crdt = this.crdts.get(key);
     if (crdt) {
@@ -56,6 +60,7 @@ export class CrdtStore {
     }
   }
 
+  /** Queue local operation for async transmission to server. */
   queueOperation(op: CrdtOperation): void {
     this.pendingOps.push(op);
     for (const listener of this.listeners) {
@@ -63,15 +68,18 @@ export class CrdtStore {
     }
   }
 
+  /** Drain and return all queued local operations. */
   drainPendingOps(): CrdtOperation[] {
     return this.pendingOps.splice(0);
   }
 
+  /** Subscribe to newly queued local operations. */
   onOps(handler: (ops: CrdtOperation[]) => void): () => void {
     this.listeners.add(handler);
     return () => this.listeners.delete(handler);
   }
 
+  /** Return serializable CRDT state snapshot for all keys. */
   snapshot(): Record<string, CrdtState> {
     const result: Record<string, CrdtState> = {};
     for (const [key, crdt] of this.crdts) {

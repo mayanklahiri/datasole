@@ -21,7 +21,7 @@ export const DEMO_CONFIGS: Record<string, DemoConfig> = {
     name: 'Vanilla JS',
     dir: path.join(DEMOS_ROOT, 'vanilla'),
     port: 4000,
-    startCommand: ['node', 'server.mjs'],
+    startCommand: ['node', 'server/index.mjs'],
   },
   'react-express': {
     name: 'React + Express',

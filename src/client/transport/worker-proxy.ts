@@ -11,8 +11,9 @@ export class WorkerProxy {
   private worker: Worker | null = null;
   private listeners = new Map<string, Set<(...args: unknown[]) => void>>();
 
+  /** Spawn worker, connect socket inside worker thread, and await open handshake. */
   async connect(url: string, options?: TransportOptions): Promise<void> {
-    const workerUrl = options?.workerUrl ?? '/datasole-worker.iife.min.js';
+    const workerUrl = options?.workerUrl ?? '/__ds/datasole-worker.iife.min.js';
 
     return new Promise<void>((resolve, reject) => {
       try {
@@ -52,16 +53,19 @@ export class WorkerProxy {
     });
   }
 
+  /** Transfer encoded frame bytes to worker transport. */
   async send(data: Uint8Array): Promise<void> {
     if (!this.worker) throw new Error('Worker not initialized');
     this.worker.postMessage({ type: 'send', payload: { data } }, [data.buffer]);
   }
 
+  /** Initialize SharedArrayBuffer bridge used by worker/main thread. */
   initSharedBuffer(buffer: SharedArrayBuffer): void {
     if (!this.worker) throw new Error('Worker not initialized');
     this.worker.postMessage({ type: 'init-sab', payload: { buffer } });
   }
 
+  /** Disconnect worker transport and terminate worker instance. */
   async disconnect(): Promise<void> {
     if (this.worker) {
       this.worker.postMessage({ type: 'disconnect' });
@@ -70,11 +74,13 @@ export class WorkerProxy {
     }
   }
 
+  /** Register worker event listener (message, close, sab-frame). */
   on(event: string, handler: (...args: unknown[]) => void): void {
     if (!this.listeners.has(event)) this.listeners.set(event, new Set());
     this.listeners.get(event)!.add(handler);
   }
 
+  /** Remove worker event listener. */
   off(event: string, handler: (...args: unknown[]) => void): void {
     this.listeners.get(event)?.delete(handler);
   }

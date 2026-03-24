@@ -2,7 +2,7 @@
  * Pure byte pipe: manages WebSocket connections, raw send/broadcast.
  * Pre-executor gate: rate limit check then dispatch compressed frame to executor.
  */
-import type { Server as HttpServer } from 'http';
+import type { IncomingMessage, Server as HttpServer, ServerResponse } from 'http';
 
 import { compress, decompress, deserialize, isCompressed, serialize } from '../../shared/codec';
 import { COMPRESSION_THRESHOLD } from '../../shared/constants';
@@ -13,6 +13,7 @@ import type { RateLimiter, RateLimitConfig, RateLimitRule } from '../primitives/
 import { DEFAULT_RATE_LIMIT_RULE } from '../primitives/rate-limit/types';
 
 import { Connection } from './connection';
+import { StaticAssetServer } from './static-assets';
 import type { AuthHandler } from './upgrade-handler';
 import { WsServer } from './ws-server';
 
@@ -26,6 +27,8 @@ export interface TransportOptions {
 export class ServerTransport {
   private readonly connections = new Map<string, Connection>();
   private wsServer: WsServer | null = null;
+  private server: HttpServer | null = null;
+  private staticRequestHandler: ((req: IncomingMessage, res: ServerResponse) => void) | null = null;
 
   constructor(
     private readonly metrics: MetricsCollector,
@@ -34,7 +37,23 @@ export class ServerTransport {
   ) {}
 
   attach(server: HttpServer, opts: TransportOptions, executor: ConnectionExecutor): void {
+    this.server = server;
     const maxConnections = opts.maxConnections ?? 10_000;
+    const staticAssets = new StaticAssetServer(opts.path);
+    this.staticRequestHandler = (req, res) => {
+      const handled = staticAssets.handleRequest(req, res);
+      if (!handled) return;
+
+      // Framework listeners still run for this request; force response methods to no-op.
+      const noOpSetHeader = (() => res) as unknown as ServerResponse['setHeader'];
+      const noOpWriteHead = (() => res) as unknown as ServerResponse['writeHead'];
+      const noOpEnd = (() => res) as unknown as ServerResponse['end'];
+      res.setHeader = noOpSetHeader;
+      res.writeHead = noOpWriteHead;
+      res.end = noOpEnd;
+    };
+    server.prependListener('request', this.staticRequestHandler);
+
     this.wsServer = new WsServer();
     if (opts.authHandler) {
       this.wsServer.setAuthHandler(opts.authHandler);
@@ -197,10 +216,15 @@ export class ServerTransport {
   }
 
   async close(): Promise<void> {
+    if (this.server && this.staticRequestHandler) {
+      this.server.off('request', this.staticRequestHandler);
+      this.staticRequestHandler = null;
+    }
     if (this.wsServer) {
       await this.wsServer.stop();
       this.wsServer = null;
     }
+    this.server = null;
     this.connections.clear();
   }
 }

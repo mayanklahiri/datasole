@@ -1,121 +1,213 @@
 ---
 title: Developer Guide
-description: Integration-first guide for experienced TypeScript developers adding datasole to existing full-stack apps.
+description: Contract-first setup guide with server/client integrations and configuration references.
 ---
 
 # Developer Guide
 
-This guide is for intermediate/advanced TypeScript full-stack developers who want to add realtime features to an existing app (or a minimal TypeScript app).
+This guide is for experienced TypeScript developers integrating datasole into production apps.
 
-The fastest path is:
+## Quick Path
 
-1. Wire the server in your existing HTTP process.
-2. Define a shared app contract.
-3. Connect the client with that same contract.
-4. Add realtime primitives (RPC/events/state/CRDT) incrementally.
+1. Define one shared `AppContract`.
+2. Attach `DatasoleServer<AppContract>` to your HTTP server.
+3. Connect `DatasoleClient<AppContract>` in the browser.
+4. Add RPC, events, live state, and CRDT flows incrementally.
 
-## 1) Start server-side integration first
+## 1) Define the App Contract first
 
-Create `DatasoleServer` in the same Node.js process that owns your HTTP server, then call `attach(httpServer)`.
+`DatasoleContract` is the single source of truth for RPC methods, event payloads, and state shapes.
 
 ```ts
-import { createServer } from 'http';
-import { DatasoleServer } from 'datasole/server';
 import type { DatasoleContract } from 'datasole';
 
-interface AppContract extends DatasoleContract {
-  rpc: {
-    getUser: { params: { id: string }; result: { id: string; name: string } };
-  };
-  events: {
-    'chat:message': { roomId: string; text: string };
-  };
-  state: {
-    dashboard: { onlineUsers: number; queueDepth: number };
-  };
+export enum RpcMethod {
+  GetUser = 'getUser',
+}
+export enum Event {
+  ChatMessage = 'chat:message',
+}
+export enum StateKey {
+  Dashboard = 'dashboard',
 }
 
-const httpServer = createServer();
-const ds = new DatasoleServer<AppContract>();
-ds.attach(httpServer);
-httpServer.listen(3000);
+export interface AppContract extends DatasoleContract {
+  rpc: {
+    [RpcMethod.GetUser]: {
+      params: { id: string };
+      result: { id: string; name: string };
+    };
+  };
+  events: {
+    [Event.ChatMessage]: { roomId: string; text: string };
+  };
+  state: {
+    [StateKey.Dashboard]: { onlineUsers: number; queueDepth: number };
+  };
+}
 ```
 
-- Default WebSocket path is `/__ds`.
-- `attach()` can be called before or after `listen()`, as long as it is attached to the same HTTP server instance.
-- Full server options are documented in [Server: Configuration Reference](server.md#configuration-reference).
+Use the same contract in both places:
 
-### When to instantiate `DatasoleServer`
+```ts
+// server
+const ds = new DatasoleServer<AppContract>();
 
-- Instantiate once during server bootstrap (the same place you initialize HTTP framework middleware and infrastructure clients).
-- Keep it as a process-level singleton per Node process.
-- Reuse existing app lifecycle hooks for graceful shutdown.
+// client
+const client = new DatasoleClient<AppContract>({ url: 'ws://localhost:3000' });
+```
 
-### Integrate into common server frameworks
-
-Use the framework-specific patterns in [Integrations](integrations.md):
-
-- Plain Node.js (`http.createServer`)
-- Express
-- NestJS
-- Fastify
-- Other adapters and integration patterns
-
-If you need API-level details after wiring, continue in [Server API](server.md).
-
-## 2) Define and share your `AppContract`
-
-`DatasoleContract` is the base shape. Your app defines `AppContract` by filling in `rpc`, `events`, and `state` keys.
-
-That one contract is used by both server and client generics:
-
-- `new DatasoleServer<AppContract>()`
-- `new DatasoleClient<AppContract>()`
-
-Type helpers for extracting method/event/state shapes are documented in [Shared](shared.md):
+Helper types:
 
 - `RpcParams<T, K>`
 - `RpcResult<T, K>`
 - `EventData<T, K>`
 - `StateValue<T, K>`
 
-## 3) Then wire the client with the same contract
+## 2) Set up the server
 
-Once the server is attached, create one `DatasoleClient<AppContract>` per browser app runtime and connect it.
+```ts
+import { createServer } from 'http';
+import { DatasoleServer } from 'datasole/server';
+
+const httpServer = createServer();
+const ds = new DatasoleServer<AppContract>();
+
+ds.attach(httpServer);
+httpServer.listen(3000);
+```
+
+- Default WS path: `/__ds`
+- Runtime assets are auto-served by datasole at:
+  - `/__ds/datasole.iife.min.js`
+  - `/__ds/datasole-worker.iife.min.js`
+- Server options: [Server API](server.md#configuration-reference), [Configuration Reference](configuration.md#server-options)
+
+### Server framework patterns
+
+#### Express
+
+```ts
+import express from 'express';
+import { createServer } from 'http';
+import { DatasoleServer } from 'datasole/server';
+
+const app = express();
+const httpServer = createServer(app);
+const ds = new DatasoleServer<AppContract>();
+ds.attach(httpServer);
+httpServer.listen(3000);
+```
+
+#### NestJS
+
+```ts
+import 'reflect-metadata';
+import { NestFactory } from '@nestjs/core';
+import { DatasoleServer } from 'datasole/server';
+
+const app = await NestFactory.create(AppModule);
+const ds = new DatasoleServer<AppContract>();
+ds.attach(app.getHttpServer());
+await app.listen(3000);
+```
+
+#### Fastify
+
+```ts
+import Fastify from 'fastify';
+import { DatasoleServer } from 'datasole/server';
+
+const app = Fastify();
+await app.listen({ port: 3000 });
+
+const ds = new DatasoleServer<AppContract>();
+ds.attach(app.server);
+```
+
+### Register primitives
+
+```ts
+ds.rpc.register(RpcMethod.GetUser, async ({ id }) => ({ id, name: 'alice' }));
+
+ds.events.on(Event.ChatMessage, (payload) => {
+  console.log(payload.data.text);
+});
+
+await ds.setState(StateKey.Dashboard, { onlineUsers: 0, queueDepth: 0 });
+```
+
+## 3) Set up the client
 
 ```ts
 import { DatasoleClient } from 'datasole/client';
 
 const client = new DatasoleClient<AppContract>({
-  url: 'ws://localhost:3000',
+  url: `ws://${window.location.host}`,
   path: '/__ds',
   useWorker: true,
-  workerUrl: '/datasole-worker.iife.min.js',
 });
 
-client.connect();
+await client.connect();
 ```
 
-- `useWorker: true` is the default and recommended.
-- For environments without Web Worker support (for example SSR or React Native), use `useWorker: false`.
-- Full client constructor and connection options are in [Client API](client.md#datasoleclient).
-- Worker architecture details are in [Client: Worker Architecture](client.md#worker-architecture).
+- `useWorker: true` is default and recommended.
+- For SSR/React Native/non-worker runtimes, use `useWorker: false`.
+- Client options: [Client API](client.md#constructor), [Configuration Reference](configuration.md#client-options)
 
-### Client integration patterns by frontend framework
+### Client framework patterns
 
-See [Integrations](integrations.md) for React, Vue, Next.js/Express, and other framework patterns.
+#### React
 
-If you need the full client method reference, continue in [Client API](client.md).
+```tsx
+const clientRef = useRef<DatasoleClient<AppContract> | null>(null);
 
-## 4) Next steps: add realtime primitives
+useEffect(() => {
+  const client = new DatasoleClient<AppContract>({ url: `ws://${window.location.host}` });
+  clientRef.current = client;
+  client.connect();
+  return () => void client.disconnect();
+}, []);
+```
 
-Once `DatasoleServer` and `DatasoleClient` are connected, pick primitives by use case:
+#### Vue 3
 
-- RPC: [Server RPC Handlers](server.md#rpc-handlers) and [Client RPC](client.md#rpc-call-the-server)
-- Events: [Server Events](server.md#events) and [Client Events](client.md#events-send-and-receive)
-- Live state: [Server Live State](server.md#server-client-live-state) and [Client Live State](client.md#live-state-server-synced-data)
-- CRDT sync: [Server CRDT API](server.md#full-method-reference) and [Client CRDTs](client.md#crdts-bidirectional-sync)
-- Sync tuning, sessions, auth, rate limits: [Server API](server.md)
+```ts
+const ds = shallowRef<DatasoleClient<AppContract> | null>(null);
 
-For architecture-level composition patterns, see [Composability](composability.md) and [Architecture](architecture.md).  
-For a step-by-step build-up, follow [Tutorials](tutorials.md).
+onMounted(() => {
+  const client = new DatasoleClient<AppContract>({ url: `ws://${window.location.host}` });
+  ds.value = client;
+  client.connect();
+});
+onUnmounted(() => {
+  ds.value?.disconnect();
+  ds.value = null;
+});
+```
+
+#### Vanilla JS
+
+```html
+<script src="/__ds/datasole.iife.min.js"></script>
+<script>
+  const client = new Datasole.DatasoleClient({ url: `ws://${location.host}` });
+  client.connect();
+</script>
+```
+
+## 4) Configuration reference
+
+Use [Configuration Reference](configuration.md) for all server and client options.
+
+## 5) Next steps
+
+Once connected, pick primitives by use case:
+
+- RPC: [Server RPC Handlers](server.md#rpc-handlers), [Client RPC](client.md#rpc-call-the-server)
+- Events: [Server Events](server.md#events), [Client Events](client.md#events-send-and-receive)
+- Live state: [Server Live State](server.md#server-client-live-state), [Client Live State](client.md#live-state-server-synced-data)
+- CRDT: [Server CRDT API](server.md#full-method-reference), [Client CRDTs](client.md#crdts-bidirectional-sync)
+- Sessions/auth/rate limits: [Server API](server.md)
+
+For architecture-level composition, see [Architecture](architecture.md) and [Composability](composability.md). For progressive build-up, use [Tutorials](tutorials.md).

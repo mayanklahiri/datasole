@@ -15,6 +15,7 @@ export class CrdtManager implements RealtimePrimitive {
     private readonly maxKeys: number = 1_000,
   ) {}
 
+  /** Register an explicit CRDT instance for a key and subscribe backend updates. */
   register(key: string, crdt: Crdt): void {
     this.registry.set(key, crdt);
     const unsub = this.backend.subscribe(`crdt:${key}`, (_k, value) => {
@@ -26,6 +27,7 @@ export class CrdtManager implements RealtimePrimitive {
     this.unsubscribers.push(unsub);
   }
 
+  /** Register a CRDT by symbolic type name. */
   registerByType(key: string, type: string): void {
     if (this.registry.has(key)) return;
     let crdt: Crdt;
@@ -45,6 +47,7 @@ export class CrdtManager implements RealtimePrimitive {
     this.register(key, crdt);
   }
 
+  /** Apply an incoming CRDT operation and persist/broadcast merged state. */
   apply(_connectionId: string, op: CrdtOperation): { key: string; state: CrdtState } | null {
     const key = op.key ?? _connectionId;
     let crdt = this.registry.get(key);
@@ -61,10 +64,12 @@ export class CrdtManager implements RealtimePrimitive {
     return { key, state };
   }
 
+  /** Return current CRDT state for a key if registered. */
   getState(key: string): CrdtState | undefined {
     return this.registry.get(key)?.state();
   }
 
+  /** Clear subscriptions and in-memory registry. */
   async destroy(): Promise<void> {
     for (const unsub of this.unsubscribers) {
       unsub();

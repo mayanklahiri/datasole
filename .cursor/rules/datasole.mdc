@@ -24,7 +24,8 @@ benchmarks → collect-metrics → docs:build
 
 Canonical documentation lives in `docs/`. Consult before making structural changes:
 - `docs/tutorials.md` — Progressive learning examples (update when adding user-facing features)
-- `docs/examples.md` — Copy-paste recipes by pattern
+- `docs/developer-guide.md` — Contract-first setup and framework integrations
+- `docs/configuration.md` — Consolidated server/client options
 - `docs/architecture.md` — System design, wire protocol
 - `docs/decisions.md` — Architecture Decision Records
 - `docs/contributing.md` — Build commands, workflow

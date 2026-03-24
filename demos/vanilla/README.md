@@ -36,7 +36,7 @@ Open [http://localhost:4000](http://localhost:4000).
 npm start
 ```
 
-No build step needed — `public/` files are served directly.
+No build step needed — `client/` files are served directly.
 
 ## Stack
 
@@ -56,7 +56,7 @@ PORT=8080 npm start
 
 ## Server-Side Integration
 
-`server.mjs` is a single-file Node.js HTTP server (ESM, no framework):
+`server/index.mjs` is a Node.js HTTP server (ESM, no framework):
 
 ```javascript
 import { createServer } from 'http';
@@ -65,13 +65,13 @@ import { DatasoleServer } from 'datasole/server';
 const ds = new DatasoleServer();
 
 // Register event handlers, RPC methods, state, and metrics broadcast
-ds.on('chat:send', (payload) => {
+ds.events.on('chat:send', (payload) => {
   /* ... */
 });
-ds.rpc('randomNumber', async ({ min, max }) => {
+ds.rpc.register('randomNumber', async ({ min, max }) => {
   /* ... */
 });
-ds.setState('chat:messages', chatHistory);
+await ds.setState('chat:messages', chatHistory);
 
 // Attach to the raw Node.js HTTP server
 const httpServer = createServer(serveStatic);
@@ -84,21 +84,21 @@ Key points:
 
 - `DatasoleServer` defaults to `thread-pool` concurrency (4 Node.js `worker_threads`)
 - `ds.attach(httpServer)` upgrades WebSocket connections on the `/__ds` path
-- The server explicitly serves two datasole client files from `node_modules/datasole/dist/client/`:
-  - `/datasole.iife.min.js` — the client IIFE loaded via `<script>` tag
-  - `/datasole-worker.iife.min.js` — the Web Worker IIFE for off-thread WebSocket transport
+- DatasoleServer auto-serves runtime assets:
+  - `/__ds/datasole.iife.min.js` — client IIFE
+  - `/__ds/datasole-worker.iife.min.js` — worker IIFE
 
 ## Client-Side Integration
 
-`public/index.html` loads the datasole IIFE bundle via a `<script>` tag. The global `Datasole` namespace exposes `DatasoleClient`:
+`client/index.html` loads the datasole IIFE bundle via a `<script>` tag. The global `Datasole` namespace exposes `DatasoleClient`:
 
 ```html
-<script src="/datasole.iife.min.js"></script>
+<script src="/__ds/datasole.iife.min.js"></script>
 <script>
   const ds = new Datasole.DatasoleClient({
     url: 'ws://' + location.host,
     // useWorker: true (default) — WebSocket runs in a Web Worker
-    // workerUrl: '/datasole-worker.iife.min.js' (default)
+    // workerUrl: '/__ds/datasole-worker.iife.min.js' (default)
   });
   ds.connect();
 </script>
@@ -136,7 +136,7 @@ The Playwright e2e test:
 
 ## Notes
 
-- No build step — `public/` files are served directly by the Node.js HTTP server
+- No build step — `client/` files are served directly by the Node.js HTTP server
 - `npm run dev` uses `node --watch` for auto-restart on server file changes
 - Web Worker transport keeps the main thread free for DOM rendering
 - Set `useWorker: false` only for environments without Web Worker support (e.g., SSR)

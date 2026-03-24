@@ -104,18 +104,13 @@ import { DatasoleServer } from 'datasole/server';
 
 const app = express();
 
-// 1. Serve the datasole worker IIFE (must appear before catch-all)
-app.get('/datasole-worker.iife.min.js', (_req, res) => {
-  res.sendFile(dsWorkerPath);
-});
-
-// 2. In production, serve Vite-built client as static files
+// 1. In production, serve Vite-built client as static files
 app.use(express.static('dist/client'));
 app.get('/{*splat}', (_req, res) => {
   res.sendFile(resolve(clientDist, 'index.html'));
 });
 
-// 3. Attach datasole to the underlying Node.js HTTP server
+// 2. Attach datasole to the underlying Node.js HTTP server
 const httpServer = createServer(app);
 const ds = new DatasoleServer();
 ds.attach(httpServer);
@@ -126,8 +121,7 @@ httpServer.listen(4001);
 Key points:
 
 - `DatasoleServer` defaults to `thread-pool` concurrency with 4 Node.js `worker_threads`
-- The worker IIFE must be served at `/datasole-worker.iife.min.js` (or a custom path matching `workerUrl`)
-- The worker route must appear **before** any catch-all SPA route
+- Datasole runtime assets are auto-served under `/__ds`
 - Express 5 uses `/{*splat}` syntax for catch-all routes (not the old `*`)
 
 ## Client-Side Integration
@@ -185,17 +179,16 @@ const totalMessages = useMemo(
 
 ## Vite Dev Proxy
 
-In `vite.config.ts`, two paths are proxied to the Express backend:
+In `vite.config.ts`, datasole path traffic is proxied to the Express backend:
 
 ```typescript
 proxy: {
   '/__ds': { target: 'http://localhost:4001', ws: true },
-  '/datasole-worker.iife.min.js': { target: 'http://localhost:4001' },
+  '/__ds/datasole-worker.iife.min.js': { target: 'http://localhost:4001' },
 }
 ```
 
-- `/__ds` — WebSocket upgrade for the datasole connection
-- `/datasole-worker.iife.min.js` — Worker script fetched by the browser
+- `/__ds` — WebSocket + runtime asset path
 
 ## Testing
 

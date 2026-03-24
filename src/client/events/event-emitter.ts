@@ -7,15 +7,18 @@ import type { EventHandler, EventName } from '../../shared/types';
 export class ClientEventEmitter {
   private handlers = new Map<EventName, Set<EventHandler>>();
 
+  /** Register one event handler. */
   on<T = unknown>(event: EventName, handler: EventHandler<T>): void {
     if (!this.handlers.has(event)) this.handlers.set(event, new Set());
     this.handlers.get(event)!.add(handler as EventHandler);
   }
 
+  /** Remove one event handler. */
   off<T = unknown>(event: EventName, handler: EventHandler<T>): void {
     this.handlers.get(event)?.delete(handler as EventHandler);
   }
 
+  /** Emit event payload to all handlers for an event name. */
   emit(event: EventName, data: unknown): void {
     const handlers = this.handlers.get(event);
     if (!handlers) return;

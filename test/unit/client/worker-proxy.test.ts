@@ -91,7 +91,7 @@ describe('WorkerProxy', () => {
       const proxy = new WorkerProxy();
       await connectProxy(proxy);
 
-      expect(mockWorkerInstance.scriptUrl).toBe('/datasole-worker.iife.min.js');
+      expect(mockWorkerInstance.scriptUrl).toBe('/__ds/datasole-worker.iife.min.js');
       expect(mockWorkerInstance.postMessage).toHaveBeenCalledWith({
         type: 'connect',
         payload: { url: 'ws://localhost:3000/__ds' },

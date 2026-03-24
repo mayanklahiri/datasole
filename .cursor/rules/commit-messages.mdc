@@ -17,7 +17,7 @@ alwaysApply: true
 ## Examples
 
 - Bad: `fix ci`
-- Good: `ci: split developer and exhaustive gates [ADR-021]`
+- Good: `architecture: decompose server into composable layers [ADR-012]`
 
 - Bad: `update screenshots and metrics`
 - Good: `chore(ci): publish verified generated artifacts [skip ci]`

@@ -32,16 +32,19 @@ export class SyncChannel<T = unknown> implements RealtimePrimitive {
     }
   }
 
+  /** Queue patches and schedule flush based on configured strategy. */
   enqueue(patches: StatePatch[]): void {
     this.pendingPatches.push(...patches);
     this.scheduleFlush();
   }
 
+  /** Subscribe to flush events and receive patch batches. */
   onFlush(listener: (patches: StatePatch[]) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
 
+  /** Flush all pending patches immediately to listeners. */
   flush(): void {
     if (this.pendingPatches.length === 0) return;
     const patches = this.pendingPatches.splice(0);
@@ -50,6 +53,7 @@ export class SyncChannel<T = unknown> implements RealtimePrimitive {
     }
   }
 
+  /** Flush remaining patches and release listeners/backend subscriptions. */
   async destroy(): Promise<void> {
     if (this.flushTimer) {
       clearTimeout(this.flushTimer);

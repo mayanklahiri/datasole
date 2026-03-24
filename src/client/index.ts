@@ -1,5 +1,7 @@
 export { DatasoleClient } from './client';
 export type { DatasoleClientOptions, ConnectionState } from './client';
+export type { DatasoleContract, RpcParams, EventData, StateValue } from '../shared/contract';
+export type { RpcResult as ContractRpcResult } from '../shared/contract';
 export { StateStore } from './state';
 export { RpcClient } from './rpc';
 export { ClientEventEmitter } from './events';

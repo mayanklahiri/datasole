@@ -142,12 +142,12 @@ function scanDemos(): DemoArtifacts[] {
 
   const demos: DemoArtifacts[] = [];
 
-  // Vanilla — source files in public/ (no build step)
-  const vanillaDir = join(DEMOS, 'vanilla', 'public');
+  // Vanilla — source files in client/ (no build step)
+  const vanillaDir = join(DEMOS, 'vanilla', 'client');
   if (existsSync(vanillaDir)) {
     const entries = walkDir(vanillaDir, join(DEMOS, 'vanilla'), isWebAsset);
     if (entries.length > 0) {
-      demos.push({ name: 'Vanilla', sourceDir: 'public/', entries });
+      demos.push({ name: 'Vanilla', sourceDir: 'client/', entries });
     }
   }
 

@@ -4,8 +4,8 @@ import { resolve, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
 import { DatasoleServer } from 'datasole/server';
-import { createSeededRandom } from '../seeded-random.mjs';
-import { RpcMethod, Event, StateKey } from './shared/contract.mjs';
+import { createSeededRandom } from '../../seeded-random.mjs';
+import { RpcMethod, Event, StateKey } from '../shared/contract.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '4000', 10);
@@ -64,35 +64,12 @@ setInterval(() => {
 }, 2000);
 
 // ─── Static file serving ───────────────────────────────────────────
-const iifePath =
-  [
-    resolve(__dirname, '../../dist/client/datasole.iife.min.js'),
-    resolve(__dirname, 'node_modules/datasole/dist/client/datasole.iife.min.js'),
-  ].find((p) => existsSync(p)) ??
-  resolve(__dirname, 'node_modules/datasole/dist/client/datasole.iife.min.js');
-const workerPath =
-  [
-    resolve(__dirname, '../../dist/client/datasole-worker.iife.min.js'),
-    resolve(__dirname, 'node_modules/datasole/dist/client/datasole-worker.iife.min.js'),
-  ].find((p) => existsSync(p)) ??
-  resolve(__dirname, 'node_modules/datasole/dist/client/datasole-worker.iife.min.js');
-
 function serveStatic(req, res) {
+  if (res.headersSent || res.writableEnded) return;
   const url = req.url.split('?')[0];
 
-  if (url === '/datasole.iife.min.js') {
-    res.writeHead(200, { 'Content-Type': 'application/javascript' });
-    res.end(readFileSync(iifePath));
-    return;
-  }
-  if (url === '/datasole-worker.iife.min.js') {
-    res.writeHead(200, { 'Content-Type': 'application/javascript' });
-    res.end(readFileSync(workerPath));
-    return;
-  }
-
-  const filePath = resolve(__dirname, 'public', url === '/' ? 'index.html' : url.slice(1));
-  if (!filePath.startsWith(resolve(__dirname, 'public'))) {
+  const filePath = resolve(__dirname, '../client', url === '/' ? 'index.html' : url.slice(1));
+  if (!filePath.startsWith(resolve(__dirname, '../client'))) {
     res.writeHead(403);
     res.end('Forbidden');
     return;
