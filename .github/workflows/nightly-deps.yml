@@ -25,6 +25,11 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            demos/vanilla/package-lock.json
+            demos/react-express/package-lock.json
+            demos/vue-nestjs/package-lock.json
 
       - name: Install npm-check-updates
         run: npm install -g npm-check-updates
@@ -66,13 +71,17 @@ jobs:
             (cd "$d" && ncu -u --reject datasole && npm install)
           done
 
+      - name: Install all packages from lockfiles
+        if: steps.ncu.outputs.updates == 'true'
+        run: npm run install:all
+
       - name: Cache Playwright browsers
         if: steps.ncu.outputs.updates == 'true'
         id: playwright-cache
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json', 'demos/vanilla/package-lock.json', 'demos/react-express/package-lock.json', 'demos/vue-nestjs/package-lock.json') }}
 
       - name: Install Playwright browsers
         if: steps.ncu.outputs.updates == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
@@ -82,9 +91,9 @@ jobs:
         if: steps.ncu.outputs.updates == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Run quality gate
+      - name: Run exhaustive verification
         if: steps.ncu.outputs.updates == 'true'
-        run: npm run gate
+        run: npm run gate:full
 
       - name: Append gate metrics to summary
         if: steps.ncu.outputs.updates == 'true'
@@ -96,15 +105,34 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Quality gate passed with updated dependencies." >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Commit and push to main
+      - name: Commit and push verified update to main
         if: steps.ncu.outputs.updates == 'true'
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json
-          git add demos/*/package.json demos/*/package-lock.json
-          git commit -m "chore(deps): nightly dependency update"
-          git push origin main
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No dependency or generated artifact changes to commit."
+            exit 0
+          fi
+
+          git add -A .
+
+          if git diff --cached --quiet; then
+            echo "No dependency or generated artifact changes to commit."
+            exit 0
+          fi
+
+          printf '%s\n' \
+            'chore(deps): publish verified nightly upgrades [skip ci]' \
+            '' \
+            'Refresh dependencies to keep the repo current and secure, then preserve the' \
+            'generated artifacts produced by the exhaustive post-upgrade verification run so' \
+            'main stays aligned with the exact code that passed builds, demos, end-to-end,' \
+            'and performance checks.' \
+            > /tmp/nightly-upgrade-commit.txt
+          git commit -F /tmp/nightly-upgrade-commit.txt
+          git push origin HEAD:main
 
       - name: Upload reports
         if: steps.ncu.outputs.updates == 'true'

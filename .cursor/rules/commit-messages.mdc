@@ -1,0 +1,23 @@
+---
+description: Commit messages must lead with intent and motivation
+alwaysApply: true
+---
+
+# Commit Message Intent
+
+- Write commit titles around intention, not mechanics
+- The title should answer "why does this change exist?" before "what changed?"
+- The commit body must use this structure:
+  1. 2-3 short lines summarizing the intent of the commit
+  2. 1-5 brief bullet points describing the concrete changes
+  3. if new features, options, or capabilities were added, a separate section calling them out
+- Infer the intent summary from session context, user goals, bugs, regressions, ADRs, or workflow constraints
+- Avoid titles like `update files`, `fix tests`, or `refactor code` without the reason they matter
+
+## Examples
+
+- Bad: `fix ci`
+- Good: `ci: split developer and exhaustive gates [ADR-021]`
+
+- Bad: `update screenshots and metrics`
+- Good: `chore(ci): publish verified generated artifacts [skip ci]`

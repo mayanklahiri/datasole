@@ -95,10 +95,10 @@ Verify `AGENTS.md` reflects:
 After all fixes:
 
 ```bash
-npm run gate
+npm run gate:full
 ```
 
-This rebuilds everything: bundles, types, tests, coverage, e2e, metrics, and docs site.
+This rebuilds everything: bundles, types, unit tests, integration/demo e2e, core e2e, benchmarks, metrics, and the docs site.
 
 If the gate fails, fix the failures and re-run until it passes.
 

@@ -14,6 +14,7 @@ import pixelmatch from 'pixelmatch';
 
 const SCREENSHOT_DIR = path.resolve(__dirname, '../../../.screenshots');
 const MAX_DIFF_RATIO = 0.01;
+const UPDATE_SCREENSHOTS = process.env.DATASOLE_UPDATE_SCREENSHOTS === '1';
 
 function ensureDir(dir: string): void {
   mkdirSync(dir, { recursive: true });
@@ -70,6 +71,13 @@ export async function snap(page: Page, testInfo: TestInfo, key: string): Promise
   const diffRatio = mismatchCount / totalPixels;
 
   if (diffRatio > MAX_DIFF_RATIO) {
+    if (UPDATE_SCREENSHOTS) {
+      writeFileSync(baselinePath, buffer);
+      if (tag === 'desktop') {
+        copyToDocsScreenshots(key, buffer);
+      }
+      return;
+    }
     const diffPath = path.join(SCREENSHOT_DIR, `${key}--${tag}--diff.png`);
     writeFileSync(diffPath, PNG.sync.write(diff));
     writeFileSync(baselinePath.replace('.png', '--actual.png'), buffer);

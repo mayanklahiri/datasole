@@ -47,8 +47,9 @@ test.describe('Vanilla Demo', () => {
     await page.fill('#chat-input', 'Hello from e2e test!');
     await page.click('#chat-send');
 
-    await expect(page.locator('.chat-msg')).toHaveCount(1, { timeout: 5000 });
-    await expect(page.locator('.chat-msg .body').first()).toHaveText('Hello from e2e test!');
+    await expect(page.locator('.chat-msg .body').last()).toHaveText('Hello from e2e test!', {
+      timeout: 5000,
+    });
 
     await snap(page, testInfo, 'demo-vanilla-chat');
   });

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node -e \"console.log('Vanilla demo serves source files directly; no build step required.')\"",
     "dev": "node --watch server.mjs",
     "start": "node server.mjs",
     "clean": "rm -rf node_modules"

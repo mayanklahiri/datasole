@@ -6,7 +6,7 @@ description: Test coverage, bundle sizes, and quality metrics tracked over time.
 
 # Quality Dashboard
 
-Every push to `main` runs the full quality gate (`npm run gate`) which collects metrics and appends them to a time-series history.
+Verified `main` builds and nightly upgrade runs execute the exhaustive gate (`npm run gate:full`), then append metrics to the time-series history via a bot-authored `[skip ci]` artifact commit.
 
 ## Current metrics
 
@@ -201,7 +201,7 @@ watch([loaded, history], async () => {
 </div>
 
 <div v-else-if="loaded">
-<p>No metrics data available yet. Run <code>npm run gate</code> to generate metrics.</p>
+<p>No metrics data available yet. Run <code>npm run gate:full</code> to generate metrics.</p>
 </div>
 
 <div v-else>
@@ -227,27 +227,37 @@ watch([loaded, history], async () => {
 </div>
 
 <div v-else-if="loaded">
-<p>Not enough data points for trends yet. Metrics accumulate with each <code>npm run gate</code> run.</p>
+<p>Not enough data points for trends yet. Metrics accumulate with each <code>npm run gate:full</code> run.</p>
 </div>
 
-## What the quality gate enforces
+## What the quality gates enforce
 
-The gate (`npm run gate`) is a single command that runs everything:
+The developer gate (`npm run gate`) runs:
 
 1. **Format check** — Prettier on all source and test files
 2. **Lint** — ESLint with `recommendedTypeChecked` + strict TypeScript (`tsc --noEmit`)
-3. **Build** — Rollup multi-target bundles (client IIFE/ESM/CJS, worker, server ESM/CJS, shared)
+3. **Builds** — root package plus all demo packages
 4. **Unit tests** — Vitest with v8 coverage thresholds
-5. **E2E tests** — Playwright with headless Chromium, desktop + mobile viewports, production IIFE bundle
-6. **Metrics collection** — Bundle sizes, coverage, e2e results → `reports/` + history append
-7. **Docs build** — VitePress static site generation
-8. **Summary** — Pass/fail with statistics
+5. **Core e2e tests** — Playwright functional tests, desktop + mobile
+6. **Integration/demo e2e tests** — production demo validation across all demos
+7. **Summary** — Pass/fail with statistics
 
-The gate runs:
+The exhaustive gate (`npm run gate:full`) adds:
 
+1. **Performance benchmarks** — Playwright load/perf scenarios (`@bench`)
+2. **Metrics collection** — bundle sizes, coverage, e2e results, benchmarks → `reports/` + history append
+3. **Docs build** — VitePress static site generation
+
+The developer gate runs:
+
+- On every `git commit` after `lint-staged` (pre-commit hook)
 - On every `git push` (pre-push hook)
-- On every PR and push to `main` (GitHub Actions CI, Node 22 + 24 matrix)
+
+The exhaustive gate runs:
+
+- On every PR and push to `main` (GitHub Actions CI)
 - Nightly (dependency update workflow)
+- Before `npm publish`
 
 ## Coverage thresholds
 

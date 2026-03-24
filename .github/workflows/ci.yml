@@ -19,29 +19,40 @@ permissions:
   id-token: write
 
 jobs:
-  gate:
+  build:
+    if: >-
+      github.event_name != 'push' ||
+      (
+        !contains(github.event.head_commit.message, '[skip ci]') &&
+        !contains(github.event.head_commit.message, 'skip-ci')
+      )
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [22, 24]
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v5
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 24
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            demos/vanilla/package-lock.json
+            demos/react-express/package-lock.json
+            demos/vue-nestjs/package-lock.json
 
-      - run: npm ci
+      - name: Install all packages
+        run: npm run install:all
 
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json', 'demos/vanilla/package-lock.json', 'demos/react-express/package-lock.json', 'demos/vue-nestjs/package-lock.json') }}
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
@@ -51,8 +62,35 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Run quality gate
-        run: npm run gate
+      - name: Run exhaustive verification
+        run: npm run gate:full
+
+      - name: Commit verified generated artifacts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No generated artifact changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A .
+
+          if git diff --cached --quiet; then
+            echo "No staged changes after git add."
+            exit 0
+          fi
+
+          printf '%s\n' \
+            'chore(ci): publish verified generated artifacts [skip ci]' \
+            '' \
+            'Preserve the artifacts produced by the exhaustive main-branch verification run so' \
+            'the repository, screenshots, and metrics stay aligned with the exact code that' \
+            'just passed the full build, demo, end-to-end, and performance pipeline.' \
+            > /tmp/ci-artifact-commit.txt
+          git commit -F /tmp/ci-artifact-commit.txt
+          git push origin HEAD:main
 
       - name: Print build metrics
         if: always()
@@ -67,7 +105,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v5
         with:
-          name: reports-node-${{ matrix.node-version }}
+          name: reports
           path: reports/
           if-no-files-found: ignore
 
@@ -75,14 +113,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v5
         with:
-          name: test-results-node-${{ matrix.node-version }}
+          name: test-results
           path: |
             test-results/
             test/e2e/reports/
           if-no-files-found: ignore
 
       - name: Upload coverage
-        if: matrix.node-version == 24
+        if: always()
         uses: actions/upload-artifact@v5
         with:
           name: coverage
@@ -90,7 +128,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload docs site
-        if: matrix.node-version == 24
+        if: always()
         uses: actions/upload-artifact@v5
         with:
           name: docs-site
@@ -98,7 +136,7 @@ jobs:
           if-no-files-found: warn
 
   deploy-docs:
-    needs: gate
+    needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5

@@ -189,3 +189,23 @@ description: Architecture Decision Records for the datasole project.
   4. **`catch (e: unknown)`** — error handlers use `unknown` with `instanceof Error` guards, never `catch (e: any)`.
 
 - **Consequences:** All type errors surface at compile time. Refactoring tools can follow types through the entire codebase including tests. No hidden suppressions. Trade-off: slightly more verbose catch blocks and occasionally verbose generic constraints, but this is a feature, not a cost — it forces explicit handling of edge cases.
+
+## ADR-021: Split developer and exhaustive quality gates
+
+- **Status:** Accepted
+- **Date:** 2026-03-23
+
+- **Context:** The old `npm run gate` tried to serve two very different use cases at once: fast local developer validation and exhaustive repository verification. It ran docs generation and metrics collection locally, but still did not validate the entire monorepo shape because demo packages were not explicitly installed everywhere, demo builds were not part of the root build step, and performance benchmarks only ran out-of-band. Pre-push also auto-committed artifacts, which blurred the line between developer intent and CI-generated state. Meanwhile, the nightly dependency upgrade workflow updated dependencies but did not preserve the full set of verified generated artifacts from a post-upgrade run.
+
+- **Decision:** Split validation into two tiers:
+  1. **Developer gate (`npm run gate`)** — non-performance validation only: format, lint, root + demo builds, unit tests with coverage, core e2e, and demo/integration e2e.
+  2. **Exhaustive gate (`npm run gate:full`)** — CI/nightly validation: `npm run gate` plus performance benchmarks, metrics collection, and docs build.
+
+  Operational rules:
+  - `pre-commit` runs `lint-staged` and then `npm run gate`
+  - `pre-push` runs `npm run gate`
+  - main CI and nightly dependency upgrades run `npm run gate:full`
+  - when exhaustive runs on `main` produce tracked artifact changes (screenshots, metrics history, lockfiles, etc.), the bot commits them with `[skip ci]`
+  - the CI workflow ignores `[skip ci]` follow-up commits to avoid infinite loops
+
+- **Consequences:** Local hooks validate correctness without running load/performance scenarios. CI/nightly now verify the whole repository, including demos and benchmarks, before publishing generated artifacts back to `main`. Generated artifacts become a product of verified bot runs instead of local hook side effects. Trade-off: pre-commit is heavier than before, and CI/nightly take longer, but the behavior is explicit and the boundary between developer and bot responsibilities is much cleaner.

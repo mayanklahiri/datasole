@@ -20,29 +20,41 @@
 
 ## Quality Gate
 
-**Before committing or pushing, run the quality gate:**
+**Before committing or pushing, run the developer gate:**
 
 ```bash
 npm run gate
 ```
 
-This is the single command that validates everything. It runs, in order:
+This is the non-performance developer gate. It runs, in order:
 
 1. `clean` — remove dist/, reports/, coverage/, docs-site/dist/
 2. `format:check` — Prettier formatting validation
 3. `lint` — ESLint + TypeScript type check (`tsc --noEmit`)
-4. `build` — Rollup multi-target bundle (client IIFE/ESM/CJS, worker, server ESM/CJS)
+4. `build:all` — Build the root package and all demo packages
 5. `test --coverage` — Vitest unit tests with v8 coverage
-6. `test:e2e` — Playwright e2e tests (builds first, headless Chromium, production artifacts)
-7. `collect-metrics` — Bundle sizes, coverage, e2e results, docs stats → `reports/`
-8. `docs:build` — Generate static documentation site
-9. `gate:summary` — Print pass/fail summary with statistics
+6. `test:e2e:run` — Core Playwright e2e tests (non-benchmark)
+7. `test:e2e:demos:run` — Demo/integration Playwright e2e tests
+8. `gate:summary` — Print pass/fail summary with statistics
 
-**The gate MUST pass before any push.** This is enforced by:
+The exhaustive CI/nightly gate is:
 
-- **pre-commit hook**: `lint-staged` (format + lint staged files)
-- **pre-push hook**: `npm run gate` (full pipeline)
-- **CI**: GitHub Actions runs `npm run gate` on every push/PR to `main`
+```bash
+npm run gate:full
+```
+
+It runs `npm run gate` plus:
+
+1. `test:bench:run` — Playwright load/performance scenarios
+2. `collect-metrics` — Bundle sizes, coverage, e2e results, docs stats → `reports/`
+3. `docs:build` — Generate static documentation site
+
+**The developer gate MUST pass before any push.** This is enforced by:
+
+- **pre-commit hook**: `lint-staged` followed by `npm run gate`
+- **pre-push hook**: `npm run gate`
+- **CI**: GitHub Actions runs `npm run gate:full` on push/PR to `main`
+- **nightly upgrades**: GitHub Actions runs `npm run gate:full`, then commits verified artifacts with `[skip ci]`
 
 `npm run dist` is an alias for `npm run gate`.
 
@@ -118,9 +130,10 @@ When making changes:
 - **Zero `eslint-disable`** — fix the type or the code, never suppress the rule (see ADR-020)
 - **Zero `as any`** — use generics, `unknown` + guards, or typed interfaces. `as never` is acceptable at generic variance boundaries; `as unknown as T` for test doubles
 - **`catch (e: unknown)`** — never `catch (e: any)`. Use `e instanceof Error` guards
+- **Commit messages lead with intent** — the title states the purpose, then the body uses this format: (a) 2-3 short lines summarizing intent, (b) 1-5 brief bullets describing changes, (c) a separate section for any new features, options, or capabilities
 - Barrel exports via `index.ts` in each directory
 - Imports from `shared` only — no cross-imports between `client` and `server`
-- Run `npm run gate` before pushing — it catches everything
+- Run `npm run gate` before pushing; run `npm run gate:full` when validating CI/nightly behavior
 
 ## Skills
 
@@ -141,7 +154,7 @@ The skill performs a 7-phase audit:
 3. Doc-code alignment — cross-reference every `docs/*.md` API reference against `src/` implementation
 4. README alignment — verify bundle sizes, feature claims, code examples
 5. AGENTS.md alignment — verify project structure, gate steps, integration patterns
-6. Regenerate — run `npm run gate` to rebuild and verify everything
+6. Regenerate — run `npm run gate:full` to rebuild, benchmark, collect metrics, and verify everything
 7. Commit — stage and commit all fixes
 
 ## Integrating datasole into an existing project

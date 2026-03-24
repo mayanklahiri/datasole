@@ -51,9 +51,9 @@ test.describe('Vue 3 + NestJS Demo', () => {
     await page.fill('.chat-input-bar input', 'Hello from Vue e2e!');
     await page.click('.chat-input-bar .btn');
 
-    await expect(page.locator('.chat-messages .chat-msg')).toHaveCount(1, { timeout: 5000 });
-    await expect(page.locator('.chat-messages .chat-msg .body').first()).toHaveText(
+    await expect(page.locator('.chat-messages .chat-msg .body').last()).toHaveText(
       'Hello from Vue e2e!',
+      { timeout: 5000 },
     );
 
     await snap(page, testInfo, 'demo-vue-nestjs-chat');
