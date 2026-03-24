@@ -8,6 +8,22 @@ export interface PNCounterVector {
   decrements: Record<string, number>;
 }
 
+/** Extract PN-counter vector payload from arbitrary CRDT metadata (merge payloads from peers). */
+function readVectorFromMetadata(metadata: unknown): Partial<PNCounterVector> | null {
+  if (!metadata || typeof metadata !== 'object') return null;
+  const vector = (metadata as { vector?: unknown }).vector;
+  if (!vector || typeof vector !== 'object' || Array.isArray(vector)) return null;
+  const v = vector as Record<string, unknown>;
+  const out: Partial<PNCounterVector> = {};
+  if (v.increments && typeof v.increments === 'object' && !Array.isArray(v.increments)) {
+    out.increments = v.increments as Record<string, number>;
+  }
+  if (v.decrements && typeof v.decrements === 'object' && !Array.isArray(v.decrements)) {
+    out.decrements = v.decrements as Record<string, number>;
+  }
+  return out;
+}
+
 export class PNCounter implements Crdt<number> {
   readonly type = 'pn-counter' as const;
   private increments = new Map<string, number>();
@@ -69,16 +85,15 @@ export class PNCounter implements Crdt<number> {
   }
 
   merge(remote: CrdtState<number>): void {
-    if (!remote?.metadata) return;
-    const rv = (remote.metadata as unknown as { vector?: PNCounterVector })?.vector;
-    if (!rv || typeof rv !== 'object') return;
-    if (rv.increments && typeof rv.increments === 'object') {
+    const rv = readVectorFromMetadata(remote?.metadata);
+    if (!rv) return;
+    if (rv.increments) {
       for (const [nodeId, count] of Object.entries(rv.increments)) {
         if (typeof count !== 'number' || !Number.isFinite(count)) continue;
         this.increments.set(nodeId, Math.max(this.increments.get(nodeId) ?? 0, count));
       }
     }
-    if (rv.decrements && typeof rv.decrements === 'object') {
+    if (rv.decrements) {
       for (const [nodeId, count] of Object.entries(rv.decrements)) {
         if (typeof count !== 'number' || !Number.isFinite(count)) continue;
         this.decrements.set(nodeId, Math.max(this.decrements.get(nodeId) ?? 0, count));

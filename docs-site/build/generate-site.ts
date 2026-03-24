@@ -174,14 +174,14 @@ function main() {
           <li><strong>Binary frames</strong> with pako compression (60–80% smaller than raw JSON)</li>
           <li><strong>SharedArrayBuffer</strong> zero-copy transfer between worker and main thread</li>
           <li>Server concurrency: async, thread-per-connection, <strong>thread pool</strong>, process isolation</li>
-          <li>Client IIFE: <strong>20.9 KB</strong> gzip. Worker: <strong>14.7 KB</strong> gzip. Both include all deps.</li>
+          <li>Client IIFE: <strong>22.3 KB</strong> gzip. Worker: <strong>15.3 KB</strong> gzip. Both include all deps.</li>
         </ul>
       </section>
 
       <section class="landing-card">
         <h2>Correctness</h2>
         <ul>
-          <li><strong>122 unit tests</strong> (Vitest) + <strong>13 e2e tests</strong> (Playwright, headless Chromium, production bundle)</li>
+          <li><strong>490 unit tests</strong> (Vitest) + <strong>57 e2e tests</strong> (Playwright: 48 core + 9 demo, headless Chromium)</li>
           <li>Coverage thresholds enforced on every push (lines, branches, functions, statements)</li>
           <li><strong>Strict TypeScript</strong> with <code>.d.ts</code> declarations on every export</li>
           <li>Shared types between client and server — no code generation, no drift</li>

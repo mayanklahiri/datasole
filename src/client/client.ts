@@ -58,6 +58,12 @@ export interface DatasoleClientOptions {
  * - multiplexes typed RPC calls over one socket
  * - routes event/state/CRDT frames to local stores and handlers
  * - handles optional worker transport and reconnect backoff
+ *
+ * @remarks
+ * **Layering (outside-in):** URL/options → {@link FallbackTransport} or {@link WorkerProxy} +
+ * {@link MainThreadSharedBuffer} → frame codec in the worker or main thread → {@link RpcClient},
+ * {@link ClientEventEmitter}, per-key {@link StateStore}, optional {@link CrdtStore}. Public
+ * methods stay thin; stores and RPC own protocol details.
  */
 export class DatasoleClient<T extends DatasoleContract> {
   private state: ConnectionState = 'disconnected';

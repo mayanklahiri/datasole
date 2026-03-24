@@ -1,9 +1,28 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import NodeWebSocket from 'ws';
 
-import { DatasoleClient } from '../../../src/client/client';
+import { DatasoleClient, type DatasoleClientOptions } from '../../../src/client/client';
+import type { ClientEventEmitter } from '../../../src/client/events/event-emitter';
+import type { StateStore } from '../../../src/client/state/state-store';
+import type { DatasoleContract } from '../../../src/shared/contract';
 import { createLiveTestServer, tick, type LiveTestServer } from '../../helpers/live-server';
 import { type TestContract, TestRpc, TestEvent, TestState } from '../../helpers/test-contract';
+
+/** Narrow view of private fields used only in these unit tests. */
+interface DatasoleClientInstanceView {
+  readonly options: Required<DatasoleClientOptions>;
+  buildWsUrl(): string;
+  readonly stateStores: Map<string, StateStore<unknown>>;
+  readonly eventEmitter: ClientEventEmitter;
+  reconnectAttempts: number;
+}
+
+function clientInternals<T extends DatasoleContract>(
+  client: DatasoleClient<T>,
+): DatasoleClientInstanceView {
+  // Private fields are intentionally exposed only for these tests.
+  return client as unknown as DatasoleClientInstanceView;
+}
 
 /**
  * Polyfill the browser WebSocket global with the `ws` library so
@@ -17,7 +36,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-let srv: LiveTestServer<TestContract>;
+let srv!: LiveTestServer<TestContract>;
 
 afterEach(async () => {
   if (srv) await srv.close();
@@ -30,43 +49,43 @@ afterEach(async () => {
 describe('DatasoleClient — constructor defaults', () => {
   it('sets default path to /__ds', () => {
     const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
-    const opts = (client as unknown as { options: Record<string, unknown> }).options;
+    const opts = clientInternals(client).options;
     expect(opts.path).toBe('/__ds');
   });
 
   it('sets default auth to empty object', () => {
     const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
-    const opts = (client as unknown as { options: Record<string, unknown> }).options;
+    const opts = clientInternals(client).options;
     expect(opts.auth).toEqual({});
   });
 
   it('sets default useWorker to true', () => {
     const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
-    const opts = (client as unknown as { options: Record<string, unknown> }).options;
+    const opts = clientInternals(client).options;
     expect(opts.useWorker).toBe(true);
   });
 
   it('sets default useSharedArrayBuffer to false', () => {
     const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
-    const opts = (client as unknown as { options: Record<string, unknown> }).options;
+    const opts = clientInternals(client).options;
     expect(opts.useSharedArrayBuffer).toBe(false);
   });
 
   it('sets default reconnect to true', () => {
     const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
-    const opts = (client as unknown as { options: Record<string, unknown> }).options;
+    const opts = clientInternals(client).options;
     expect(opts.reconnect).toBe(true);
   });
 
   it('sets default reconnectInterval to 1000', () => {
     const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
-    const opts = (client as unknown as { options: Record<string, unknown> }).options;
+    const opts = clientInternals(client).options;
     expect(opts.reconnectInterval).toBe(1000);
   });
 
   it('sets default maxReconnectAttempts to 10', () => {
     const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
-    const opts = (client as unknown as { options: Record<string, unknown> }).options;
+    const opts = clientInternals(client).options;
     expect(opts.maxReconnectAttempts).toBe(10);
   });
 
@@ -77,7 +96,7 @@ describe('DatasoleClient — constructor defaults', () => {
       reconnectInterval: 5000,
       maxReconnectAttempts: 3,
     });
-    const opts = (client as unknown as { options: Record<string, unknown> }).options;
+    const opts = clientInternals(client).options;
     expect(opts.path).toBe('/custom');
     expect(opts.reconnectInterval).toBe(5000);
     expect(opts.maxReconnectAttempts).toBe(3);
@@ -88,7 +107,7 @@ describe('DatasoleClient — constructor defaults', () => {
 describe('DatasoleClient — buildWsUrl', () => {
   function callBuildWsUrl(opts: ConstructorParameters<typeof DatasoleClient>[0]): string {
     const client = new DatasoleClient<TestContract>(opts);
-    return (client as unknown as { buildWsUrl: () => string }).buildWsUrl();
+    return clientInternals(client).buildWsUrl();
   }
 
   it('converts http to ws', () => {
@@ -146,7 +165,7 @@ describe('DatasoleClient — subscribeState / getState', () => {
     const client = new DatasoleClient<TestContract>({ url: 'http://localhost:3000' });
     client.subscribeState(TestState.Dashboard, () => {});
     client.subscribeState(TestState.Dashboard, () => {});
-    const stores = (client as unknown as { stateStores: Map<string, unknown> }).stateStores;
+    const stores = clientInternals(client).stateStores;
     expect(stores.size).toBe(1);
   });
 });
@@ -157,10 +176,7 @@ describe('DatasoleClient — on / off', () => {
     const handler = vi.fn();
     client.on(TestEvent.TestEvent, handler);
 
-    const emitter = (
-      client as unknown as { eventEmitter: { emit: (e: string, d: unknown) => void } }
-    ).eventEmitter;
-    emitter.emit('test-event', { x: 1 });
+    clientInternals(client).eventEmitter.emit(TestEvent.TestEvent, { x: 1 });
 
     expect(handler).toHaveBeenCalledOnce();
     expect(handler.mock.calls[0]![0]).toHaveProperty('data', { x: 1 });
@@ -172,10 +188,7 @@ describe('DatasoleClient — on / off', () => {
     client.on(TestEvent.TestEvent, handler);
     client.off(TestEvent.TestEvent, handler);
 
-    const emitter = (
-      client as unknown as { eventEmitter: { emit: (e: string, d: unknown) => void } }
-    ).eventEmitter;
-    emitter.emit('test-event', { x: 1 });
+    clientInternals(client).eventEmitter.emit(TestEvent.TestEvent, { x: 1 });
 
     expect(handler).not.toHaveBeenCalled();
   });
@@ -187,10 +200,7 @@ describe('DatasoleClient — on / off', () => {
     client.on(TestEvent.Ev, h1);
     client.on(TestEvent.Ev, h2);
 
-    const emitter = (
-      client as unknown as { eventEmitter: { emit: (e: string, d: unknown) => void } }
-    ).eventEmitter;
-    emitter.emit('ev', null);
+    clientInternals(client).eventEmitter.emit(TestEvent.Ev, null);
 
     expect(h1).toHaveBeenCalledOnce();
     expect(h2).toHaveBeenCalledOnce();
@@ -204,10 +214,7 @@ describe('DatasoleClient — on / off', () => {
     client.on(TestEvent.Ev, h2);
     client.off(TestEvent.Ev, h1);
 
-    const emitter = (
-      client as unknown as { eventEmitter: { emit: (e: string, d: unknown) => void } }
-    ).eventEmitter;
-    emitter.emit('ev', null);
+    clientInternals(client).eventEmitter.emit(TestEvent.Ev, null);
 
     expect(h1).not.toHaveBeenCalled();
     expect(h2).toHaveBeenCalledOnce();
@@ -359,9 +366,9 @@ describe('DatasoleClient — connect to live server', () => {
 
   it('resets reconnect attempts on successful connect', async () => {
     const client = new DatasoleClient<TestContract>({ url: srv.url, reconnect: false });
-    (client as unknown as { reconnectAttempts: number }).reconnectAttempts = 5;
+    clientInternals(client).reconnectAttempts = 5;
     await client.connect();
-    expect((client as unknown as { reconnectAttempts: number }).reconnectAttempts).toBe(0);
+    expect(clientInternals(client).reconnectAttempts).toBe(0);
     await client.disconnect();
   });
 });

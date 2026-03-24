@@ -17,6 +17,34 @@ import { StaticAssetServer } from './static-assets';
 import type { AuthHandler } from './upgrade-handler';
 import { WsServer } from './ws-server';
 
+/**
+ * After we fully handle a static asset, framework `request` listeners may still
+ * run; replace response mutators with no-ops so they cannot double-send.
+ */
+function silenceHttpResponseAfterStaticSend(res: ServerResponse): void {
+  res.setHeader = function silencedSetHeader(
+    this: ServerResponse,
+    _name: string,
+    _value: number | string | readonly string[],
+  ): ServerResponse {
+    return this;
+  } as ServerResponse['setHeader'];
+
+  res.writeHead = function silencedWriteHead(
+    this: ServerResponse,
+    ..._args: Parameters<ServerResponse['writeHead']>
+  ): ServerResponse {
+    return this;
+  } as ServerResponse['writeHead'];
+
+  res.end = function silencedEnd(
+    this: ServerResponse,
+    ..._args: Parameters<ServerResponse['end']>
+  ): ServerResponse {
+    return this;
+  } as ServerResponse['end'];
+}
+
 export interface TransportOptions {
   path: string;
   perMessageDeflate?: boolean | undefined;
@@ -44,13 +72,7 @@ export class ServerTransport {
       const handled = staticAssets.handleRequest(req, res);
       if (!handled) return;
 
-      // Framework listeners still run for this request; force response methods to no-op.
-      const noOpSetHeader = (() => res) as unknown as ServerResponse['setHeader'];
-      const noOpWriteHead = (() => res) as unknown as ServerResponse['writeHead'];
-      const noOpEnd = (() => res) as unknown as ServerResponse['end'];
-      res.setHeader = noOpSetHeader;
-      res.writeHead = noOpWriteHead;
-      res.end = noOpEnd;
+      silenceHttpResponseAfterStaticSend(res);
     };
     server.prependListener('request', this.staticRequestHandler);
 

@@ -155,6 +155,7 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 - React demo client walkthrough in docs replaced `useDatasole` prop-drilling pattern with `DatasoleProvider` + hooks
 - Vue demo client walkthrough in docs replaced manual `onMounted`/`onUnmounted` with composable-based pattern
 - Docs onboarding IA refreshed: new Developer Guide landing path, Getting Started sidebar now prioritizes Developer Guide and removes Examples, and homepage CTAs were shortened (`Get started`, `Protocol Spec`)
+- Optional dependency loaders (`pg`, `ioredis`) and OpenTelemetry metrics use narrower runtime checks and typed bridges instead of double casts; static asset responses silence subsequent `setHeader`/`writeHead`/`end` with typed no-ops; PN-counter merge reads vector metadata via a small parser; README and docs-site landing numbers match current build output and Vitest/Playwright counts; live-server unit tests use a shared `liveSrv()` helper and explicit HTTP teardown where `DatasoleServer.close()` runs alone; React + Express demo e2e runs load, metrics, chat, and RPC in one Playwright session inside a fresh context so a second cold navigation does not hit a long `reconnecting` stall after the first WebSocket teardown
 
 ### Fixed
 

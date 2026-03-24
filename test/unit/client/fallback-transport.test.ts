@@ -7,7 +7,14 @@ import { Opcode } from '../../../src/shared/protocol';
 import { createLiveTestServer, tick, type LiveTestServer } from '../../helpers/live-server';
 import { TestRpc, type TestContract } from '../../helpers/test-contract';
 
-let srv: LiveTestServer<TestContract>;
+let srv: LiveTestServer<TestContract> | undefined;
+
+function liveSrv(): LiveTestServer<TestContract> {
+  if (srv === undefined) {
+    throw new Error('test setup error: live server not initialized');
+  }
+  return srv;
+}
 
 beforeEach(() => {
   vi.stubGlobal('WebSocket', NodeWebSocket);
@@ -15,26 +22,29 @@ beforeEach(() => {
 
 afterEach(async () => {
   vi.unstubAllGlobals();
-  if (srv) await srv.close();
+  if (!srv) return;
+  const toClose = srv;
+  srv = undefined;
+  await toClose.close();
 });
 
 describe('FallbackTransport (live server)', () => {
   beforeEach(async () => {
     srv = await createLiveTestServer<TestContract>();
-    srv.ds.rpc.register(TestRpc.Echo, async (params: unknown) => params);
+    liveSrv().ds.rpc.register(TestRpc.Echo, async (params: unknown) => params);
   });
 
   describe('connect', () => {
     it('connects to a real server', async () => {
       const transport = new FallbackTransport();
-      await transport.connect(srv.wsUrl);
+      await transport.connect(liveSrv().wsUrl);
       expect(transport.isConnected()).toBe(true);
       await transport.disconnect();
     });
 
     it('sets binaryType to arraybuffer', async () => {
       const transport = new FallbackTransport();
-      await transport.connect(srv.wsUrl);
+      await transport.connect(liveSrv().wsUrl);
       expect(transport.isConnected()).toBe(true);
       await transport.disconnect();
     });
@@ -48,7 +58,7 @@ describe('FallbackTransport (live server)', () => {
       const transport = new FallbackTransport();
       const onOpen = vi.fn();
       transport.onOpen(onOpen);
-      await transport.connect(srv.wsUrl);
+      await transport.connect(liveSrv().wsUrl);
       expect(onOpen).toHaveBeenCalledOnce();
       await transport.disconnect();
     });
@@ -59,7 +69,7 @@ describe('FallbackTransport (live server)', () => {
       const transport = new FallbackTransport();
       const received: unknown[] = [];
       transport.onMessage((frame) => received.push(frame));
-      await transport.connect(srv.wsUrl);
+      await transport.connect(liveSrv().wsUrl);
 
       const payload = serialize({ method: 'echo', params: 'hello', correlationId: 1 });
       transport.sendFrame({ opcode: Opcode.RPC_REQ, correlationId: 1, payload });
@@ -84,7 +94,7 @@ describe('FallbackTransport (live server)', () => {
       const frameReceived = new Promise<unknown>((resolve) => {
         transport.onMessage((frame) => resolve(frame));
       });
-      await transport.connect(srv.wsUrl);
+      await transport.connect(liveSrv().wsUrl);
 
       // High-entropy data that stays > 256 bytes even after compression
       const items = Array.from({ length: 50 }, (_, i) => `k${i}:${(i * 31337).toString(36)}`);
@@ -105,7 +115,7 @@ describe('FallbackTransport (live server)', () => {
   describe('disconnect', () => {
     it('disconnects and isConnected returns false', async () => {
       const transport = new FallbackTransport();
-      await transport.connect(srv.wsUrl);
+      await transport.connect(liveSrv().wsUrl);
       expect(transport.isConnected()).toBe(true);
 
       await transport.disconnect();
@@ -125,15 +135,18 @@ describe('FallbackTransport (live server)', () => {
       transport.onClose((code) => {
         closeCode = code;
       });
-      await transport.connect(srv.wsUrl);
+      await transport.connect(liveSrv().wsUrl);
 
-      await srv.ds.close();
+      const instance = liveSrv();
+      await instance.ds.close();
       await tick(100);
 
       expect(closeCode).toBeGreaterThanOrEqual(1000);
 
-      // Prevent afterEach from double-closing
-      srv = undefined as unknown as LiveTestServer<TestContract>;
+      await new Promise<void>((resolve, reject) => {
+        instance.httpServer.close((err) => (err ? reject(err) : resolve()));
+      });
+      srv = undefined;
     });
   });
 
@@ -156,7 +169,7 @@ describe('FallbackTransport (live server)', () => {
 
     it('returns true when connected', async () => {
       const transport = new FallbackTransport();
-      await transport.connect(srv.wsUrl);
+      await transport.connect(liveSrv().wsUrl);
       expect(transport.isConnected()).toBe(true);
       await transport.disconnect();
     });
@@ -167,7 +180,7 @@ describe('FallbackTransport (live server)', () => {
       const transport = new FallbackTransport();
       const frames: unknown[] = [];
       transport.onMessage((frame) => frames.push(frame));
-      await transport.connect(srv.wsUrl);
+      await transport.connect(liveSrv().wsUrl);
 
       transport.sendFrame({
         opcode: Opcode.PING,

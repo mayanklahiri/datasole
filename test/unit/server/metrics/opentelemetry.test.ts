@@ -110,7 +110,7 @@ describe('OpenTelemetryExporter', () => {
       const exporter = new OpenTelemetryExporter();
       await exporter.initialize();
 
-      const snapshot = { ...makeSnapshot(), label: 'test' } as unknown as MetricsSnapshot;
+      const snapshot = { ...makeSnapshot(), label: 'test' } as MetricsSnapshot;
       await exporter.export(snapshot);
 
       for (const call of mockMeter.createUpDownCounter.mock.calls) {

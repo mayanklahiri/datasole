@@ -5,7 +5,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { handleUpgrade } from '../../../../src/server/transport/upgrade-handler';
 
 function fakeRequest(headers?: Record<string, string>): IncomingMessage {
-  return { headers: headers ?? {} } as unknown as IncomingMessage;
+  return { headers: headers ?? {} } as IncomingMessage;
 }
 
 describe('handleUpgrade', () => {

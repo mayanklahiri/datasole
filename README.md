@@ -61,7 +61,7 @@ npm install datasole
 - **Pluggable everything** — State backends (memory, Redis, Postgres), rate limiters, metric exporters.
 - **Observability** — Prometheus and OpenTelemetry metric exporters built in.
 - **Framework-agnostic** — React, Vue, Svelte, vanilla JS on the client. Express, NestJS, Fastify, `http.createServer()` on the server.
-- **36 KB total** — Client + worker gzip. Includes compression, framing, diffing, CRDTs, and the worker transport.
+- **~37.6 KB gzip (client + worker)** — Includes compression, framing, diffing, CRDTs, and the worker transport.
 
 ### Use cases
 
@@ -263,12 +263,12 @@ The shared and server bundles externalize runtime dependencies (`pako`, `fast-js
 
 | Bundle                | Loaded by             |     Raw |        Gzip |
 | --------------------- | --------------------- | ------: | ----------: |
-| **Client IIFE** (min) | `<script>` tag        | 72.0 KB | **22.2 KB** |
+| **Client IIFE** (min) | `<script>` tag        | 72.6 KB | **22.3 KB** |
 | **Worker IIFE** (min) | Web Worker            | 48.3 KB | **15.3 KB** |
-| **Shared** (CJS)      | `import` from bundler | 15.3 KB |      4.0 KB |
-| **Server** (CJS)      | Node.js `require`     | 72.1 KB |     16.1 KB |
+| **Shared** (CJS)      | `import` from bundler | 15.8 KB |      4.1 KB |
+| **Server** (CJS)      | Node.js `require`     | 76.6 KB |     17.3 KB |
 
-A browser downloads the client IIFE + worker for a total of **~37.5 KB gzip** — that includes compression, binary framing, JSON Patch diffing, CRDTs, and the Web Worker transport.
+A browser downloads the client IIFE + worker for a total of **~37.6 KB gzip** — that includes compression, binary framing, JSON Patch diffing, CRDTs, and the Web Worker transport.
 
 ## How datasole compares
 

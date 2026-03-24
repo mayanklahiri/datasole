@@ -16,6 +16,10 @@ type RedisClient = {
   quit(): Promise<string>;
 };
 
+function isRedisConstructor(x: unknown): x is new (url: string) => RedisClient {
+  return typeof x === 'function';
+}
+
 export class RedisBackend implements StateBackend {
   private client: RedisClient | null = null;
   private subscriber: RedisClient | null = null;
@@ -31,7 +35,7 @@ export class RedisBackend implements StateBackend {
 
   async connect(): Promise<void> {
     const Redis = await this.loadRedis();
-    this.client = new Redis(this.url) as RedisClient;
+    this.client = new Redis(this.url);
     this.subscriber = this.client.duplicate();
     this.subscriber.on('message', (channel: unknown, message: unknown) => {
       const key = (channel as string).slice(this.keyPrefix.length);
@@ -44,13 +48,19 @@ export class RedisBackend implements StateBackend {
     });
   }
 
-  private async loadRedis(): Promise<new (url: string) => unknown> {
+  private async loadRedis(): Promise<new (url: string) => RedisClient> {
     try {
-      const mod = await import('ioredis');
-      return (mod.default ?? mod) as unknown as new (url: string) => unknown;
-    } catch {
+      const mod: unknown = await import('ioredis');
+      const Redis = (mod as { default?: unknown }).default ?? mod;
+      if (!isRedisConstructor(Redis)) {
+        throw new Error('RedisBackend: "ioredis" module has unexpected shape');
+      }
+      return Redis;
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message.startsWith('RedisBackend:')) throw e;
       throw new Error(
         'RedisBackend requires the "ioredis" package. Install it: npm install ioredis',
+        { cause: e },
       );
     }
   }

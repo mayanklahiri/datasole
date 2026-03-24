@@ -213,6 +213,15 @@ export interface DatasoleServerOptions {
   maxEventNameLength?: number;
 }
 
+/**
+ * Node.js entrypoint: HTTP upgrade → WebSocket → executor → typed primitives.
+ *
+ * @remarks
+ * **Layering (inside-out):** {@link ServerTransport} (bytes, static assets, rate limit) →
+ * {@link ConnectionExecutor} (isolation model) → opcode handlers → {@link RpcDispatcher},
+ * {@link EventBus}, {@link StateManager}, {@link CrdtManager}, etc. Primitives depend only on
+ * {@link StateBackend}, not on WebSocket or HTTP details.
+ */
 export class DatasoleServer<T extends DatasoleContract> {
   /** Typed RPC registry/dispatcher (`register`, dispatch lifecycle). */
   readonly rpc: RpcDispatcher<T>;

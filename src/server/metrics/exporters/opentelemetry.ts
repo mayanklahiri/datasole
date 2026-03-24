@@ -23,7 +23,17 @@ export class OpenTelemetryExporter implements MetricsExporter {
   async initialize(): Promise<void> {
     try {
       const otel = await import('@opentelemetry/api');
-      this.meter = otel.metrics.getMeter(this.meterName) as unknown as OtelMeter;
+      const apiMeter = otel.metrics.getMeter(this.meterName);
+      this.meter = {
+        createUpDownCounter(name, options) {
+          const counter = apiMeter.createUpDownCounter(name, options);
+          return {
+            add(value: number) {
+              counter.add(value);
+            },
+          };
+        },
+      };
     } catch {
       throw new Error(
         'OpenTelemetryExporter requires "@opentelemetry/api". ' +
