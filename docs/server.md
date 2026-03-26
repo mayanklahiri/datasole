@@ -36,7 +36,6 @@ interface DatasoleServerOptions {
   stateBackend?: StateBackend;
   backendConfig?: BackendConfig;
   rateLimiter?: RateLimiter;
-  perMessageDeflate?: boolean;
   executor?: Partial<ExecutorOptions>;
   rateLimit?: RateLimitConfig;
   session?: SessionOptions;
@@ -194,16 +193,9 @@ Implementations may expose optional **`connect()`** for async startup; it is inv
 
 ---
 
-#### `perMessageDeflate`
+#### WebSocket compression note
 
-Enable WebSocket per-message-deflate compression at the transport level.
-
-|             |           |
-| ----------- | --------- |
-| **Type**    | `boolean` |
-| **Default** | `false`   |
-
-Generally leave disabled. Datasole already compresses every frame >256 bytes using pako at the application level. Enabling per-message-deflate adds CPU cost per-connection and is known to cause memory issues at scale (the reason Socket.IO disabled it by default).
+**Per-message deflate** is not a `DatasoleServer` option: the transport always leaves it **off**. Outbound frames are compressed by datasole above the WebSocket layer when they exceed the internal threshold (see shared codec), which avoids the CPU and memory pitfalls of per-message-deflate at high connection counts.
 
 ---
 

@@ -6,20 +6,13 @@
  * - expose typed primitives under {@link DatasoleServer.primitives} and orchestration on {@link DatasoleServer.localServer}
  * - route all distributed behavior through a single backend abstraction
  */
-import { compress, deserialize, serialize } from '../shared/codec';
-import { COMPRESSION_THRESHOLD } from '../shared/constants';
 import type { DatasoleContract } from '../shared/contract';
-import type { CrdtOperation } from '../shared/crdt';
-import { encodeFrame, Opcode } from '../shared/protocol';
-import type { RpcRequest } from '../shared/types';
 
 import { createBackend } from './backends/factory';
 import { MemoryBackend } from './backends/memory';
 import type { BackendConfig, StateBackend } from './backends/types';
 import { DatasoleLocalServerFacade, DatasoleServerTransportFacade } from './datasole';
-import { AsyncExecutor } from './executor/async-executor';
 import { createExecutor } from './executor/factory';
-import type { FrameRouter } from './executor/frame-router';
 import type { ConnectionExecutor, ExecutorOptions } from './executor/types';
 import { MetricsCollector } from './metrics';
 import type { AuthHandlerFn } from './primitives/auth/auth-handler';
@@ -29,12 +22,10 @@ import { EventBus } from './primitives/events/event-bus';
 import { DefaultRateLimiter } from './primitives/rate-limit/default-limiter';
 import type { RateLimitConfig, RateLimiter } from './primitives/rate-limit/types';
 import { DEFAULT_RATE_LIMIT_RULE } from './primitives/rate-limit/types';
-import type { RpcContext } from './primitives/rpc/rpc-dispatcher';
 import { RpcDispatcher } from './primitives/rpc/rpc-dispatcher';
 import type { SessionOptions } from './primitives/state/session-manager';
 import { SessionManager } from './primitives/state/session-manager';
 import { StateManager } from './primitives/state/state-manager';
-import type { Connection } from './transport/connection';
 import { ServerTransport } from './transport/server-transport';
 
 /**
@@ -52,12 +43,16 @@ export interface DatasolePrimitives<T extends DatasoleContract> {
  * Configuration for {@link DatasoleServer}.
  *
  * All properties are optional — sensible defaults are applied for every field.
+ * WebSocket **per-message deflate** is not configurable: it stays disabled; frames use
+ * datasole’s application-level compression instead.
+ *
  * See the [Configuration Reference](https://datasole.dev/server.html#configuration-reference)
  * for exhaustive documentation of each option.
  */
 export interface DatasoleServerOptions {
   /**
-   * WebSocket endpoint path. Clients connect to `ws://<host><path>`.
+   * WebSocket endpoint path (and static asset base for the runtime worker bundle).
+   * Clients connect to `ws://<host><path>`.
    *
    * @default '/__ds'
    */
@@ -68,7 +63,8 @@ export interface DatasoleServerOptions {
    * Return `{ authenticated: true, userId, roles?, metadata? }` to allow,
    * or `{ authenticated: false }` to reject with HTTP 401.
    *
-   * If omitted, all connections are allowed (anonymous access).
+   * If omitted, all connections are allowed (anonymous access); `userId` defaults
+   * to a stable identifier derived from the connection.
    */
   authHandler?: AuthHandlerFn;
 
@@ -85,28 +81,21 @@ export interface DatasoleServerOptions {
   /**
    * Declarative backend configuration (alternative to `stateBackend`).
    * Useful when the config is loaded from a file or environment variable.
+   * If both `stateBackend` and `backendConfig` are set, construction throws.
    */
   backendConfig?: BackendConfig;
 
   /**
    * Pluggable frame rate limiter. Defaults to {@link DefaultRateLimiter} using
-   * the same `StateBackend` as the rest of the server.
+   * the same `StateBackend` as the rest of the server. Custom implementations
+   * may implement optional `connect()` / `destroy()` for lifecycle hooks invoked
+   * from {@link DatasoleServer.init} / {@link DatasoleServer.close}.
    */
   rateLimiter?: RateLimiter;
 
   /**
-   * Enable WebSocket per-message deflate compression at the transport level.
-   * This is **in addition to** datasole's own application-level pako compression.
-   * Generally leave disabled — the application-level compression is sufficient
-   * and avoids the CPU cost of per-message-deflate on high-connection servers.
-   *
-   * @default false
-   */
-  perMessageDeflate?: boolean | undefined;
-
-  /**
    * Connection executor configuration — controls how incoming frames are
-   * dispatched and processed.
+   * dispatched and processed (async default, optional worker/thread-pool models).
    *
    * @default { model: 'async' }
    */
@@ -138,7 +127,7 @@ export interface DatasoleServerOptions {
   maxConnections?: number;
 
   /**
-   * Maximum number of distinct CRDT keys the server will track.
+   * Maximum number of distinct CRDT keys the server will track per instance.
    *
    * @default 1000
    */
@@ -166,35 +155,29 @@ export class DatasoleServer<T extends DatasoleContract> {
   private readonly backend: StateBackend;
   private readonly rateLimiterImpl: RateLimiter;
   private readonly executor: ConnectionExecutor;
-  private readonly transportImpl: ServerTransport;
-  private readonly path: string;
-  private readonly authHandler: AuthHandlerFn;
-  private readonly perMessageDeflate: boolean | undefined;
-  private readonly maxConnections: number;
-  private readonly maxEventNameLength: number;
-  private readonly rateLimitConfig: RateLimitConfig;
 
   constructor(options: DatasoleServerOptions = {}) {
-    this.path = options.path ?? '/__ds';
-    this.authHandler = options.authHandler ?? createDefaultAuthHandler();
-    this.perMessageDeflate = options.perMessageDeflate;
-    this.maxConnections = options.maxConnections ?? 10_000;
-    this.maxEventNameLength = options.maxEventNameLength ?? 256;
+    const path = options.path ?? '/__ds';
+    const authHandler = options.authHandler ?? createDefaultAuthHandler();
+    const maxConnections = options.maxConnections ?? 10_000;
+    const maxEventNameLength = options.maxEventNameLength ?? 256;
 
     if (options.stateBackend != null && options.backendConfig != null) {
       throw new Error('DatasoleServer: pass either stateBackend or backendConfig, not both.');
     }
+    let backend: StateBackend;
     if (options.stateBackend != null) {
-      this.backend = options.stateBackend;
+      backend = options.stateBackend;
     } else if (options.backendConfig != null) {
-      this.backend = createBackend(options.backendConfig);
+      backend = createBackend(options.backendConfig);
     } else {
-      this.backend = new MemoryBackend();
+      backend = new MemoryBackend();
     }
+    this.backend = backend;
 
     this.rateLimiterImpl = options.rateLimiter ?? new DefaultRateLimiter(this.backend);
     this.metrics = new MetricsCollector();
-    this.rateLimitConfig = options.rateLimit ?? { defaultRule: DEFAULT_RATE_LIMIT_RULE };
+    const rateLimitConfig = options.rateLimit ?? { defaultRule: DEFAULT_RATE_LIMIT_RULE };
 
     const events = new EventBus<T>(this.backend);
     const state = new StateManager<T>(this.backend);
@@ -212,15 +195,20 @@ export class DatasoleServer<T extends DatasoleContract> {
     };
 
     this.executor = createExecutor(options.executor);
-    this.transportImpl = new ServerTransport(
-      this.metrics,
-      this.rateLimiterImpl,
-      this.rateLimitConfig,
-    );
+    const transportImpl = new ServerTransport(this.metrics, this.rateLimiterImpl, rateLimitConfig);
 
     this.executor.init({
-      sendRaw: (id, data) => this.transportImpl.sendRaw(id, data),
-      broadcastRaw: (data) => this.transportImpl.broadcastRaw(data),
+      sendRaw: (id, data) => transportImpl.sendRaw(id, data),
+      broadcastRaw: (data) => transportImpl.broadcastRaw(data),
+    });
+
+    this.transport = new DatasoleServerTransportFacade(this, {
+      transport: transportImpl,
+      executor: this.executor,
+      path,
+      maxConnections,
+      authHandler,
+      maxEventNameLength,
     });
 
     this.localServer = new DatasoleLocalServerFacade(
@@ -229,103 +217,11 @@ export class DatasoleServer<T extends DatasoleContract> {
       state,
       events,
       crdt,
-      this.maxEventNameLength,
+      maxEventNameLength,
       (opcode, data) => {
-        this.broadcastFrame(opcode, data);
+        this.transport.broadcastProtocolFrame(opcode, data);
       },
     );
-
-    this.transport = new DatasoleServerTransportFacade(this, {
-      transport: this.transportImpl,
-      executor: this.executor,
-      path: this.path,
-      perMessageDeflate: this.perMessageDeflate,
-      maxConnections: this.maxConnections,
-      authHandler: this.authHandler,
-    });
-
-    this.wireFrameHandlers();
-  }
-
-  private getFrameRouter(): FrameRouter | null {
-    if (this.executor instanceof AsyncExecutor) {
-      return this.executor.router;
-    }
-    if ('router' in this.executor) {
-      return (this.executor as { router: FrameRouter }).router;
-    }
-    return null;
-  }
-
-  private wireFrameHandlers(): void {
-    const router = this.getFrameRouter();
-    if (!router) return;
-
-    router.register(Opcode.RPC_REQ, async (conn, frame) => {
-      const request = deserialize<RpcRequest>(frame.payload);
-      const ctx: RpcContext = {
-        auth: conn.info.auth,
-        connectionId: conn.info.id,
-        connection: conn.context,
-      };
-      const response = await this.rpc.dispatch(request, ctx);
-      this.sendToConnection(conn, Opcode.RPC_RES, frame.correlationId, response);
-    });
-
-    router.register(Opcode.EVENT_C2S, async (conn, frame) => {
-      const payload = deserialize<{ event: string; data: unknown }>(frame.payload);
-      if (
-        typeof payload.event !== 'string' ||
-        payload.event.length === 0 ||
-        payload.event.length > this.maxEventNameLength
-      ) {
-        return;
-      }
-      this.primitives.events.emit(
-        payload.event as keyof T['events'] & string,
-        payload.data as never,
-      );
-    });
-
-    router.register(Opcode.PING, async (conn, frame) => {
-      this.sendToConnection(conn, Opcode.PONG, frame.correlationId, null);
-    });
-
-    router.register(Opcode.CRDT_OP, async (conn, frame) => {
-      const payload = deserialize<{ key: string; op: CrdtOperation }>(frame.payload);
-      const result = this.primitives.crdt.apply(conn.info.id, { ...payload.op, key: payload.key });
-      if (result) {
-        this.broadcastFrame(Opcode.CRDT_STATE, { key: result.key, state: result.state });
-      }
-    });
-  }
-
-  private sendToConnection(
-    conn: Connection,
-    opcode: Opcode,
-    correlationId: number,
-    data: unknown,
-  ): void {
-    try {
-      const payload = serialize(data ?? null);
-      let frameData = encodeFrame({ opcode, correlationId, payload });
-      if (frameData.length > COMPRESSION_THRESHOLD) {
-        frameData = compress(frameData);
-      }
-      void conn.send(frameData).catch(() => {});
-      this.metrics.increment('messagesOut');
-    } catch {
-      // Send failure — connection may be closing
-    }
-  }
-
-  private broadcastFrame(opcode: Opcode, data: unknown): void {
-    const payload = serialize(data);
-    let frameData = encodeFrame({ opcode, correlationId: 0, payload });
-    if (frameData.length > COMPRESSION_THRESHOLD) {
-      frameData = compress(frameData);
-    }
-    this.transportImpl.broadcastRaw(frameData);
   }
 
   /**
@@ -344,7 +240,7 @@ export class DatasoleServer<T extends DatasoleContract> {
 
   /** Gracefully shutdown transport, primitives, and backend-powered services. */
   async close(): Promise<void> {
-    await this.transportImpl.close();
+    await this.transport.closeTransport();
     await this.primitives.sessions.destroy();
     await this.executor.shutdown();
     this.localServer.closeAllDataChannels();

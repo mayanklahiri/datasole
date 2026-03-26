@@ -12,20 +12,21 @@ Use this page as the single configuration map for both `DatasoleServer` and `Dat
 
 All fields are optional in `new DatasoleServer(options)`.
 
-| Option               | Type                       | Default                                                  | Notes                                              |
-| -------------------- | -------------------------- | -------------------------------------------------------- | -------------------------------------------------- |
-| `path`               | `string`                   | `'/__ds'`                                                | WebSocket/runtime asset base path                  |
-| `authHandler`        | `AuthHandlerFn`            | allow-all                                                | Upgrade authentication hook                        |
-| `stateBackend`       | `StateBackend`             | `new MemoryBackend()`                                    | Shared backend for all server primitives           |
-| `backendConfig`      | `BackendConfig`            | `undefined`                                              | Declarative backend config                         |
-| `rateLimiter`        | `RateLimiter`              | `new DefaultRateLimiter(backend)`                        | Frame-level limiter; optional injection            |
-| `perMessageDeflate`  | `boolean`                  | `false`                                                  | Usually keep disabled; datasole already compresses |
-| `executor`           | `Partial<ExecutorOptions>` | `{ model: 'async' }`                                     | Async/thread/thread-pool execution                 |
-| `rateLimit`          | `RateLimitConfig`          | `{ defaultRule: { windowMs: 60000, maxRequests: 100 } }` | Per-connection frame limiting                      |
-| `session`            | `SessionOptions`           | `{ flushThreshold: 10, flushIntervalMs: 5000 }`          | Session persistence tuning                         |
-| `maxConnections`     | `number`                   | `10000`                                                  | Hard cap for concurrent WS clients                 |
-| `maxCrdtKeys`        | `number`                   | `1000`                                                   | Cap for tracked CRDT keys                          |
-| `maxEventNameLength` | `number`                   | `256`                                                    | Input guardrail for event names                    |
+WebSocket per-message deflate is **not** a server option: it remains **disabled**; compression uses datasole’s application-level framing only.
+
+| Option               | Type                       | Default                                                  | Notes                                    |
+| -------------------- | -------------------------- | -------------------------------------------------------- | ---------------------------------------- |
+| `path`               | `string`                   | `'/__ds'`                                                | WebSocket/runtime asset base path        |
+| `authHandler`        | `AuthHandlerFn`            | allow-all                                                | Upgrade authentication hook              |
+| `stateBackend`       | `StateBackend`             | `new MemoryBackend()`                                    | Shared backend for all server primitives |
+| `backendConfig`      | `BackendConfig`            | `undefined`                                              | Declarative backend config               |
+| `rateLimiter`        | `RateLimiter`              | `new DefaultRateLimiter(backend)`                        | Frame-level limiter; optional injection  |
+| `executor`           | `Partial<ExecutorOptions>` | `{ model: 'async' }`                                     | Async/thread/thread-pool execution       |
+| `rateLimit`          | `RateLimitConfig`          | `{ defaultRule: { windowMs: 60000, maxRequests: 100 } }` | Per-connection frame limiting            |
+| `session`            | `SessionOptions`           | `{ flushThreshold: 10, flushIntervalMs: 5000 }`          | Session persistence tuning               |
+| `maxConnections`     | `number`                   | `10000`                                                  | Hard cap for concurrent WS clients       |
+| `maxCrdtKeys`        | `number`                   | `1000`                                                   | Cap for tracked CRDT keys                |
+| `maxEventNameLength` | `number`                   | `256`                                                    | Input guardrail for event names          |
 
 See full server examples in [Server API](server.md#configuration-reference).
 
