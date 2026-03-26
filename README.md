@@ -108,7 +108,7 @@ import { DatasoleServer } from 'datasole/server';
 
 const ds = new DatasoleServer();
 const http = createServer();
-ds.attach(http);
+ds.transport.attach(http);
 http.listen(3000);
 ```
 
@@ -143,7 +143,7 @@ const user = await ds.rpc('getUser', { id: 42 });
 ```typescript
 // server
 setInterval(() => {
-  ds.broadcast('price', { AAPL: 187.42, GOOG: 141.8 });
+  ds.localServer.broadcast('price', { AAPL: 187.42, GOOG: 141.8 });
 }, 1000);
 
 // client
@@ -158,7 +158,7 @@ The most common pattern. The server mutates state, datasole diffs it, and all cl
 // server
 ds.rpc.register('addTodo', async ({ text }) => {
   todos.push({ id: Date.now(), text, done: false });
-  await ds.setState('todos', todos);
+  await ds.localServer.setState('todos', todos);
   return { ok: true };
 });
 ```
@@ -189,7 +189,7 @@ function TodoList() {
 ds.emit('analytics', { action: 'click', target: 'buy-button' });
 
 // server
-ds.events.on('analytics', ({ data }) => {
+ds.primitives.events.on('analytics', ({ data }) => {
   telemetry.track(data);
 });
 ```
@@ -215,13 +215,13 @@ counter.increment(1);
 ### Sync channels — control when diffs flush
 
 ```typescript
-ds.createSyncChannel({
+ds.localServer.createSyncChannel({
   key: 'cursor-positions',
   flush: 'debounced',
   debounceMs: 50,
 });
 
-ds.createSyncChannel({
+ds.localServer.createSyncChannel({
   key: 'trade-executions',
   flush: 'immediate',
 });

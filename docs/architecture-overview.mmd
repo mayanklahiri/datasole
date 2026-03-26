@@ -24,7 +24,7 @@ flowchart LR
         StaticAssets["StaticAssetServer (IIFE + worker runtime)"]
         UpgradeFlow["WsServer upgrade/auth"]
         ConnRegistry["Connection registry + metrics"]
-        RateLimitGate["BackendRateLimiter pre-dispatch gate"]
+        RateLimitGate["DefaultRateLimiter pre-dispatch gate"]
         TransportCodec["decompress + decode envelope"]
     end
 

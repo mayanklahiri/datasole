@@ -10,10 +10,10 @@ description: Metrics collector API and exporter configuration.
 
 ## MetricsCollector
 
-Accumulates internal counters: connections, messages in/out, bytes in/out, RPC calls/errors, state patches, uptime.
+Accumulates internal counters: connections, messages in/out, bytes in/out, RPC calls/errors, state patches, uptime. Access via **`ds.metrics`** on the server.
 
 ```typescript
-const snapshot = ds.getMetrics().snapshot();
+const snapshot = ds.metrics.snapshot();
 // {
 //   connections: 42,
 //   messagesIn: 1234,
@@ -31,20 +31,18 @@ const snapshot = ds.getMetrics().snapshot();
 
 ### PrometheusExporter
 
-Outputs Prometheus text exposition format. Expose as an HTTP endpoint:
+Outputs Prometheus text exposition format. Expose as an HTTP endpoint in **your** app (datasole does not register routes):
 
 ```typescript
 import express from 'express';
 import { DatasoleServer, PrometheusExporter } from 'datasole/server';
 
-const ds = new DatasoleServer({
-  metricsExporter: new PrometheusExporter('datasole'),
-});
+const ds = new DatasoleServer<AppContract>();
+const exporter = new PrometheusExporter('datasole');
 
 const app = express();
 app.get('/metrics', async (_req, res) => {
-  const exporter = new PrometheusExporter('datasole');
-  const text = await exporter.export(ds.getMetrics().snapshot());
+  const text = await exporter.export(ds.metrics.snapshot());
   res.type('text/plain').send(text);
 });
 ```
@@ -65,7 +63,7 @@ datasole_uptime 3600000
 
 ### OpenTelemetryExporter
 
-Bridges to the OpenTelemetry Metrics SDK. Requires `@opentelemetry/api` peer dependency. You must call `initialize()` before the first export to load the OpenTelemetry API dynamically.
+Bridges to the OpenTelemetry Metrics SDK. Requires `@opentelemetry/api` peer dependency. You must call **`initialize()`** on the exporter before the first export to load the OpenTelemetry API dynamically.
 
 ```typescript
 import { OpenTelemetryExporter } from 'datasole/server';
@@ -73,9 +71,7 @@ import { OpenTelemetryExporter } from 'datasole/server';
 const exporter = new OpenTelemetryExporter();
 await exporter.initialize();
 
-const ds = new DatasoleServer({
-  metricsExporter: exporter,
-});
+const text = await exporter.export(ds.metrics.snapshot());
 ```
 
 ## Custom Exporters

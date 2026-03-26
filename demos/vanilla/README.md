@@ -8,11 +8,11 @@ This demo proves that datasole works without any build tooling or UI framework �
 
 Three panels demonstrate datasole's core data-flow patterns:
 
-| Panel          | Pattern                       | API Used                                                 |
-| -------------- | ----------------------------- | -------------------------------------------------------- |
-| Server Metrics | Server → client broadcast     | `ds.broadcast(...)` + `ds.on('system-metrics', handler)` |
-| Chat Room      | Client ↔ server state sync    | `ds.subscribeState()` + `ds.emit()`                      |
-| RPC Random     | Client → server request/reply | `ds.rpc('randomNumber', { min, max })`                   |
+| Panel          | Pattern                       | API Used                                                             |
+| -------------- | ----------------------------- | -------------------------------------------------------------------- |
+| Server Metrics | Server → client broadcast     | `ds.localServer.broadcast(...)` + `ds.on('system-metrics', handler)` |
+| Chat Room      | Client ↔ server state sync    | `ds.subscribeState()` + `ds.emit()`                                  |
+| RPC Random     | Client → server request/reply | `ds.rpc('randomNumber', { min, max })`                               |
 
 All communication runs over a single WebSocket via a Web Worker (off the main thread).
 
@@ -65,17 +65,17 @@ import { DatasoleServer } from 'datasole/server';
 const ds = new DatasoleServer();
 
 // Register event handlers, RPC methods, state, and metrics broadcast
-ds.events.on('chat:send', (payload) => {
+ds.primitives.events.on('chat:send', (payload) => {
   /* ... */
 });
 ds.rpc.register('randomNumber', async ({ min, max }) => {
   /* ... */
 });
-await ds.setState('chat:messages', chatHistory);
+await ds.localServer.setState('chat:messages', chatHistory);
 
 // Attach to the raw Node.js HTTP server
 const httpServer = createServer(serveStatic);
-ds.attach(httpServer);
+ds.transport.attach(httpServer);
 
 httpServer.listen(4000);
 ```
@@ -83,7 +83,7 @@ httpServer.listen(4000);
 Key points:
 
 - `DatasoleServer` defaults to `thread-pool` concurrency (4 Node.js `worker_threads`)
-- `ds.attach(httpServer)` upgrades WebSocket connections on the `/__ds` path
+- `ds.transport.attach(httpServer)` upgrades WebSocket connections on the `/__ds` path
 - DatasoleServer auto-serves runtime assets:
   - `/__ds/datasole.iife.min.js` — client IIFE
   - `/__ds/datasole-worker.iife.min.js` — worker IIFE

@@ -37,7 +37,7 @@ flowchart LR
         StaticAssets["StaticAssetServer (IIFE + worker runtime)"]
         UpgradeFlow["WsServer upgrade/auth"]
         ConnRegistry["Connection registry + metrics"]
-        RateLimitGate["BackendRateLimiter pre-dispatch gate"]
+        RateLimitGate["DefaultRateLimiter pre-dispatch gate"]
         TransportCodec["decompress + decode envelope"]
     end
 
@@ -178,14 +178,14 @@ flowchart TB
             end
             subgraph Primitives["Primitives (all backend-powered)"]
                 RPCd["ds.rpc — RpcDispatcher"]
-                EB["ds.events — EventBus"]
-                SM["ds.state — StateManager"]
-                CRDT["ds.crdt — CrdtManager"]
-                Sess["ds.sessions — SessionManager"]
-                Sync["SyncChannel (internal via ds.createSyncChannel)"]
+                EB["ds.primitives.events — EventBus"]
+                SM["ds.primitives.state — StateManager"]
+                CRDT["ds.primitives.crdt — CrdtManager"]
+                Sess["ds.primitives.sessions — SessionManager"]
+                Sync["SyncChannel (via ds.localServer.createSyncChannel)"]
                 Auth["AuthHandler (configured via DatasoleServerOptions)"]
-                RLim["ds.rateLimiter — BackendRateLimiter"]
-                DF["ChannelManager (internal via ds.createDataChannel)"]
+                RLim["ds.primitives.rateLimiter — DefaultRateLimiter"]
+                DF["ChannelManager (internal via ds.localServer.createDataChannel)"]
                 Met["ds.metrics"]
             end
             Transport --> Executor --> Primitives

@@ -322,7 +322,7 @@ describe('DatasoleClient — connect to live server', () => {
 
   it('emits event that reaches server', async () => {
     const received: unknown[] = [];
-    srv.ds.events.on(TestEvent.TestEvent, (payload) => received.push(payload));
+    srv.ds.primitives.events.on(TestEvent.TestEvent, (payload) => received.push(payload));
 
     const client = new DatasoleClient<TestContract>({ url: srv.url, reconnect: false });
     await client.connect();
@@ -341,7 +341,7 @@ describe('DatasoleClient — connect to live server', () => {
     await client.connect();
     await tick(20);
 
-    srv.ds.broadcast(TestEvent.ServerNotify, { msg: 'broadcast-test' });
+    srv.ds.localServer.broadcast(TestEvent.ServerNotify, { msg: 'broadcast-test' });
     await tick(100);
 
     expect(received.length).toBe(1);
@@ -356,8 +356,8 @@ describe('DatasoleClient — connect to live server', () => {
     await client.connect();
     await tick(20);
 
-    await srv.ds.setState(TestState.Dashboard, { visitors: 0 });
-    await srv.ds.setState(TestState.Dashboard, { visitors: 42 });
+    await srv.ds.localServer.setState(TestState.Dashboard, { visitors: 0 });
+    await srv.ds.localServer.setState(TestState.Dashboard, { visitors: 42 });
     await tick(100);
 
     expect(states.length).toBeGreaterThanOrEqual(1);

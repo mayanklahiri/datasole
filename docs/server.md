@@ -16,9 +16,12 @@ import { DatasoleServer } from 'datasole/server';
 
 const ds = new DatasoleServer<AppContract>();
 const http = createServer();
-ds.attach(http);
+await ds.init();
+ds.transport.attach(http);
 http.listen(3000);
 ```
+
+(`await ds.init()` connects distributed backends when needed; it is a no-op for `MemoryBackend`.)
 
 ## Configuration Reference
 
@@ -32,7 +35,7 @@ interface DatasoleServerOptions {
   authHandler?: AuthHandlerFn;
   stateBackend?: StateBackend;
   backendConfig?: BackendConfig;
-  metricsExporter?: MetricsExporter;
+  rateLimiter?: RateLimiter;
   perMessageDeflate?: boolean;
   executor?: Partial<ExecutorOptions>;
   rateLimit?: RateLimitConfig;
@@ -157,7 +160,7 @@ Declarative backend configuration — an alternative to `stateBackend`. Useful w
 | **Type**    | `BackendConfig`                   |
 | **Default** | `undefined` (uses `stateBackend`) |
 
-If both `stateBackend` and `backendConfig` are provided, `stateBackend` takes precedence.
+If both `stateBackend` and `backendConfig` are provided, construction throws — pass only one.
 
 ```typescript
 interface BackendConfig {
@@ -178,29 +181,16 @@ const ds = new DatasoleServer<AppContract>({
 
 ---
 
-#### `metricsExporter`
+#### `rateLimiter`
 
-Metrics sink for observability systems. If omitted, metrics are collected in-memory only (accessible via `ds.metrics.snapshot()`).
+Pluggable frame rate limiter. If omitted, the server uses **`DefaultRateLimiter`** with the same **`StateBackend`** as the rest of the server.
 
-|             |                              |
-| ----------- | ---------------------------- |
-| **Type**    | `MetricsExporter`            |
-| **Default** | `undefined` (in-memory only) |
+|             |                                   |
+| ----------- | --------------------------------- |
+| **Type**    | `RateLimiter`                     |
+| **Default** | `new DefaultRateLimiter(backend)` |
 
-**Built-in exporters:**
-
-| Exporter                | Import            | Description                    |
-| ----------------------- | ----------------- | ------------------------------ |
-| `PrometheusExporter`    | `datasole/server` | Exposes `/metrics` endpoint    |
-| `OpenTelemetryExporter` | `datasole/server` | Integrates with OTel collector |
-
-```typescript
-import { PrometheusExporter } from 'datasole/server';
-
-const ds = new DatasoleServer<AppContract>({
-  metricsExporter: new PrometheusExporter(),
-});
-```
+Implementations may expose optional **`connect()`** for async startup; it is invoked from **`await ds.init()`**.
 
 ---
 
@@ -329,12 +319,12 @@ interface SessionOptions {
 }
 ```
 
-| Field                | Type      | Default     | Description                                      |
-| -------------------- | --------- | ----------- | ------------------------------------------------ |
-| `flushThreshold`     | `number`  | `10`        | Number of mutations before auto-flush to backend |
-| `flushIntervalMs`    | `number`  | `5000`      | Timer-based flush interval (ms)                  |
-| `ttlMs`              | `number`  | `undefined` | Session expiry (ms). No expiry if omitted        |
-| `enableChangeStream` | `boolean` | `false`     | Emit change events via `ds.sessions.onChange()`  |
+| Field                | Type      | Default     | Description                                                |
+| -------------------- | --------- | ----------- | ---------------------------------------------------------- |
+| `flushThreshold`     | `number`  | `10`        | Number of mutations before auto-flush to backend           |
+| `flushIntervalMs`    | `number`  | `5000`      | Timer-based flush interval (ms)                            |
+| `ttlMs`              | `number`  | `undefined` | Session expiry (ms). No expiry if omitted                  |
+| `enableChangeStream` | `boolean` | `false`     | Emit change events via `ds.primitives.sessions.onChange()` |
 
 ```typescript
 const ds = new DatasoleServer<AppContract>({
@@ -386,7 +376,7 @@ Maximum allowed length (characters) for client-to-server event names. Events exc
 
 ```typescript
 import { createServer } from 'http';
-import { DatasoleServer, RedisBackend, PrometheusExporter } from 'datasole/server';
+import { DatasoleServer, RedisBackend } from 'datasole/server';
 
 const ds = new DatasoleServer<AppContract>({
   path: '/__ds',
@@ -399,7 +389,6 @@ const ds = new DatasoleServer<AppContract>({
   },
 
   stateBackend: new RedisBackend({ url: process.env.REDIS_URL }),
-  metricsExporter: new PrometheusExporter(),
 
   executor: { model: 'thread-pool', poolSize: 8 },
 
@@ -420,7 +409,8 @@ const ds = new DatasoleServer<AppContract>({
 });
 
 const http = createServer();
-ds.attach(http);
+await ds.init();
+ds.transport.attach(http);
 http.listen(3000);
 ```
 
@@ -507,11 +497,11 @@ pm2 start dist/server.js -i max
 import { createServer } from 'http';
 
 const http = createServer();
-ds.attach(http);
+ds.transport.attach(http);
 http.listen(3000);
 ```
 
-`ds.attach()` hooks into the HTTP server's `upgrade` event to handle WebSocket connections. Works with any Node.js HTTP server — Express, Koa, Fastify, NestJS, or plain `http.createServer()`.
+`ds.transport.attach()` hooks into the HTTP server's `upgrade` event to handle WebSocket connections. Works with any Node.js HTTP server — Express, Koa, Fastify, NestJS, or plain `http.createServer()`.
 
 ---
 
@@ -540,10 +530,10 @@ The most powerful pattern: mutate a data structure on the server, and every conn
 ```typescript
 import { StateKey } from './shared/contract';
 
-await ds.setState(StateKey.Dashboard, { visitors: 0, active: 0 });
+await ds.localServer.setState(StateKey.Dashboard, { visitors: 0, active: 0 });
 
 setInterval(async () => {
-  await ds.setState(StateKey.Dashboard, {
+  await ds.localServer.setState(StateKey.Dashboard, {
     visitors: getVisitorCount(),
     active: getActiveCount(),
   });
@@ -559,13 +549,13 @@ Clients subscribe with `client.subscribeState(StateKey.Dashboard, handler)` — 
 ```typescript
 import { Event } from './shared/contract';
 
-ds.events.on(Event.ChatMessage, ({ data }) => {
+ds.primitives.events.on(Event.ChatMessage, ({ data }) => {
   console.log('Received:', data.text);
 });
 
-ds.broadcast(Event.Notification, { title: 'Server restarting in 5 minutes' });
+ds.localServer.broadcast(Event.Notification, { title: 'Server restarting in 5 minutes' });
 
-ds.events.off(Event.ChatMessage, handler);
+ds.primitives.events.off(Event.ChatMessage, handler);
 ```
 
 > **Tutorial:** [Server Events — A Live Stock Ticker](tutorials.md#3-server-events--a-live-stock-ticker)
@@ -575,21 +565,21 @@ ds.events.off(Event.ChatMessage, handler);
 Fine-grained control over when state updates are flushed to clients.
 
 ```typescript
-const alerts = ds.createSyncChannel({
+const alerts = ds.localServer.createSyncChannel({
   key: 'alerts',
   direction: 'server-to-client',
   mode: 'json-patch',
   flush: { flushStrategy: 'immediate' },
 });
 
-const metrics = ds.createSyncChannel({
+const metrics = ds.localServer.createSyncChannel({
   key: 'metrics',
   direction: 'server-to-client',
   mode: 'json-patch',
   flush: { flushStrategy: 'batched', batchIntervalMs: 200, maxBatchSize: 50 },
 });
 
-const form = ds.createSyncChannel({
+const form = ds.localServer.createSyncChannel({
   key: 'form',
   direction: 'client-to-server',
   mode: 'json-patch',
@@ -604,12 +594,12 @@ const form = ds.createSyncChannel({
 Per-user state that survives disconnections. Auto-flushes to the state backend.
 
 ```typescript
-const state = await ds.sessions.restore(ctx.connection);
+const state = await ds.primitives.sessions.restore(ctx.connection);
 
-ds.sessions.set('user-123', 'lastPage', '/dashboard');
-const page = ds.sessions.get<string>('user-123', 'lastPage');
+ds.primitives.sessions.set('user-123', 'lastPage', '/dashboard');
+const page = ds.primitives.sessions.get<string>('user-123', 'lastPage');
 
-ds.sessions.onChange((userId, key, value, version) => {
+ds.primitives.sessions.onChange((userId, key, value, version) => {
   console.log(`${userId} → ${key} = ${JSON.stringify(value)} (v${version})`);
 });
 ```
@@ -618,7 +608,7 @@ ds.sessions.onChange((userId, key, value, version) => {
 
 ## Rate Limiting
 
-Frame-level rate limiting on persistent WebSocket connections. Rate limiting uses a `BackendRateLimiter` backed by the configured `StateBackend`, so it is automatically distributed when using Redis or Postgres.
+Frame-level rate limiting on persistent WebSocket connections. Rate limiting uses a `DefaultRateLimiter` backed by the configured `StateBackend`, so it is automatically distributed when using Redis or Postgres.
 
 ```typescript
 const ds = new DatasoleServer<AppContract>({
@@ -679,7 +669,8 @@ import { DatasoleServer } from 'datasole/server';
 const app = express();
 const httpServer = createServer(app);
 const ds = new DatasoleServer<AppContract>();
-ds.attach(httpServer);
+await ds.init();
+ds.transport.attach(httpServer);
 httpServer.listen(3000);
 ```
 
@@ -689,7 +680,8 @@ httpServer.listen(3000);
 import { DatasoleServer } from 'datasole/server';
 
 const ds = new DatasoleServer<AppContract>();
-ds.attach(app.getHttpServer());
+await ds.init();
+ds.transport.attach(app.getHttpServer());
 ```
 
 ### Native HTTP
@@ -699,32 +691,23 @@ import { createServer } from 'http';
 import { DatasoleServer } from 'datasole/server';
 
 const server = createServer();
-new DatasoleServer<AppContract>().attach(server);
+const ds = new DatasoleServer<AppContract>();
+await ds.init();
+ds.transport.attach(server);
 server.listen(3000);
 ```
 
-## Full Method Reference
+## API surface
 
-| Method                                      | Description                                                             |
-| ------------------------------------------- | ----------------------------------------------------------------------- |
-| `attach(httpServer, adapter?)`              | Attach to HTTP server                                                   |
-| `setState<T>(key, value)`                   | Set state, diff, and broadcast patches. Returns `Promise<StatePatch[]>` |
-| `getState<T>(key)`                          | Get current state. Returns `Promise<T \| undefined>`                    |
-| `createSyncChannel<T>(config)`              | Create a sync channel with configurable flush                           |
-| `getSyncChannel(key)`                       | Get existing sync channel                                               |
-| `createDataChannel<T>(config)`              | Create a data channel for bidirectional data flow                       |
-| `getDataChannel(key)`                       | Get existing data channel                                               |
-| `sessions.snapshot(ctx)`                    | Snapshot session from persistence (`ctx` is `ConnectionContext`)        |
-| `sessions.restore(ctx)`                     | Restore session on reconnect (`ctx` is `ConnectionContext`)             |
-| `sessions.set(userId, key, value)`          | Set session value (auto-flushes)                                        |
-| `sessions.get<T>(userId, key)`              | Get session value                                                       |
-| `sessions.onChange(handler)`                | Listen for session mutations. Returns unsubscribe `() => void`          |
-| `rpc.register<TReq, TRes>(method, handler)` | Register typed RPC handler                                              |
-| `events.on<T>(event, handler)`              | Listen for client events                                                |
-| `events.off<T>(event, handler)`             | Unsubscribe                                                             |
-| `broadcast(event, data)`                    | Send event to all clients                                               |
-| `crdt.registerByType(key, crdt)`            | Register a CRDT instance by key                                         |
-| `crdt.getState(key)`                        | Get current CRDT state for a key                                        |
-| `getConnectionCount()`                      | Number of currently connected clients                                   |
-| `metrics.snapshot()`                        | Get current metrics snapshot                                            |
-| `close()`                                   | Flush sessions, shut down workers, close. Returns `Promise<void>`       |
+| Member                                                                      | Role                                                                      |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `await ds.init()`                                                           | Connect `StateBackend` / optional `RateLimiter` before `transport.attach` |
+| `ds.transport.attach(httpServer, adapter?)`                                 | WebSocket upgrade + static client/worker assets                           |
+| `ds.transport.getConnectionCount()`                                         | Connected WebSocket clients                                               |
+| `ds.localServer.setState` / `getState` / `broadcast` / sync + data channels | Server→client orchestration                                               |
+| `ds.rpc`                                                                    | Typed RPC registry                                                        |
+| `ds.metrics`                                                                | In-process counters (`snapshot()`, etc.)                                  |
+| `ds.primitives.state` / `events` / `crdt` / `sessions` / `rateLimiter`      | Direct primitive access                                                   |
+| `ds.close()`                                                                | Graceful shutdown                                                         |
+
+Facades expose `readonly server: DatasoleServer<T>` for sibling access from nested code.

@@ -24,7 +24,7 @@ test.describe('Events', () => {
 
     await page.waitForTimeout(200);
 
-    harness.getDatasoleServer().broadcast('server-pong', { echo: 'hello from server' });
+    harness.getDatasoleServer().localServer.broadcast('server-pong', { echo: 'hello from server' });
 
     await page.waitForFunction(() => window.__events.length > 0, null, { timeout: 5000 });
 

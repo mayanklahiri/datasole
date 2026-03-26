@@ -38,9 +38,9 @@ describe('contract type inference', () => {
     expectTypeOf<Parameters<DatasoleClient<TestContract>['rpc']>[0]>().toEqualTypeOf<
       keyof TestContract['rpc'] & string
     >();
-    expectTypeOf<Parameters<DatasoleServer<TestContract>['broadcast']>[0]>().toEqualTypeOf<
-      keyof TestContract['events'] & string
-    >();
+    expectTypeOf<
+      Parameters<DatasoleServer<TestContract>['localServer']['broadcast']>[0]
+    >().toEqualTypeOf<keyof TestContract['events'] & string>();
   });
 
   it('exposes nominal contract key aliases', () => {

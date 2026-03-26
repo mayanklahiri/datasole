@@ -114,8 +114,8 @@ test.describe('Security', () => {
       maxConnections: 2,
     });
     ds.rpc.register(TestRpc.Ping, async () => 'pong');
-    await ds.initialize();
-    ds.attach(httpServer);
+    await ds.init();
+    ds.transport.attach(httpServer);
 
     await new Promise<void>((resolve) => httpServer.listen(0, resolve));
     const addr = httpServer.address();
@@ -147,8 +147,8 @@ test.describe('Security', () => {
         throw new Error('Auth service down');
       },
     });
-    await ds.initialize();
-    ds.attach(httpServer);
+    await ds.init();
+    ds.transport.attach(httpServer);
 
     await new Promise<void>((resolve) => httpServer.listen(0, resolve));
     const addr = httpServer.address();

@@ -77,7 +77,7 @@ import type { AppContract } from './shared/contract.js';
 
 const ds = new DatasoleServer<AppContract>();
 const http = createServer();
-ds.attach(http);
+ds.transport.attach(http);
 http.listen(3000, () => console.log('listening on :3000'));
 ```
 
@@ -138,7 +138,7 @@ ds.rpc.register(RpcMethod.Add, async (params) => {
 });
 
 const http = createServer();
-ds.attach(http);
+ds.transport.attach(http);
 http.listen(3000);
 ```
 
@@ -237,11 +237,11 @@ import { Event, type AppContract } from './shared/contract.js';
 
 const ds = new DatasoleServer<AppContract>();
 const http = createServer();
-ds.attach(http);
+ds.transport.attach(http);
 http.listen(3000);
 
 setInterval(() => {
-  ds.broadcast(Event.Price, {
+  ds.localServer.broadcast(Event.Price, {
     symbol: 'TSLA',
     price: 250 + Math.random() * 10,
     timestamp: Date.now(),
@@ -339,14 +339,14 @@ import { StateKey, type AppContract } from './shared/contract.js';
 
 const ds = new DatasoleServer<AppContract>();
 const http = createServer();
-ds.attach(http);
+ds.transport.attach(http);
 http.listen(3000);
 
 let visitors = 0;
 
 setInterval(async () => {
   visitors += Math.floor(Math.random() * 5);
-  await ds.setState(StateKey.Dashboard, {
+  await ds.localServer.setState(StateKey.Dashboard, {
     visitors,
     activeNow: Math.floor(Math.random() * 100),
     serverUptime: process.uptime(),
@@ -491,11 +491,11 @@ const ds = new DatasoleServer<AppContract>({
 });
 
 const http = createServer(app);
-ds.attach(http);
+ds.transport.attach(http);
 
 const chatHistory: ChatMessage[] = [];
 
-ds.events.on(Event.ChatSend, ({ data }) => {
+ds.primitives.events.on(Event.ChatSend, ({ data }) => {
   const msg: ChatMessage = {
     id: crypto.randomUUID(),
     text: data.text,
@@ -504,8 +504,8 @@ ds.events.on(Event.ChatSend, ({ data }) => {
   };
   chatHistory.push(msg);
   if (chatHistory.length > 50) chatHistory.shift();
-  void ds.setState(StateKey.ChatMessages, [...chatHistory]);
-  ds.broadcast(Event.ChatMessage, msg);
+  void ds.localServer.setState(StateKey.ChatMessages, [...chatHistory]);
+  ds.localServer.broadcast(Event.ChatMessage, msg);
 });
 
 http.listen(3000);
@@ -637,14 +637,14 @@ import { Event, RpcMethod, type AppContract } from './shared/contract.js';
 
 const ds = new DatasoleServer<AppContract>();
 const http = createServer();
-ds.attach(http);
+ds.transport.attach(http);
 http.listen(3000);
 
 const counter = new PNCounter('server');
 
-ds.events.on(Event.CrdtOp, ({ data: op }) => {
+ds.primitives.events.on(Event.CrdtOp, ({ data: op }) => {
   counter.apply(op);
-  ds.broadcast(Event.CrdtState, counter.state());
+  ds.localServer.broadcast(Event.CrdtState, counter.state());
 });
 
 ds.rpc.register(RpcMethod.CrdtGetState, async () => counter.state());
@@ -749,24 +749,24 @@ import { SyncChannelKey, type AppContract } from './shared/contract.js';
 
 const ds = new DatasoleServer<AppContract>();
 const http = createServer();
-ds.attach(http);
+ds.transport.attach(http);
 http.listen(3000);
 
-const alerts = ds.createSyncChannel({
+const alerts = ds.localServer.createSyncChannel({
   key: SyncChannelKey.Alerts,
   direction: 'server-to-client',
   mode: 'json-patch',
   flush: { flushStrategy: 'immediate' },
 });
 
-const metrics = ds.createSyncChannel({
+const metrics = ds.localServer.createSyncChannel({
   key: SyncChannelKey.Metrics,
   direction: 'server-to-client',
   mode: 'json-patch',
   flush: { flushStrategy: 'batched', batchIntervalMs: 200 },
 });
 
-const search = ds.createSyncChannel({
+const search = ds.localServer.createSyncChannel({
   key: SyncChannelKey.SearchResults,
   direction: 'server-to-client',
   mode: 'json-patch',
@@ -844,21 +844,21 @@ const ds = new DatasoleServer<AppContract>({
 });
 
 const http = createServer(app);
-ds.attach(http);
+ds.transport.attach(http);
 
 ds.rpc.register(RpcMethod.SaveProgress, async (params, ctx) => {
-  ds.sessions.set(ctx.connection.userId!, 'level', params.level);
-  ds.sessions.set(ctx.connection.userId!, 'score', params.score);
+  ds.primitives.sessions.set(ctx.connection.userId!, 'level', params.level);
+  ds.primitives.sessions.set(ctx.connection.userId!, 'score', params.score);
   return { ok: true };
 });
 
 ds.rpc.register(RpcMethod.GetProgress, async (_params, ctx) => {
-  const level = ds.sessions.get<number>(ctx.connection.userId!, 'level') ?? 1;
-  const score = ds.sessions.get<number>(ctx.connection.userId!, 'score') ?? 0;
+  const level = ds.primitives.sessions.get<number>(ctx.connection.userId!, 'level') ?? 1;
+  const score = ds.primitives.sessions.get<number>(ctx.connection.userId!, 'score') ?? 0;
   return { level, score };
 });
 
-ds.sessions.onChange((userId, key, value, version) => {
+ds.primitives.sessions.onChange((userId, key, value, version) => {
   console.log(`${userId} changed ${key} to ${value} (v${version})`);
 });
 
@@ -982,12 +982,11 @@ const ds = new DatasoleServer<AppContract>({
   },
 
   session: { flushThreshold: 10, flushIntervalMs: 5000 },
-
-  metricsExporter: new PrometheusExporter('datasole'),
 });
 
 const http = createServer(app);
-ds.attach(http);
+await ds.init();
+ds.transport.attach(http);
 
 app.get('/metrics', async (_req, res) => {
   const exporter = new PrometheusExporter('datasole');
@@ -1133,7 +1132,7 @@ const ds = new DatasoleServer<AppContract>({
 });
 
 const http = createServer(app);
-ds.attach(http);
+ds.transport.attach(http);
 
 const board: Board = {
   columns: ['todo', 'in-progress', 'done'],
@@ -1141,7 +1140,7 @@ const board: Board = {
 };
 
 async function syncBoard() {
-  await ds.setState(StateKey.Board, board);
+  await ds.localServer.setState(StateKey.Board, board);
 }
 void syncBoard();
 
@@ -1161,18 +1160,18 @@ ds.rpc.register(RpcMethod.MoveTask, async (params) => {
 
 const onlineCounter = new PNCounter('server');
 
-ds.events.on(Event.UserJoin, () => {
+ds.primitives.events.on(Event.UserJoin, () => {
   onlineCounter.increment();
-  ds.broadcast(Event.Presence, onlineCounter.state());
+  ds.localServer.broadcast(Event.Presence, onlineCounter.state());
 });
 
-ds.events.on(Event.UserLeave, () => {
+ds.primitives.events.on(Event.UserLeave, () => {
   onlineCounter.decrement();
-  ds.broadcast(Event.Presence, onlineCounter.state());
+  ds.localServer.broadcast(Event.Presence, onlineCounter.state());
 });
 
-ds.events.on(Event.ChatSend, ({ data }) => {
-  ds.broadcast(Event.ChatMessage, { text: data.text, timestamp: Date.now() });
+ds.primitives.events.on(Event.ChatSend, ({ data }) => {
+  ds.localServer.broadcast(Event.ChatMessage, { text: data.text, timestamp: Date.now() });
 });
 
 http.listen(3000, () => console.log('Task board on :3000'));

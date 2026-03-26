@@ -9,6 +9,7 @@
   - `src/server/executor/` — Frame processing + isolation: AsyncExecutor, FrameRouter
   - `src/server/backends/` — Distribution layer: StateBackend, MemoryBackend, RedisBackend, PostgresBackend, factory
   - `src/server/primitives/` — All backend-powered services: RPC, Events, State, CRDT, Sessions, Sync, Auth, Rate-limit, Data-flow
+  - `src/server/datasole/` — `DatasoleServer` facades (`transport`, `localServer`) with `server` back-reference
   - `src/server/adapters/` — HTTP server adapters (Express, NestJS, native)
   - `src/server/metrics/` — Observability
 - `build/` — Rollup and TypeScript build configurations, metrics collection, gate summary, build artifact printer
@@ -160,7 +161,7 @@ The skill performs a 7-phase audit:
 
 ## Integrating datasole into an existing project
 
-**Pattern:** server — `DatasoleServer` then `ds.attach(httpServer)` on the existing Node HTTP server; client — `DatasoleClient` (or a thin wrapper) pointed at that server.
+**Pattern:** server — `await ds.init()` then `ds.transport.attach(httpServer)` on the existing Node HTTP server; client — `DatasoleClient` (or a thin wrapper) pointed at that server.
 
 **Stacks (key wiring only):**
 
@@ -169,7 +170,8 @@ The skill performs a 7-phase audit:
 ```ts
 const app = await NestFactory.create(AppModule);
 const ds = new DatasoleServer(/* opts */);
-ds.attach(app.getHttpServer());
+await ds.init();
+ds.transport.attach(app.getHttpServer());
 ```
 
 Vue: composable with `shallowRef<DatasoleClient | null>`; create/dispose in `onMounted` / `onUnmounted`.
@@ -183,7 +185,8 @@ Run Datasole in a **separate Node process** from the Next dev/server; Next app u
 ```ts
 const httpServer = createServer(app);
 const ds = new DatasoleServer(/* opts */);
-ds.attach(httpServer);
+await ds.init();
+ds.transport.attach(httpServer);
 ```
 
 React: `useRef` for the client + `useEffect` to construct and `disconnect()` on teardown.
@@ -191,9 +194,12 @@ React: `useRef` for the client + `useEffect` to construct and `disconnect()` on 
 - **AdonisJS + vanilla JS**
 
 ```ts
-server.ready(() => {
+server.ready(async () => {
   const httpServer = server.getNodeServer();
-  if (httpServer) ds.attach(httpServer);
+  if (httpServer) {
+    await ds.init();
+    ds.transport.attach(httpServer);
+  }
 });
 ```
 
@@ -211,4 +217,4 @@ Browser: IIFE bundle via `<script>` tag — global is `window.Datasole`, use `ne
 - Default WebSocket path is `/__ds` (configure `path` / proxy if needed)
 - Next.js requires `transpilePackages: ['datasole']` in `next.config.ts` and `--webpack` flag (Turbopack doesn't resolve subpath exports for linked packages)
 - NestJS requires `import 'reflect-metadata'` before any NestJS imports
-- `app.getHttpServer()` returns the raw Node `http.Server` — this is what `ds.attach()` expects
+- `app.getHttpServer()` returns the raw Node `http.Server` — this is what `ds.transport.attach()` expects

@@ -37,11 +37,11 @@ import { Event, RpcMethod, StateKey, SyncChannelKey } from './shared/contract';
 
 // Server — all on the same DatasoleServer<AppContract> instance
 ds.rpc.register(RpcMethod.AddTask, handler);
-ds.broadcast(Event.Notification, data);
-ds.events.on(Event.Typing, handler);
-await ds.setState(StateKey.Board, board);
-ds.crdt.registerByType('votes', new PNCounter('server'));
-ds.createSyncChannel({
+ds.localServer.broadcast(Event.Notification, data);
+ds.primitives.events.on(Event.Typing, handler);
+await ds.localServer.setState(StateKey.Board, board);
+ds.primitives.crdt.registerByType('votes', new PNCounter('server'));
+ds.localServer.createSyncChannel({
   key: SyncChannelKey.Cursors,
   direction: 'server-to-client',
   mode: 'json-patch',
@@ -79,7 +79,7 @@ import { RpcMethod, StateKey } from './shared/contract';
 ds.rpc.register(RpcMethod.ToggleDone, async ({ id }) => {
   const todo = todos.find((t) => t.id === id);
   if (todo) todo.done = !todo.done;
-  await ds.setState(StateKey.Todos, todos);
+  await ds.localServer.setState(StateKey.Todos, todos);
 });
 ```
 
@@ -101,8 +101,8 @@ Clients fire chat messages as events. The server broadcasts them to everyone. Se
 import { Event } from './shared/contract';
 
 // Server
-ds.events.on(Event.ChatSend, ({ data }) => {
-  ds.broadcast(Event.ChatMessage, { user: data.user, text: data.text });
+ds.primitives.events.on(Event.ChatSend, ({ data }) => {
+  ds.localServer.broadcast(Event.ChatMessage, { user: data.user, text: data.text });
 });
 ```
 
@@ -124,10 +124,10 @@ Shared counters for voting (CRDT convergence), a server-owned task board (live s
 import { PNCounter } from 'datasole';
 import { RpcMethod, StateKey } from './shared/contract';
 
-ds.crdt.registerByType('votes:task-1', new PNCounter('server'));
+ds.primitives.crdt.registerByType('votes:task-1', new PNCounter('server'));
 ds.rpc.register(RpcMethod.MoveTask, async ({ id, column }) => {
   board[id].column = column;
-  await ds.setState(StateKey.Board, board);
+  await ds.localServer.setState(StateKey.Board, board);
 });
 
 const storeA = client.registerCrdt('clientA');
@@ -149,15 +149,15 @@ Clients stream analytics events. The server aggregates them into a dashboard sta
 // Server
 import { Event, StateKey, SyncChannelKey } from './shared/contract';
 
-ds.createSyncChannel({
+ds.localServer.createSyncChannel({
   key: SyncChannelKey.Analytics,
   direction: 'server-to-client',
   mode: 'json-patch',
   flush: { flushStrategy: 'batched', batchIntervalMs: 1000, maxBatchSize: 50 },
 });
-ds.events.on(Event.PageView, async () => {
+ds.primitives.events.on(Event.PageView, async () => {
   stats.pageviews++;
-  await ds.setState(StateKey.Analytics, stats);
+  await ds.localServer.setState(StateKey.Analytics, stats);
 });
 ```
 

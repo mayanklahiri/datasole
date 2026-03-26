@@ -12,7 +12,7 @@ async function bootstrap(): Promise<void> {
 
   const datasoleService = app.get(DatasoleService);
   await datasoleService.init();
-  datasoleService.ds.attach(app.getHttpServer());
+  datasoleService.ds.transport.attach(app.getHttpServer());
   await app.listen(PORT);
   console.log(`\n  Vue+NestJS demo server running at http://localhost:${PORT}\n`);
 }

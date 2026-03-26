@@ -27,25 +27,25 @@ const httpServer = createServer(app);
 // ─── Datasole ──────────────────────────────────────────────────────
 const ds = new DatasoleServer<AppContract>();
 const rng = createSeededRandom();
-await ds.initialize();
-ds.attach(httpServer);
+await ds.init();
+ds.transport.attach(httpServer);
 
 // ─── Chat ──────────────────────────────────────────────────────────
 const chatHistory: ChatMessage[] = [];
 
-ds.events.on(Event.ChatSend, (payload) => {
+ds.primitives.events.on(Event.ChatSend, (payload) => {
   const { text, username } = payload.data;
   const msg: ChatMessage = { id: rng.uuid(), text, username, ts: Date.now() };
   chatHistory.push(msg);
   if (chatHistory.length > 50) chatHistory.shift();
   void (async () => {
     // Snapshot — MemoryBackend stores by reference; never pass the live chatHistory array.
-    await ds.setState(StateKey.ChatMessages, [...chatHistory]);
-    ds.broadcast(Event.ChatMessage, msg);
+    await ds.localServer.setState(StateKey.ChatMessages, [...chatHistory]);
+    ds.localServer.broadcast(Event.ChatMessage, msg);
   })();
 });
 
-await ds.setState(StateKey.ChatMessages, [...chatHistory]);
+await ds.localServer.setState(StateKey.ChatMessages, [...chatHistory]);
 
 // ─── RPC ───────────────────────────────────────────────────────────
 ds.rpc.register(RpcMethod.RandomNumber, async ({ min, max }) => {
@@ -56,7 +56,7 @@ ds.rpc.register(RpcMethod.RandomNumber, async ({ min, max }) => {
 setInterval(() => {
   const snap = ds.metrics.snapshot();
   const now = new Date();
-  ds.broadcast(Event.SystemMetrics, {
+  ds.localServer.broadcast(Event.SystemMetrics, {
     uptime: snap.uptime,
     connections: snap.connections,
     messagesIn: snap.messagesIn,

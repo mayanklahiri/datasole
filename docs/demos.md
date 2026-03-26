@@ -18,7 +18,7 @@ Three independent demo applications ship with datasole, each implementing the **
 
 Every demo is a full-screen, dark-themed, responsive three-panel layout. All three share a single **`shared/contract.ts`** (`AppContract` + `RpcMethod` / `Event` / `StateKey` enums) — the same contract-first pattern as the [Developer Guide](developer-guide.md) and [Tutorials](tutorials.md).
 
-1. **Server Metrics** — live-updating dashboard (uptime, connections, CPU, memory, message throughput), pushed from the server every 2 seconds via `ds.broadcast(Event.SystemMetrics, …)`.
+1. **Server Metrics** — live-updating dashboard (uptime, connections, CPU, memory, message throughput), pushed from the server every 2 seconds via `ds.localServer.broadcast(Event.SystemMetrics, …)`.
 2. **Global Chat Room** — client emits `Event.ChatSend`, server maintains a 50-message history under `StateKey.ChatMessages` and broadcasts `Event.ChatMessage` for instant delivery.
 3. **RPC Random Number** — client calls `ds.rpc(RpcMethod.RandomNumber, { min, max })`, server returns a cryptographically random integer with timing metadata.
 
@@ -26,7 +26,7 @@ Every demo is a full-screen, dark-themed, responsive three-panel layout. All thr
 flowchart LR
   subgraph server [Server]
     metrics["setInterval 2s"]
-    chatHandler["ds.events.on(Event.ChatSend)"]
+    chatHandler["ds.primitives.events.on(Event.ChatSend)"]
     rpcHandler["ds.rpc.register(RpcMethod.RandomNumber)"]
   end
   subgraph client [Client]
@@ -34,10 +34,10 @@ flowchart LR
     chatRoom[Chat Room]
     rpcDemo[RPC Panel]
   end
-  metrics -->|"ds.broadcast(Event.SystemMetrics)"| metricsDash
+  metrics -->|"ds.localServer.broadcast(Event.SystemMetrics)"| metricsDash
   chatRoom -->|"ds.emit(Event.ChatSend)"| chatHandler
-  chatHandler -->|"ds.broadcast(Event.ChatMessage)"| chatRoom
-  chatHandler -->|"ds.setState(StateKey.ChatMessages)"| chatRoom
+  chatHandler -->|"ds.localServer.broadcast(Event.ChatMessage)"| chatRoom
+  chatHandler -->|"ds.localServer.setState(StateKey.ChatMessages)"| chatRoom
   rpcDemo -->|"ds.rpc(RpcMethod.RandomNumber)"| rpcHandler
   rpcHandler -->|"{ value, generatedAt }"| rpcDemo
 ```
@@ -52,7 +52,7 @@ import { Event, RpcMethod, StateKey, type ChatMessage } from './shared/contract.
 // Metrics broadcast every 2s
 setInterval(() => {
   const snap = ds.metrics.snapshot();
-  ds.broadcast(Event.SystemMetrics, {
+  ds.localServer.broadcast(Event.SystemMetrics, {
     uptime: snap.uptime,
     connections: snap.connections,
     messagesIn: snap.messagesIn,
@@ -64,13 +64,13 @@ setInterval(() => {
 }, 2000);
 
 // Chat — receive, store, broadcast
-ds.events.on(Event.ChatSend, ({ data }) => {
+ds.primitives.events.on(Event.ChatSend, ({ data }) => {
   const { text, username } = data;
   const msg: ChatMessage = { id: crypto.randomUUID(), text, username, ts: Date.now() };
   chatHistory.push(msg);
   if (chatHistory.length > 50) chatHistory.shift();
-  void ds.setState(StateKey.ChatMessages, [...chatHistory]);
-  ds.broadcast(Event.ChatMessage, msg);
+  void ds.localServer.setState(StateKey.ChatMessages, [...chatHistory]);
+  ds.localServer.broadcast(Event.ChatMessage, msg);
 });
 
 // RPC — random number
@@ -107,7 +107,7 @@ flowchart TB
   subgraph vanillaServer [Node.js Process]
     httpCreate["http.createServer(handler)"]
     dsServer["new DatasoleServer()"]
-    dsServer -->|"ds.attach(httpServer)"| httpCreate
+    dsServer -->|"ds.transport.attach(httpServer)"| httpCreate
   end
   subgraph vanillaBrowser [Browser]
     iife["datasole.iife.min.js"]
@@ -131,7 +131,7 @@ const ds = new DatasoleServer<AppContract>();
 // Register chat handler, RPC, metrics broadcast (see shared logic above)
 
 const httpServer = createServer(serveStatic);
-ds.attach(httpServer);
+ds.transport.attach(httpServer);
 httpServer.listen(4000);
 ```
 
@@ -200,7 +200,7 @@ flowchart TB
     dsServer["new DatasoleServer()"]
     staticServe["express.static('dist/client')"]
     expressApp --> httpCreate
-    dsServer -->|"ds.attach(httpServer)"| httpCreate
+    dsServer -->|"ds.transport.attach(httpServer)"| httpCreate
     staticServe --> expressApp
   end
   subgraph reactBrowser [Browser — React]
@@ -237,7 +237,7 @@ if (existsSync(clientDist)) {
 const httpServer = createServer(app);
 const ds = new DatasoleServer<AppContract>();
 // Default executor model is async; set executor options explicitly if needed.
-ds.attach(httpServer);
+ds.transport.attach(httpServer);
 
 // Register chat, RPC, metrics (see shared logic above)
 
@@ -358,7 +358,7 @@ flowchart TB
     serveStatic["@nestjs/serve-static"]
     nestApp --> httpNode
     dsService --> dsServer
-    dsServer -->|"ds.attach(httpServer)"| httpNode
+    dsServer -->|"ds.transport.attach(httpServer)"| httpNode
     serveStatic -->|"dist/client/"| nestApp
   end
   subgraph vueBrowser [Browser — Vue 3]
@@ -388,7 +388,7 @@ export class DatasoleService implements OnModuleDestroy {
 
   async init(): Promise<void> {
     // Register chat, RPC, metrics (see shared logic above)
-    this.ds.events.on(Event.ChatSend, handler);
+    this.ds.primitives.events.on(Event.ChatSend, handler);
     this.ds.rpc.register(RpcMethod.RandomNumber, handler);
     this.metricsInterval = setInterval(broadcastMetrics, 2000);
   }
@@ -413,7 +413,7 @@ const app = await NestFactory.create(AppModule);
 
 const datasoleService = app.get(DatasoleService);
 await datasoleService.init();
-datasoleService.ds.attach(app.getHttpServer());
+datasoleService.ds.transport.attach(app.getHttpServer());
 await app.listen(4002);
 ```
 

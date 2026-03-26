@@ -22,7 +22,7 @@ export type {
 export { createAuthHandler, createDefaultAuthHandler } from './auth';
 export type { AuthHandlerInterface, AuthHandlerFn, AuthHandlerConfig } from './auth';
 
-export { BackendRateLimiter, DEFAULT_RATE_LIMIT_RULE } from './rate-limit';
+export { DefaultRateLimiter, DEFAULT_RATE_LIMIT_RULE } from './rate-limit';
 export type { RateLimiter, RateLimitResult, RateLimitRule, RateLimitConfig } from './rate-limit';
 
 export { ChannelManager } from './data-flow';

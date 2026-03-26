@@ -85,11 +85,11 @@ const ds = new DatasoleServer<AppContract>({
 });
 
 // Per-user read/write
-ds.sessions.set('user-123', 'theme', 'dark');
-const theme = ds.sessions.get<string>('user-123', 'theme');
+ds.primitives.sessions.set('user-123', 'theme', 'dark');
+const theme = ds.primitives.sessions.get<string>('user-123', 'theme');
 
 // Change streams
-ds.sessions.onChange((userId, key, value, version) => {
+ds.primitives.sessions.onChange((userId, key, value, version) => {
   console.log(`${userId} changed ${key}`);
 });
 ```

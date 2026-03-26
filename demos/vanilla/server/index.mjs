@@ -24,24 +24,24 @@ const MIME = {
 
 // ─── Datasole ──────────────────────────────────────────────────────
 const ds = new DatasoleServer();
-await ds.initialize();
+await ds.init();
 const rng = createSeededRandom();
 
 // ─── Chat ──────────────────────────────────────────────────────────
 const chatHistory = [];
 
-ds.events.on(Event.ChatSend, (payload) => {
+ds.primitives.events.on(Event.ChatSend, (payload) => {
   const { text, username } = payload.data;
   const msg = { id: rng.uuid(), text, username, ts: Date.now() };
   chatHistory.push(msg);
   if (chatHistory.length > 50) chatHistory.shift();
   void (async () => {
-    await ds.setState(StateKey.ChatMessages, [...chatHistory]);
-    ds.broadcast(Event.ChatMessage, msg);
+    await ds.localServer.setState(StateKey.ChatMessages, [...chatHistory]);
+    ds.localServer.broadcast(Event.ChatMessage, msg);
   })();
 });
 
-await ds.setState(StateKey.ChatMessages, [...chatHistory]);
+await ds.localServer.setState(StateKey.ChatMessages, [...chatHistory]);
 
 // ─── RPC ───────────────────────────────────────────────────────────
 ds.rpc.register(RpcMethod.RandomNumber, async ({ min, max }) => {
@@ -52,7 +52,7 @@ ds.rpc.register(RpcMethod.RandomNumber, async ({ min, max }) => {
 setInterval(() => {
   const snap = ds.metrics.snapshot();
   const now = new Date();
-  ds.broadcast(Event.SystemMetrics, {
+  ds.localServer.broadcast(Event.SystemMetrics, {
     uptime: snap.uptime,
     connections: snap.connections,
     messagesIn: snap.messagesIn,
@@ -110,7 +110,7 @@ function serveStatic(req, res) {
 }
 
 const httpServer = createServer(serveStatic);
-ds.attach(httpServer);
+ds.transport.attach(httpServer);
 
 httpServer.listen(PORT, () => {
   console.log(`\n  Vanilla demo running at http://localhost:${PORT}\n`);

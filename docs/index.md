@@ -68,7 +68,7 @@ features:
   - icon:
       src: /features/rate-limiting.jpg
     title: Frame-level rate limiting
-    details: 'Rate limit at the WebSocket frame level, not HTTP. Per-method rules. BackendRateLimiter uses the configured StateBackend — automatically distributed with Redis or Postgres.'
+    details: 'Rate limit at the WebSocket frame level, not HTTP. Per-method rules. DefaultRateLimiter uses the configured StateBackend — automatically distributed with Redis or Postgres.'
   - icon:
       src: /features/sync-channels.jpg
     title: Sync channels with tunable flush

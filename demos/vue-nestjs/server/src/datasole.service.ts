@@ -13,17 +13,17 @@ export class DatasoleService implements OnModuleDestroy {
   private readonly chatHistory: ChatMessage[] = [];
 
   async init(): Promise<void> {
-    await this.ds.initialize();
-    await this.ds.setState(StateKey.ChatMessages, [...this.chatHistory]);
+    await this.ds.init();
+    await this.ds.localServer.setState(StateKey.ChatMessages, [...this.chatHistory]);
 
-    this.ds.events.on(Event.ChatSend, (payload) => {
+    this.ds.primitives.events.on(Event.ChatSend, (payload) => {
       const { text, username } = payload.data;
       const msg: ChatMessage = { id: this.rng.uuid(), text, username, ts: Date.now() };
       this.chatHistory.push(msg);
       if (this.chatHistory.length > 50) this.chatHistory.shift();
       void (async () => {
-        await this.ds.setState(StateKey.ChatMessages, [...this.chatHistory]);
-        this.ds.broadcast(Event.ChatMessage, msg);
+        await this.ds.localServer.setState(StateKey.ChatMessages, [...this.chatHistory]);
+        this.ds.localServer.broadcast(Event.ChatMessage, msg);
       })();
     });
 
@@ -34,7 +34,7 @@ export class DatasoleService implements OnModuleDestroy {
     this.metricsInterval = setInterval(() => {
       const snap = this.ds.metrics.snapshot();
       const now = new Date();
-      this.ds.broadcast(Event.SystemMetrics, {
+      this.ds.localServer.broadcast(Event.SystemMetrics, {
         uptime: snap.uptime,
         connections: snap.connections,
         messagesIn: snap.messagesIn,

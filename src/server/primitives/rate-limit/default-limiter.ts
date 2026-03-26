@@ -1,7 +1,7 @@
 /**
- * Unified rate limiter backed by StateBackend.
- * With MemoryBackend: works like a local sliding-window limiter.
- * With RedisBackend: automatically distributed across instances.
+ * Default frame rate limiter backed by StateBackend.
+ * With MemoryBackend: local sliding-window limiter.
+ * With RedisBackend: distributed across instances.
  */
 import type { StateBackend } from '../../backends/types';
 import type { RealtimePrimitive } from '../types';
@@ -13,7 +13,7 @@ interface WindowEntry {
   resetAt: number;
 }
 
-export class BackendRateLimiter implements RateLimiter, RealtimePrimitive {
+export class DefaultRateLimiter implements RateLimiter, RealtimePrimitive {
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(private readonly backend: StateBackend) {

@@ -31,8 +31,8 @@ export async function createLiveTestServer<T extends DatasoleContract>(
 ): Promise<LiveTestServer<T>> {
   const httpServer = createServer();
   const ds = new DatasoleServer<T>(options);
-  await ds.initialize();
-  ds.attach(httpServer);
+  await ds.init();
+  ds.transport.attach(httpServer);
 
   const port = await new Promise<number>((resolve) => {
     httpServer.listen(0, () => {

@@ -18,7 +18,7 @@ All fields are optional in `new DatasoleServer(options)`.
 | `authHandler`        | `AuthHandlerFn`            | allow-all                                                | Upgrade authentication hook                        |
 | `stateBackend`       | `StateBackend`             | `new MemoryBackend()`                                    | Shared backend for all server primitives           |
 | `backendConfig`      | `BackendConfig`            | `undefined`                                              | Declarative backend config                         |
-| `metricsExporter`    | `MetricsExporter`          | `undefined`                                              | Prometheus/OpenTelemetry/custom exporter           |
+| `rateLimiter`        | `RateLimiter`              | `new DefaultRateLimiter(backend)`                        | Frame-level limiter; optional injection            |
 | `perMessageDeflate`  | `boolean`                  | `false`                                                  | Usually keep disabled; datasole already compresses |
 | `executor`           | `Partial<ExecutorOptions>` | `{ model: 'async' }`                                     | Async/thread/thread-pool execution                 |
 | `rateLimit`          | `RateLimitConfig`          | `{ defaultRule: { windowMs: 60000, maxRequests: 100 } }` | Per-connection frame limiting                      |

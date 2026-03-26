@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { MemoryBackend } from '../../../src/server/backends/memory';
 import { EventBus } from '../../../src/server/primitives/events/event-bus';
-import { BackendRateLimiter } from '../../../src/server/primitives/rate-limit/backend-limiter';
+import { DefaultRateLimiter } from '../../../src/server/primitives/rate-limit/default-limiter';
 import type { DatasoleContract } from '../../../src/shared/contract';
 
 describe('MemoryBackend security', () => {
@@ -44,11 +44,11 @@ describe('MemoryBackend security', () => {
   });
 });
 
-describe('BackendRateLimiter lifecycle', () => {
-  let limiter: BackendRateLimiter;
+describe('DefaultRateLimiter lifecycle', () => {
+  let limiter: DefaultRateLimiter;
 
   beforeEach(() => {
-    limiter = new BackendRateLimiter(new MemoryBackend());
+    limiter = new DefaultRateLimiter(new MemoryBackend());
   });
 
   afterEach(async () => {

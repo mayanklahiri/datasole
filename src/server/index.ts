@@ -1,5 +1,7 @@
 export { DatasoleServer } from './server';
-export type { DatasoleServerOptions } from './server';
+export type { DatasoleServerOptions, DatasolePrimitives } from './server';
+export { DatasoleServerTransportFacade, DatasoleLocalServerFacade } from './datasole';
+export type { DatasoleTransportAttachOptions } from './datasole';
 
 // Contract
 export type {
@@ -61,7 +63,7 @@ export type {
 } from './primitives';
 export { createAuthHandler, createDefaultAuthHandler } from './primitives';
 export type { AuthHandlerInterface, AuthHandlerFn, AuthHandlerConfig } from './primitives';
-export { BackendRateLimiter, DEFAULT_RATE_LIMIT_RULE } from './primitives';
+export { DefaultRateLimiter, DEFAULT_RATE_LIMIT_RULE } from './primitives';
 export type { RateLimiter, RateLimitResult, RateLimitRule, RateLimitConfig } from './primitives';
 export { ChannelManager } from './primitives';
 export type { ChannelManagerDeps } from './primitives';

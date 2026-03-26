@@ -111,13 +111,13 @@ export class DatasoleService implements OnModuleDestroy {
 
   async init(): Promise<void> {
     // Register event handlers, RPC methods, state, and metrics broadcast
-    this.ds.events.on('chat:send', (payload) => {
+    this.ds.primitives.events.on('chat:send', (payload) => {
       /* ... */
     });
     this.ds.rpc.register('randomNumber', async ({ min, max }) => {
       /* ... */
     });
-    await this.ds.setState('chat:messages', this.chatHistory);
+    await this.ds.localServer.setState('chat:messages', this.chatHistory);
   }
 
   onModuleDestroy(): void {
@@ -136,7 +136,7 @@ const app = await NestFactory.create<NestExpressApplication>(AppModule);
 // Attach datasole to NestJS's underlying HTTP server
 const datasoleService = app.get(DatasoleService);
 await datasoleService.init();
-datasoleService.ds.attach(app.getHttpServer());
+datasoleService.ds.transport.attach(app.getHttpServer());
 
 await app.listen(4002);
 ```
@@ -145,7 +145,7 @@ Key points:
 
 - `DatasoleServer` defaults to `thread-pool` concurrency with 4 Node.js `worker_threads`
 - `reflect-metadata` must be imported **before** any NestJS code
-- `app.getHttpServer()` returns the raw Node.js `http.Server` — this is what `ds.attach()` expects
+- `app.getHttpServer()` returns the raw Node.js `http.Server` — this is what `ds.transport.attach()` expects
 - Datasole runtime assets are auto-served under `/__ds`
 - `@nestjs/serve-static` serves the Vite-built client from `dist/client/` in production
 - `OnModuleDestroy` ensures graceful cleanup of the datasole server and metrics interval

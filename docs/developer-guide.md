@@ -78,8 +78,8 @@ import { DatasoleServer } from 'datasole/server';
 
 const httpServer = createServer();
 const ds = new DatasoleServer<AppContract>();
-
-ds.attach(httpServer);
+await ds.init();
+ds.transport.attach(httpServer);
 httpServer.listen(3000);
 ```
 
@@ -101,7 +101,8 @@ import { DatasoleServer } from 'datasole/server';
 const app = express();
 const httpServer = createServer(app);
 const ds = new DatasoleServer<AppContract>();
-ds.attach(httpServer);
+await ds.init();
+ds.transport.attach(httpServer);
 httpServer.listen(3000);
 ```
 
@@ -114,9 +115,12 @@ import { DatasoleServer } from 'datasole/server';
 
 const app = await NestFactory.create(AppModule);
 const ds = new DatasoleServer<AppContract>();
-ds.attach(app.getHttpServer());
+await ds.init();
+ds.transport.attach(app.getHttpServer());
 await app.listen(3000);
 ```
+
+Use **async providers** (or factory providers with `inject`) when infra must start first: register Redis/DataSource tokens, `await` them in a `DatasoleServer` factory, then call **`await ds.init()`** in `onModuleInit` (or bootstrap) before **`ds.transport.attach(app.getHttpServer())`**.
 
 #### Fastify
 
@@ -128,7 +132,8 @@ const app = Fastify();
 await app.listen({ port: 3000 });
 
 const ds = new DatasoleServer<AppContract>();
-ds.attach(app.server);
+await ds.init();
+ds.transport.attach(app.server);
 ```
 
 ### Register primitives
@@ -136,11 +141,11 @@ ds.attach(app.server);
 ```ts
 ds.rpc.register(RpcMethod.GetUser, async ({ id }) => ({ id, name: 'alice' }));
 
-ds.events.on(Event.ChatMessage, (payload) => {
+ds.primitives.events.on(Event.ChatMessage, (payload) => {
   console.log(payload.data.text);
 });
 
-await ds.setState(StateKey.Dashboard, { onlineUsers: 0, queueDepth: 0 });
+await ds.localServer.setState(StateKey.Dashboard, { onlineUsers: 0, queueDepth: 0 });
 ```
 
 ## 3) Set up the client
@@ -274,28 +279,26 @@ Full interface and minimal custom stub: [State Backends — Custom](state-backen
 
 **Caveats:** The default handler is permissive (anonymous `userId` from remote address)—replace it for any exposed deployment. Throwing inside `authHandler` is treated as failure to authenticate; prefer explicit `{ authenticated: false }` for clarity.
 
-### Rate limiting (configuration + backend, not a pluggable limiter class)
+### Rate limiting
 
-The server uses an internal **`BackendRateLimiter`** backed by the same `StateBackend`. There is **no** `rateLimiter: custom` option today—customization is **rules + keys + storage**.
+Default frame limiting uses **`DefaultRateLimiter`**, constructed with the same **`StateBackend`**. Override with **`rateLimiter`** in server options if you implement **`RateLimiter`** (optional **`connect()`** for **`init()`**).
 
-**What you can configure (`rateLimit` in server options):**
+**Configuration (`rateLimit`):**
 
 - `defaultRule` — sliding window (`windowMs`, `maxRequests`).
 - `rules` — optional per-RPC-method overrides (method names as strings).
-- `keyExtractor` — derive the limit bucket from `connectionId` and optional method (e.g. per-user id if you thread it through connection identity).
-
-**Why this design:** Distributed rate limits require shared counters; reusing `StateBackend` avoids a second Redis client and keeps limits consistent with cluster size when you use Redis or Postgres.
+- `keyExtractor` — derive the limit bucket from `connectionId` and optional method.
 
 **“Custom” rate limiting in practice:**
 
 - **Different windows per customer tier:** Use `keyExtractor` to prefix keys with tenant or plan id (ensure `userId` is set in `authHandler` first).
 - **Exotic storage (DynamoDB, etc.):** Implement `StateBackend` so `get`/`set`/`delete` for keys like `rl:<bucket>` behave like the built-in backends; the limiter’s window object must round-trip through your store.
-- **Algorithm changes (token bucket, fixed window):** Not supported via config; the internal limiter is fixed. You would need a fork or upstream contribution—do not assume a drop-in interface on `DatasoleServer`.
+- **Fully custom algorithm:** Inject a **`RateLimiter`** that stores quota however you need; keep **`destroy()`** behavior compatible with shutdown.
 
 ### Custom metrics (how much is too much?)
 
-**Not too flexible:** The extension surface is intentionally small. Implement **`MetricsExporter`** (`export(snapshot: MetricsSnapshot): Promise<string>`) and pass `metricsExporter` to `DatasoleServer`. Use that to push to a vendor agent, write NDJSON, or adapt to an internal schema. Built-in **Prometheus** and **OpenTelemetry** exporters cover most production cases—see [Metrics](metrics.md).
+**Collector:** In-process counters live on **`ds.metrics`**. Call **`MetricsExporter.export(ds.metrics.snapshot())`** from your HTTP route, cron, or framework hook—datasole does not register routes for you.
 
-**When a custom exporter helps:** You already standardize on StatsD, CloudWatch EMF, or a sidecar that expects a specific text format. Implement `export`, return your payload string, and expose it from your HTTP stack the same way the Prometheus example attaches `/metrics`.
+**When a custom exporter helps:** You standardize on StatsD, CloudWatch EMF, or a sidecar that expects a specific text format. Implement **`MetricsExporter`**, return your payload string, and wire it in the host app.
 
-**When to stop:** Avoid re-deriving business KPIs inside the exporter—the snapshot is **transport-level** (connections, bytes, RPC counts, errors). Application metrics belong in your usual observability layer, not inside datasole’s exporter hook.
+**When to stop:** The snapshot is **transport-level** (connections, bytes, RPC counts, errors). Application KPIs belong in your usual observability layer.

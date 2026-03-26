@@ -83,7 +83,7 @@ description: Architecture Decision Records for the datasole project.
 - **Status:** Accepted
 - **Date:** 2026-03-19
 - **Context:** Different real-time use cases need different synchronization granularities. A stock ticker needs immediate pushes; a dashboard can batch updates; a form auto-save should debounce.
-- **Decision:** `SyncChannel<T>` manages a queue of `StatePatch` operations with three flush strategies: `immediate` (flush on every enqueue), `batched` (flush after N ops or M milliseconds, whichever comes first), and `debounced` (flush after M ms of inactivity). Channels are created per key via `DatasoleServer.createSyncChannel()` with direction (`server-to-client`, `client-to-server`, `bidirectional`) and mode (`json-patch`, `crdt`, `snapshot`).
+- **Decision:** `SyncChannel<T>` manages a queue of `StatePatch` operations with three flush strategies: `immediate` (flush on every enqueue), `batched` (flush after N ops or M milliseconds, whichever comes first), and `debounced` (flush after M ms of inactivity). Channels are created per key via `DatasoleServer.localServer.createSyncChannel()` with direction (`server-to-client`, `client-to-server`, `bidirectional`) and mode (`json-patch`, `crdt`, `snapshot`).
 - **Consequences:** One API covers all real-time patterns—stock tickers, collaborative editing, form sync, live dashboards. Trade-off: batched/debounced strategies introduce latency; `immediate` is the default for lowest-latency use cases.
 
 ## ADR-011: Data flow patterns as composable primitives
@@ -143,20 +143,20 @@ description: Architecture Decision Records for the datasole project.
 - **Status:** Accepted
 - **Date:** 2026-03-24
 - **Context:** Integrations and demos repeatedly implemented custom routes for `datasole.iife.min.js` and `datasole-worker.iife.min.js`, causing duplication and drift.
-- **Decision:** `DatasoleServer.attach()` serves production client/worker runtime assets at the configured Datasole path with fixed filenames:
+- **Decision:** `DatasoleServer.transport.attach()` serves production client/worker runtime assets at the configured Datasole path with fixed filenames:
   - `{path}/datasole.iife.min.js`
   - `{path}/datasole-worker.iife.min.js`
     Server responses include ETag, `If-None-Match` handling, and `304 Not Modified` support.
 - **Consequences:** Integrations no longer need bespoke runtime asset routes. Server build packaging must always include the client and worker production bundles.
 
-## ADR-016: backendConfig wiring, `initialize()`, and thread executors delegating to async routing
+## ADR-016: backendConfig wiring, `init()`, and thread executors delegating to async routing
 
-- **Status:** Accepted
+- **Status:** Accepted (lifecycle entry superseded by ADR-019 naming; behavior unchanged)
 - **Date:** 2026-03-24
 - **Context:** `DatasoleServerOptions.backendConfig` was documented but ignored; Redis/Postgres backends require `connect()` before use; `thread` / `thread-pool` executors dropped frames on the floor while sharing the same public API as `async`.
 - **Decision:**
   - Resolve `stateBackend` vs `backendConfig` (mutually exclusive); `createBackend(backendConfig)` when no explicit `stateBackend` is passed.
-  - Expose `await datasoleServer.initialize()` to run optional backend `connect()` (no-op for `MemoryBackend`).
+  - Async startup is `await datasoleServer.init()` (runs optional backend `connect()`; no-op for `MemoryBackend`). See ADR-019.
   - Implement `ThreadExecutor` and `PoolExecutor` as thin wrappers around `AsyncExecutor` so frame routing and `wireFrameHandlers` behave identically until real `worker_threads` isolation exists.
   - Validate `PostgresBackend` `tableName` as a safe SQL identifier before interpolation.
 - **Consequences:** Declarative backend config works; distributed backends can be brought up safely; non-async executor models no longer silently break the protocol. Trade-off: thread models do not yet provide CPU isolation—only the same routing path as `async`.
@@ -177,7 +177,20 @@ description: Architecture Decision Records for the datasole project.
 - **Context:** Automated coding agents often hallucinate framework hooks (custom middleware chains, injectable rate-limiter classes, multiple backends per server). Documenting the **actual** extension points reduces bad patches and impossible APIs.
 - **Decision:** Treat the following as canonical for analysis, codegen, and review:
   1. **One `StateBackend` per `DatasoleServer`** — multi-store setups use a **composite/facade** implementing `StateBackend`, not multiple `stateBackend` options (see ADR-005).
-  2. **Rate limiting** — `BackendRateLimiter` is internal; configuration is **`rateLimit`** (`defaultRule`, `rules`, `keyExtractor`) plus shared storage via the same `StateBackend`. There is **no** public `rateLimiter: RateLimiter` constructor option.
+  2. **Rate limiting** — Default implementation is **`DefaultRateLimiter`**, constructed with the same **`StateBackend`** unless **`rateLimiter`** is injected. Tune behavior with **`rateLimit`** (`defaultRule`, `rules`, `keyExtractor`). Custom **`RateLimiter`** implementations may expose optional **`connect()`** for startup (see ADR-019).
   3. **Authentication** — **`authHandler`** runs on the **HTTP WebSocket upgrade** only (`IncomingMessage` → `AuthResult`). There is no per-frame auth callback on the datasole protocol.
-  4. **Metrics** — extend via **`MetricsExporter`** (`export(snapshot)` → string); transport-level counters only. Application/business metrics belong in the host app’s observability stack.
-- **Consequences:** Agents can safely wire Redis/Postgres backends, tune limits, and add JWT/cookie auth without inventing unsupported constructor options. Trade-off: users who need a different rate-limit **algorithm** must implement storage semantics compatible with `StateBackend` keys (e.g. `rl:*`) or contribute upstream—not inject a new limiter class.
+  4. **Metrics** — in-process **`MetricsCollector`** on **`ds.metrics`**; push to vendors by calling **`MetricsExporter.export(ds.metrics.snapshot())`** from application code (or your framework’s metrics hook). Application/business metrics belong in the host app’s observability stack.
+- **Consequences:** Agents can wire Redis/Postgres backends, inject or default the limiter, tune rules, and add JWT/cookie auth without inventing fake constructor options.
+
+## ADR-019: Hierarchical `DatasoleServer` API, DI, and `init()`
+
+- **Status:** Accepted
+- **Date:** 2026-03-25
+- **Context:** `DatasoleServer` exposed a flat surface mixing transport, orchestration, and primitives; `DefaultRateLimiter` naming did not signal default behavior; framework integrations (NestJS async providers, injected Redis clients) need a clear composition root and phased startup.
+- **Decision:**
+  - **Hierarchy:** `ds.transport` (attach, connection count), `ds.localServer` (broadcast, typed state, sync/data channels), `ds.rpc`, `ds.metrics`, `ds.primitives` (`state`, `events`, `crdt`, `sessions`, `rateLimiter`). Top-level orchestration methods are removed from `DatasoleServer`.
+  - **Parent pointer:** `DatasoleServerTransportFacade` and `DatasoleLocalServerFacade` expose **`readonly server: DatasoleServer<T>`** so nested code can reach siblings.
+  - **Lifecycle:** **`await ds.init()`** replaces **`initialize()`**; runs **`StateBackend.connect()`** when present and optional **`RateLimiter.connect()`**. **`ds.transport.attach(httpServer)`** after **`init()`** for distributed backends.
+  - **Rename:** `DefaultRateLimiter` → **`DefaultRateLimiter`** (same implementation; constructor takes the server’s **`StateBackend`**).
+  - **DI:** Optional **`rateLimiter`** in **`DatasoleServerOptions`**; default **`new DefaultRateLimiter(backend)`**.
+- **Consequences:** Breaking API for direct `ds.attach` / `ds.broadcast` / flat primitive fields; docs and demos updated. Phased NestJS setup: async providers for infra → factory constructs **`DatasoleServer`** → **`onModuleInit`**: **`await ds.init()`** then **`ds.transport.attach`**.

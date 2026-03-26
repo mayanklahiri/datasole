@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 
 import { MemoryBackend } from '../../../src/server/backends/memory';
-import { BackendRateLimiter } from '../../../src/server/primitives/rate-limit/backend-limiter';
+import { DefaultRateLimiter } from '../../../src/server/primitives/rate-limit/default-limiter';
 
 describe('Rate limiter integration', () => {
-  it('BackendRateLimiter enforces limits correctly', async () => {
-    const limiter = new BackendRateLimiter(new MemoryBackend());
+  it('DefaultRateLimiter enforces limits correctly', async () => {
+    const limiter = new DefaultRateLimiter(new MemoryBackend());
     const rule = { windowMs: 60_000, maxRequests: 3 };
 
     const r1 = await limiter.consume('conn:0x01', rule);
@@ -23,7 +23,7 @@ describe('Rate limiter integration', () => {
   });
 
   it('different keys are independent', async () => {
-    const limiter = new BackendRateLimiter(new MemoryBackend());
+    const limiter = new DefaultRateLimiter(new MemoryBackend());
     const rule = { windowMs: 60_000, maxRequests: 1 };
 
     const r1 = await limiter.consume('a:0x01', rule);
@@ -36,7 +36,7 @@ describe('Rate limiter integration', () => {
   });
 
   it('check does not consume', async () => {
-    const limiter = new BackendRateLimiter(new MemoryBackend());
+    const limiter = new DefaultRateLimiter(new MemoryBackend());
     const rule = { windowMs: 60_000, maxRequests: 1 };
 
     const c1 = await limiter.check('key', rule);

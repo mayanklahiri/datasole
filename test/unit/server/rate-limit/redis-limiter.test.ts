@@ -1,19 +1,19 @@
 import { describe, it, expect } from 'vitest';
 
 import { MemoryBackend } from '../../../../src/server/backends/memory';
-import { BackendRateLimiter } from '../../../../src/server/primitives/rate-limit/backend-limiter';
+import { DefaultRateLimiter } from '../../../../src/server/primitives/rate-limit/default-limiter';
 import type { RateLimitRule } from '../../../../src/server/primitives/rate-limit/types';
 
-describe('BackendRateLimiter', () => {
+describe('DefaultRateLimiter', () => {
   const rule: RateLimitRule = { windowMs: 60_000, maxRequests: 10 };
 
   it('constructs with a StateBackend', () => {
-    const limiter = new BackendRateLimiter(new MemoryBackend());
+    const limiter = new DefaultRateLimiter(new MemoryBackend());
     expect(limiter).toBeDefined();
   });
 
   it('check returns allowed when under limit', async () => {
-    const limiter = new BackendRateLimiter(new MemoryBackend());
+    const limiter = new DefaultRateLimiter(new MemoryBackend());
     const result = await limiter.check('user:1', rule);
     expect(result.allowed).toBe(true);
     expect(result.remaining).toBe(10);
@@ -21,7 +21,7 @@ describe('BackendRateLimiter', () => {
   });
 
   it('consume decrements remaining', async () => {
-    const limiter = new BackendRateLimiter(new MemoryBackend());
+    const limiter = new DefaultRateLimiter(new MemoryBackend());
     const r1 = await limiter.consume('user:1', rule);
     expect(r1.allowed).toBe(true);
     expect(r1.remaining).toBe(9);
@@ -32,7 +32,7 @@ describe('BackendRateLimiter', () => {
   });
 
   it('consume with cost > 1', async () => {
-    const limiter = new BackendRateLimiter(new MemoryBackend());
+    const limiter = new DefaultRateLimiter(new MemoryBackend());
     const result = await limiter.consume('user:1', rule, 3);
     expect(result.allowed).toBe(true);
     expect(result.remaining).toBe(7);
@@ -40,7 +40,7 @@ describe('BackendRateLimiter', () => {
   });
 
   it('returns denied when over limit', async () => {
-    const limiter = new BackendRateLimiter(new MemoryBackend());
+    const limiter = new DefaultRateLimiter(new MemoryBackend());
     const smallRule: RateLimitRule = { windowMs: 60_000, maxRequests: 2 };
     await limiter.consume('user:1', smallRule);
     await limiter.consume('user:1', smallRule);
@@ -52,7 +52,7 @@ describe('BackendRateLimiter', () => {
   });
 
   it('reset clears the counter', async () => {
-    const limiter = new BackendRateLimiter(new MemoryBackend());
+    const limiter = new DefaultRateLimiter(new MemoryBackend());
     const smallRule: RateLimitRule = { windowMs: 60_000, maxRequests: 1 };
     await limiter.consume('user:1', smallRule);
     await limiter.reset('user:1');
@@ -62,7 +62,7 @@ describe('BackendRateLimiter', () => {
   });
 
   it('destroy cleans up without error', async () => {
-    const limiter = new BackendRateLimiter(new MemoryBackend());
+    const limiter = new DefaultRateLimiter(new MemoryBackend());
     await expect(limiter.destroy()).resolves.toBeUndefined();
   });
 });

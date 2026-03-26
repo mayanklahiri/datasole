@@ -18,6 +18,8 @@ export interface RateLimiter {
   consume(key: string, rule: RateLimitRule, cost?: number): Promise<RateLimitResult>;
   reset(key: string): Promise<void>;
   destroy(): Promise<void>;
+  /** Optional async startup (e.g. custom limiter with external pool). Invoked by `DatasoleServer.init()`. */
+  connect?(): Promise<void>;
 }
 
 export interface RateLimitConfig {

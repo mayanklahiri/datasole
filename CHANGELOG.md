@@ -7,15 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] — Unreleased
 
-Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping tool;
+Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS/WebSocket prototyping tool;
 1.0.0 is a production-grade, binary-framed, realtime full-stack TypeScript framework.
+
+### Changed
+
+#### Server API hierarchy [ADR-019]
+
+- **`DatasoleServer`** exposes **`ds.transport`** (attach, connection count), **`ds.localServer`** (broadcast, typed state, sync/data channels), **`ds.rpc`**, **`ds.metrics`**, and **`ds.primitives`** (`state`, `events`, `crdt`, `sessions`, `rateLimiter`). Transport and local-server facades expose **`readonly server`** for sibling access.
+- **`initialize()`** removed; use **`await ds.init()`** before **`ds.transport.attach(httpServer)`** for backends with **`connect()`** (and optional **`RateLimiter.connect()`**).
+- **`BackendRateLimiter`** renamed to **`DefaultRateLimiter`**; optional **`rateLimiter`** injection in **`DatasoleServerOptions`**.
+- **`metricsExporter`** removed from server options — call **`MetricsExporter.export(ds.metrics.snapshot())`** from application code.
 
 ### Added
 
 #### Documentation & ADRs
 
 - **ADR-017** — Contract-first integration style (`AppContract` + enums) for apps, docs, and generated code
-- **ADR-018** — Canonical server extension surface (one `StateBackend`, `rateLimit` config, upgrade-only `authHandler`, `MetricsExporter`); avoids hallucinated hooks in agentic tooling
+- **ADR-018** — Canonical server extension surface (one `StateBackend`, `rateLimit` / injectable `RateLimiter`, upgrade-only `authHandler`); avoids hallucinated hooks in agentic tooling
+- **ADR-019** — Hierarchical `DatasoleServer` API, `init()`, `DefaultRateLimiter`, facade `server` back-reference
 - **README** — Project snapshot table (version, tests, coverage, bundles) with capture timestamp
 
 #### Architecture
@@ -28,19 +38,19 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 - **ConnectionExecutor**: Replaces dead-code concurrency module with frame-processing isolation (async, thread, pool, process models)
 - **ServerTransport**: Pure byte pipe with pre-executor rate limit gate
 - **FrameRouter**: Opcode-based frame dispatch inside executor context
-- **BackendRateLimiter**: Unified rate limiter backed by StateBackend (replaces MemoryRateLimiter + RedisRateLimiter)
+- **DefaultRateLimiter**: Unified rate limiter backed by StateBackend (replaces MemoryRateLimiter + RedisRateLimiter)
 - **CrdtManager**: Extracted CRDT logic into backend-powered primitive
 - **RealtimePrimitive interface**: Shared `destroy()` lifecycle for all services
 - **BackendConfig + createBackend()**: Serializable factory pattern for multi-context backend instantiation
 - **Demo shared contracts**: Each demo has `shared/contract.ts` with AppContract + enums
-- Exposed primitives as readonly properties: `ds.rpc`, `ds.events`, `ds.state`, `ds.crdt`, `ds.sessions`, `ds.rateLimiter`, `ds.metrics`
+- Exposed API: `ds.rpc`, `ds.metrics`, `ds.transport`, `ds.localServer`, `ds.primitives` (`state`, `events`, `crdt`, `sessions`, `rateLimiter`)
 
 #### Core Framework
 
 - Binary WebSocket wire protocol with 9-byte frame envelope (opcode, correlation ID, payload length)
 - Seven composable data-flow patterns: RPC, server events, client events, server→client live state, client→server live state, CRDT sync, and arbitrary combinations
 - `DatasoleClient` — framework-agnostic browser client (React, Vue 3, Svelte, vanilla JS)
-- `DatasoleServer` — Node.js server with `attach(httpServer)` integration
+- `DatasoleServer` — Node.js server with `transport.attach(httpServer)` integration
 - Web Worker transport (WebSocket runs off the main thread by default; no UI jank)
 - SharedArrayBuffer zero-copy path with automatic `postMessage` fallback
 - pako compression (60–80% smaller than raw JSON) running in the worker thread; zlib magic-byte detection for robust compression identification
@@ -168,10 +178,10 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS prototyping to
 
 - ESM server/shared import compatibility (`.mjs` extensions, bundled shared deps)
 - `@eslint/js` added as explicit dev dependency for ESLint 10 compatibility
-- `DatasoleServer` honors `backendConfig` (mutually exclusive with `stateBackend`) and exposes `initialize()` for backends with `connect()` (Redis, Postgres) [ADR-016]
+- `DatasoleServer` honors `backendConfig` (mutually exclusive with `stateBackend`) and exposes `init()` for backends with `connect()` (Redis, Postgres) [ADR-016]
 - `thread` / `thread-pool` executors delegate frame routing to the same `AsyncExecutor` path as `async` instead of dropping frames [ADR-016]
 - `PostgresBackend` rejects unsafe `tableName` values before SQL interpolation
-- Vue + NestJS demo: `DatasoleServer.attach()` runs before `listen()`; client uses default worker transport again
+- Vue + NestJS demo: `DatasoleServer.transport.attach()` runs before `listen()`; client uses default worker transport again
 - Worker runtime asset (`datasole-worker.iife.min.js`) uses `Cross-Origin-Resource-Policy: cross-origin` (other isolation headers unchanged) so `new Worker()` works for typical SPAs and for COEP-enabled pages (e2e / SharedArrayBuffer)
 - **`DatasoleClient.connect()`**: disposes any existing worker/WebSocket transport before opening a new one (reconnect no longer orphans the previous Worker, which could strand the session in `reconnecting` and break demo e2e on slow CI runners)
 - **Client `StateStore`**: subscribers receive the current snapshot immediately on subscribe; incoming `STATE_PATCH` / `STATE_SNAPSHOT` frames create the per-key store if none exists yet (avoids dropped patches before the first subscriber)

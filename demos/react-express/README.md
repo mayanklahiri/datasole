@@ -113,7 +113,7 @@ app.get('/{*splat}', (_req, res) => {
 // 2. Attach datasole to the underlying Node.js HTTP server
 const httpServer = createServer(app);
 const ds = new DatasoleServer();
-ds.attach(httpServer);
+ds.transport.attach(httpServer);
 
 httpServer.listen(4001);
 ```

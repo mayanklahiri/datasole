@@ -66,7 +66,7 @@ export async function startTestServer(): Promise<TestServerResult> {
     },
   });
 
-  await ds.initialize();
+  await ds.init();
 
   // --- RPC handlers ---
   ds.rpc.register(TestRpc.Echo, async (params) => {
@@ -91,16 +91,16 @@ export async function startTestServer(): Promise<TestServerResult> {
   // --- Session RPCs ---
   ds.rpc.register(TestRpc.SaveProgress, async (params: { level: number; score: number }, ctx) => {
     const uid = ctx?.connection?.userId ?? 'anon';
-    ds.sessions.set(uid, 'level', params.level);
-    ds.sessions.set(uid, 'score', params.score);
+    ds.primitives.sessions.set(uid, 'level', params.level);
+    ds.primitives.sessions.set(uid, 'score', params.score);
     log(`Session saveProgress: ${uid} level=${params.level} score=${params.score}`);
     return { ok: true };
   });
 
   ds.rpc.register(TestRpc.GetProgress, async (_params, ctx) => {
     const uid = ctx?.connection?.userId ?? 'anon';
-    const level = ds.sessions.get<number>(uid, 'level') ?? 1;
-    const score = ds.sessions.get<number>(uid, 'score') ?? 0;
+    const level = ds.primitives.sessions.get<number>(uid, 'level') ?? 1;
+    const score = ds.primitives.sessions.get<number>(uid, 'score') ?? 0;
     log(`Session getProgress: ${uid} level=${level} score=${score}`);
     return { level, score };
   });
@@ -112,7 +112,7 @@ export async function startTestServer(): Promise<TestServerResult> {
   };
   async function syncBoard() {
     // Deep clone to avoid mutation-in-place making diff empty
-    await ds.setState(TestState.Board, JSON.parse(JSON.stringify(board)));
+    await ds.localServer.setState(TestState.Board, JSON.parse(JSON.stringify(board)));
   }
   syncBoard();
 
@@ -135,25 +135,25 @@ export async function startTestServer(): Promise<TestServerResult> {
   // --- CRDT: shared counter ---
   const counter = new PNCounter('server');
 
-  ds.events.on(TestEvent.CrdtOp, (payload) => {
+  ds.primitives.events.on(TestEvent.CrdtOp, (payload) => {
     log(`CRDT op: ${JSON.stringify(payload.data)}`);
     counter.apply(payload.data);
-    ds.broadcast(TestEvent.CrdtState, counter.state());
+    ds.localServer.broadcast(TestEvent.CrdtState, counter.state());
   });
 
-  ds.events.on(TestEvent.CrdtGet, () => {
-    ds.broadcast(TestEvent.CrdtState, counter.state());
+  ds.primitives.events.on(TestEvent.CrdtGet, () => {
+    ds.localServer.broadcast(TestEvent.CrdtState, counter.state());
   });
 
   // --- Sync channels ---
-  const alertChannel = ds.createSyncChannel({
+  const alertChannel = ds.localServer.createSyncChannel({
     key: 'alerts',
     direction: 'server-to-client',
     mode: 'json-patch',
     flush: { flushStrategy: 'immediate' },
   });
 
-  const metricsChannel = ds.createSyncChannel({
+  const metricsChannel = ds.localServer.createSyncChannel({
     key: 'metrics',
     direction: 'server-to-client',
     mode: 'json-patch',
@@ -182,7 +182,7 @@ export async function startTestServer(): Promise<TestServerResult> {
       let count = 0;
       const tick = () => {
         if (Date.now() >= end) return;
-        ds.broadcast(TestEvent.BenchEvent, { seq: count++, ts: Date.now() });
+        ds.localServer.broadcast(TestEvent.BenchEvent, { seq: count++, ts: Date.now() });
         setTimeout(tick, interval);
       };
       tick();
@@ -200,7 +200,7 @@ export async function startTestServer(): Promise<TestServerResult> {
       const tick = async () => {
         if (Date.now() >= end) return;
         benchStateCounter++;
-        await ds.setState(TestState.BenchState, {
+        await ds.localServer.setState(TestState.BenchState, {
           counter: benchStateCounter,
           ts: Date.now(),
           payload: `item-${benchStateCounter}`,
@@ -227,7 +227,7 @@ export async function startTestServer(): Promise<TestServerResult> {
         // Overwrite first 8 bytes with sequence + timestamp for realism
         frameData.writeUInt32BE(count, 0);
         frameData.writeUInt32BE(Date.now() & 0xffffffff, 4);
-        ds.broadcast(TestEvent.BenchBinaryFrame, {
+        ds.localServer.broadcast(TestEvent.BenchBinaryFrame, {
           seq: count++,
           frame: Array.from(frameData.subarray(0, Math.min(params.frameSizeBytes, 256))),
           size: params.frameSizeBytes,
@@ -255,7 +255,7 @@ export async function startTestServer(): Promise<TestServerResult> {
       const filler = 'x'.repeat(sizeKb * 1024);
       const tick = () => {
         if (Date.now() >= end) return;
-        ds.broadcast(TestEvent.BenchHeavyPayload, {
+        ds.localServer.broadcast(TestEvent.BenchHeavyPayload, {
           seq: count++,
           ts: Date.now(),
           data: filler,
@@ -270,8 +270,8 @@ export async function startTestServer(): Promise<TestServerResult> {
   );
 
   // --- Two-way low-latency echo (game tick / trade confirm) ---
-  ds.events.on(TestEvent.BenchGameTick, (payload) => {
-    ds.broadcast(TestEvent.BenchGameState, {
+  ds.primitives.events.on(TestEvent.BenchGameTick, (payload) => {
+    ds.localServer.broadcast(TestEvent.BenchGameState, {
       seq: payload.data.seq,
       ack: true,
       ts: Date.now(),
@@ -279,15 +279,15 @@ export async function startTestServer(): Promise<TestServerResult> {
   });
 
   // --- Events ---
-  ds.events.on(TestEvent.ClientPing, (payload) => {
+  ds.primitives.events.on(TestEvent.ClientPing, (payload) => {
     log(`Event client-ping: ${JSON.stringify(payload.data)}`);
-    ds.broadcast(TestEvent.ServerPong, { echo: payload.data });
+    ds.localServer.broadcast(TestEvent.ServerPong, { echo: payload.data });
   });
 
   let chatSeq = 0;
-  ds.events.on(TestEvent.ChatSend, (payload) => {
+  ds.primitives.events.on(TestEvent.ChatSend, (payload) => {
     log(`Event chat:send: ${JSON.stringify(payload.data)}`);
-    ds.broadcast(TestEvent.ChatMessage, { text: payload.data.text, seq: ++chatSeq });
+    ds.localServer.broadcast(TestEvent.ChatMessage, { text: payload.data.text, seq: ++chatSeq });
   });
 
   // Server logs endpoint
@@ -295,7 +295,7 @@ export async function startTestServer(): Promise<TestServerResult> {
     res.json(logs);
   });
 
-  ds.attach(httpServer);
+  ds.transport.attach(httpServer);
 
   return new Promise<TestServerResult>((resolve) => {
     httpServer.listen(0, () => {
