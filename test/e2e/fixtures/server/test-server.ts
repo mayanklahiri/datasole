@@ -112,7 +112,7 @@ export async function startTestServer(): Promise<TestServerResult> {
   };
   async function syncBoard() {
     // Deep clone to avoid mutation-in-place making diff empty
-    await ds.localServer.setState(TestState.Board, JSON.parse(JSON.stringify(board)));
+    await ds.primitives.live.setState(TestState.Board, JSON.parse(JSON.stringify(board)));
   }
   syncBoard();
 
@@ -138,22 +138,22 @@ export async function startTestServer(): Promise<TestServerResult> {
   ds.primitives.events.on(TestEvent.CrdtOp, (payload) => {
     log(`CRDT op: ${JSON.stringify(payload.data)}`);
     counter.apply(payload.data);
-    ds.localServer.broadcast(TestEvent.CrdtState, counter.state());
+    ds.primitives.fanout.broadcast(TestEvent.CrdtState, counter.state());
   });
 
   ds.primitives.events.on(TestEvent.CrdtGet, () => {
-    ds.localServer.broadcast(TestEvent.CrdtState, counter.state());
+    ds.primitives.fanout.broadcast(TestEvent.CrdtState, counter.state());
   });
 
   // --- Sync channels ---
-  const alertChannel = ds.localServer.createSyncChannel({
+  const alertChannel = ds.primitives.live.createSyncChannel({
     key: 'alerts',
     direction: 'server-to-client',
     mode: 'json-patch',
     flush: { flushStrategy: 'immediate' },
   });
 
-  const metricsChannel = ds.localServer.createSyncChannel({
+  const metricsChannel = ds.primitives.live.createSyncChannel({
     key: 'metrics',
     direction: 'server-to-client',
     mode: 'json-patch',
@@ -182,7 +182,7 @@ export async function startTestServer(): Promise<TestServerResult> {
       let count = 0;
       const tick = () => {
         if (Date.now() >= end) return;
-        ds.localServer.broadcast(TestEvent.BenchEvent, { seq: count++, ts: Date.now() });
+        ds.primitives.fanout.broadcast(TestEvent.BenchEvent, { seq: count++, ts: Date.now() });
         setTimeout(tick, interval);
       };
       tick();
@@ -200,7 +200,7 @@ export async function startTestServer(): Promise<TestServerResult> {
       const tick = async () => {
         if (Date.now() >= end) return;
         benchStateCounter++;
-        await ds.localServer.setState(TestState.BenchState, {
+        await ds.primitives.live.setState(TestState.BenchState, {
           counter: benchStateCounter,
           ts: Date.now(),
           payload: `item-${benchStateCounter}`,
@@ -227,7 +227,7 @@ export async function startTestServer(): Promise<TestServerResult> {
         // Overwrite first 8 bytes with sequence + timestamp for realism
         frameData.writeUInt32BE(count, 0);
         frameData.writeUInt32BE(Date.now() & 0xffffffff, 4);
-        ds.localServer.broadcast(TestEvent.BenchBinaryFrame, {
+        ds.primitives.fanout.broadcast(TestEvent.BenchBinaryFrame, {
           seq: count++,
           frame: Array.from(frameData.subarray(0, Math.min(params.frameSizeBytes, 256))),
           size: params.frameSizeBytes,
@@ -255,7 +255,7 @@ export async function startTestServer(): Promise<TestServerResult> {
       const filler = 'x'.repeat(sizeKb * 1024);
       const tick = () => {
         if (Date.now() >= end) return;
-        ds.localServer.broadcast(TestEvent.BenchHeavyPayload, {
+        ds.primitives.fanout.broadcast(TestEvent.BenchHeavyPayload, {
           seq: count++,
           ts: Date.now(),
           data: filler,
@@ -271,7 +271,7 @@ export async function startTestServer(): Promise<TestServerResult> {
 
   // --- Two-way low-latency echo (game tick / trade confirm) ---
   ds.primitives.events.on(TestEvent.BenchGameTick, (payload) => {
-    ds.localServer.broadcast(TestEvent.BenchGameState, {
+    ds.primitives.fanout.broadcast(TestEvent.BenchGameState, {
       seq: payload.data.seq,
       ack: true,
       ts: Date.now(),
@@ -281,13 +281,16 @@ export async function startTestServer(): Promise<TestServerResult> {
   // --- Events ---
   ds.primitives.events.on(TestEvent.ClientPing, (payload) => {
     log(`Event client-ping: ${JSON.stringify(payload.data)}`);
-    ds.localServer.broadcast(TestEvent.ServerPong, { echo: payload.data });
+    ds.primitives.fanout.broadcast(TestEvent.ServerPong, { echo: payload.data });
   });
 
   let chatSeq = 0;
   ds.primitives.events.on(TestEvent.ChatSend, (payload) => {
     log(`Event chat:send: ${JSON.stringify(payload.data)}`);
-    ds.localServer.broadcast(TestEvent.ChatMessage, { text: payload.data.text, seq: ++chatSeq });
+    ds.primitives.fanout.broadcast(TestEvent.ChatMessage, {
+      text: payload.data.text,
+      seq: ++chatSeq,
+    });
   });
 
   // Server logs endpoint

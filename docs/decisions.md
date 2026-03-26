@@ -83,7 +83,7 @@ description: Architecture Decision Records for the datasole project.
 - **Status:** Accepted
 - **Date:** 2026-03-19
 - **Context:** Different real-time use cases need different synchronization granularities. A stock ticker needs immediate pushes; a dashboard can batch updates; a form auto-save should debounce.
-- **Decision:** `SyncChannel<T>` manages a queue of `StatePatch` operations with three flush strategies: `immediate` (flush on every enqueue), `batched` (flush after N ops or M milliseconds, whichever comes first), and `debounced` (flush after M ms of inactivity). Channels are created per key via `DatasoleServer.localServer.createSyncChannel()` with direction (`server-to-client`, `client-to-server`, `bidirectional`) and mode (`json-patch`, `crdt`, `snapshot`).
+- **Decision:** `SyncChannel<T>` manages a queue of `StatePatch` operations with three flush strategies: `immediate` (flush on every enqueue), `batched` (flush after N ops or M milliseconds, whichever comes first), and `debounced` (flush after M ms of inactivity). Channels are created per key via `ds.primitives.live.createSyncChannel()` with direction (`server-to-client`, `client-to-server`, `bidirectional`) and mode (`json-patch`, `crdt`, `snapshot`).
 - **Consequences:** One API covers all real-time patterns—stock tickers, collaborative editing, form sync, live dashboards. Trade-off: batched/debounced strategies introduce latency; `immediate` is the default for lowest-latency use cases.
 
 ## ADR-011: Data flow patterns as composable primitives
@@ -188,8 +188,8 @@ description: Architecture Decision Records for the datasole project.
 - **Date:** 2026-03-25
 - **Context:** `DatasoleServer` exposed a flat surface mixing transport, orchestration, and primitives; `DefaultRateLimiter` naming did not signal default behavior; framework integrations (NestJS async providers, injected Redis clients) need a clear composition root and phased startup.
 - **Decision:**
-  - **Hierarchy:** `ds.transport` (attach, connection count), `ds.localServer` (broadcast, typed state, sync/data channels), `ds.rpc`, `ds.metrics`, `ds.primitives` (`state`, `events`, `crdt`, `sessions`, `rateLimiter`). Top-level orchestration methods are removed from `DatasoleServer`.
-  - **Parent pointer:** `DatasoleServerTransportFacade` and `DatasoleLocalServerFacade` expose **`readonly server: DatasoleServer<T>`** so nested code can reach siblings.
+  - **Hierarchy:** `ds.transport` (attach, connection count; wraps `ServerTransport` + wire handlers), `ds.rpc`, `ds.metrics`, `ds.primitives` (`state`, `events`, **`live`** — setState/getState, sync/data channels, **`fanout`** — broadcast to clients, `crdt`, `sessions`, `rateLimiter`). Top-level orchestration methods are removed from `DatasoleServer`.
+  - **Parent pointer:** `DatasoleServerTransportFacade` exposes **`readonly server: DatasoleServer<T>`** for nested code that needs the composition root.
   - **Lifecycle:** **`await ds.init()`** replaces **`initialize()`**; runs **`StateBackend.connect()`** when present and optional **`RateLimiter.connect()`**. **`ds.transport.attach(httpServer)`** after **`init()`** for distributed backends.
   - **Rename:** `DefaultRateLimiter` → **`DefaultRateLimiter`** (same implementation; constructor takes the server’s **`StateBackend`**).
   - **DI:** Optional **`rateLimiter`** in **`DatasoleServerOptions`**; default **`new DefaultRateLimiter(backend)`**.

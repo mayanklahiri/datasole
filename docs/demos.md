@@ -18,7 +18,7 @@ Three independent demo applications ship with datasole, each implementing the **
 
 Every demo is a full-screen, dark-themed, responsive three-panel layout. All three share a single **`shared/contract.ts`** (`AppContract` + `RpcMethod` / `Event` / `StateKey` enums) — the same contract-first pattern as the [Developer Guide](developer-guide.md) and [Tutorials](tutorials.md).
 
-1. **Server Metrics** — live-updating dashboard (uptime, connections, CPU, memory, message throughput), pushed from the server every 2 seconds via `ds.localServer.broadcast(Event.SystemMetrics, …)`.
+1. **Server Metrics** — live-updating dashboard (uptime, connections, CPU, memory, message throughput), pushed from the server every 2 seconds via `ds.primitives.fanout.broadcast(Event.SystemMetrics, …)`.
 2. **Global Chat Room** — client emits `Event.ChatSend`, server maintains a 50-message history under `StateKey.ChatMessages` and broadcasts `Event.ChatMessage` for instant delivery.
 3. **RPC Random Number** — client calls `ds.rpc(RpcMethod.RandomNumber, { min, max })`, server returns a cryptographically random integer with timing metadata.
 
@@ -34,10 +34,10 @@ flowchart LR
     chatRoom[Chat Room]
     rpcDemo[RPC Panel]
   end
-  metrics -->|"ds.localServer.broadcast(Event.SystemMetrics)"| metricsDash
+  metrics -->|"ds.primitives.fanout.broadcast(Event.SystemMetrics)"| metricsDash
   chatRoom -->|"ds.emit(Event.ChatSend)"| chatHandler
-  chatHandler -->|"ds.localServer.broadcast(Event.ChatMessage)"| chatRoom
-  chatHandler -->|"ds.localServer.setState(StateKey.ChatMessages)"| chatRoom
+  chatHandler -->|"ds.primitives.fanout.broadcast(Event.ChatMessage)"| chatRoom
+  chatHandler -->|"ds.primitives.live.setState(StateKey.ChatMessages)"| chatRoom
   rpcDemo -->|"ds.rpc(RpcMethod.RandomNumber)"| rpcHandler
   rpcHandler -->|"{ value, generatedAt }"| rpcDemo
 ```
@@ -52,7 +52,7 @@ import { Event, RpcMethod, StateKey, type ChatMessage } from './shared/contract.
 // Metrics broadcast every 2s
 setInterval(() => {
   const snap = ds.metrics.snapshot();
-  ds.localServer.broadcast(Event.SystemMetrics, {
+  ds.primitives.fanout.broadcast(Event.SystemMetrics, {
     uptime: snap.uptime,
     connections: snap.connections,
     messagesIn: snap.messagesIn,
@@ -69,8 +69,8 @@ ds.primitives.events.on(Event.ChatSend, ({ data }) => {
   const msg: ChatMessage = { id: crypto.randomUUID(), text, username, ts: Date.now() };
   chatHistory.push(msg);
   if (chatHistory.length > 50) chatHistory.shift();
-  void ds.localServer.setState(StateKey.ChatMessages, [...chatHistory]);
-  ds.localServer.broadcast(Event.ChatMessage, msg);
+  void ds.primitives.live.setState(StateKey.ChatMessages, [...chatHistory]);
+  ds.primitives.fanout.broadcast(Event.ChatMessage, msg);
 });
 
 // RPC — random number

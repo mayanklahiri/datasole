@@ -2,13 +2,12 @@
  * Persists per-user session blobs in a StateBackend so clients can resume state after reconnects, with optional flushing.
  */
 import type { StateBackend } from '../../backends/types';
-import type { ConnectionContext } from '../../transport/connection-context';
+import type { ConnectionContext } from '../../contracts';
 import type { RealtimePrimitive } from '../types';
 
 export interface SessionOptions {
   flushThreshold?: number;
   flushIntervalMs?: number;
-  ttlMs?: number;
   enableChangeStream?: boolean;
 }
 
@@ -28,7 +27,6 @@ export class SessionManager implements RealtimePrimitive {
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private readonly flushThreshold: number;
   private readonly flushIntervalMs: number;
-  private readonly ttlMs: number;
 
   constructor(
     private backend: StateBackend,
@@ -36,7 +34,6 @@ export class SessionManager implements RealtimePrimitive {
   ) {
     this.flushThreshold = options?.flushThreshold ?? 10;
     this.flushIntervalMs = options?.flushIntervalMs ?? 5000;
-    this.ttlMs = options?.ttlMs ?? 3600_000;
 
     if (this.flushIntervalMs > 0) {
       this.flushTimer = setInterval(() => void this.flushAll(), this.flushIntervalMs);

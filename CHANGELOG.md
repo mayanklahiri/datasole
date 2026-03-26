@@ -14,7 +14,7 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS/WebSocket prot
 
 #### Server API hierarchy [ADR-019]
 
-- **`DatasoleServer`** exposes **`ds.transport`** (attach, connection count), **`ds.localServer`** (broadcast, typed state, sync/data channels), **`ds.rpc`**, **`ds.metrics`**, and **`ds.primitives`** (`state`, `events`, `crdt`, `sessions`, `rateLimiter`). Transport and local-server facades expose **`readonly server`** for sibling access.
+- **`DatasoleServer`** exposes **`ds.transport`** (attach, connection count), **`ds.rpc`**, **`ds.metrics`**, and **`ds.primitives`** (`state`, `events`, **`live`**, **`fanout`**, `crdt`, `sessions`, `rateLimiter`). **`ServerLiveState`** / **`ServerEventFanout`** replace the old **`localServer`** facade; wire framing lives under **`transport/`** + **`facades/`**.
 - **`initialize()`** removed; use **`await ds.init()`** before **`ds.transport.attach(httpServer)`** for backends with **`connect()`** (and optional **`RateLimiter.connect()`**).
 - **`BackendRateLimiter`** renamed to **`DefaultRateLimiter`**; optional **`rateLimiter`** injection in **`DatasoleServerOptions`**.
 - **`metricsExporter`** removed from server options — call **`MetricsExporter.export(ds.metrics.snapshot())`** from application code.
@@ -43,7 +43,7 @@ Complete rewrite of datasole. The 0.x line was a Webpack/Pug/SCSS/WebSocket prot
 - **RealtimePrimitive interface**: Shared `destroy()` lifecycle for all services
 - **BackendConfig + createBackend()**: Serializable factory pattern for multi-context backend instantiation
 - **Demo shared contracts**: Each demo has `shared/contract.ts` with AppContract + enums
-- Exposed API: `ds.rpc`, `ds.metrics`, `ds.transport`, `ds.localServer`, `ds.primitives` (`state`, `events`, `crdt`, `sessions`, `rateLimiter`)
+- Exposed API: `ds.rpc`, `ds.metrics`, `ds.transport`, `ds.primitives` (`state`, `events`, `live`, `fanout`, `crdt`, `sessions`, `rateLimiter`)
 
 #### Core Framework
 

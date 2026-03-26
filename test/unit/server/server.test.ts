@@ -148,7 +148,7 @@ describe('DatasoleServer — events via live WebSocket', () => {
 
     const p1 = receiveFrame(ws1);
     const p2 = receiveFrame(ws2);
-    liveSrv().ds.localServer.broadcast(TestEvent.Notify, { msg: 'hi' });
+    liveSrv().ds.primitives.fanout.broadcast(TestEvent.Notify, { msg: 'hi' });
 
     const [f1, f2] = await Promise.all([p1, p2]);
     expect(f1.opcode).toBe(Opcode.EVENT_S2C);
@@ -190,8 +190,8 @@ describe('DatasoleServer — PING/PONG via live WebSocket', () => {
 describe('DatasoleServer — state management via live WebSocket', () => {
   it('setState and getState round-trip', async () => {
     srv = await createLiveTestServer<TestContract>();
-    await liveSrv().ds.localServer.setState(TestState.Key1, { foo: 'bar' });
-    expect(await liveSrv().ds.localServer.getState(TestState.Key1)).toEqual({ foo: 'bar' });
+    await liveSrv().ds.primitives.live.setState(TestState.Key1, { foo: 'bar' });
+    expect(await liveSrv().ds.primitives.live.getState(TestState.Key1)).toEqual({ foo: 'bar' });
   });
 
   it('setState broadcasts STATE_PATCH to connected clients', async () => {
@@ -199,9 +199,9 @@ describe('DatasoleServer — state management via live WebSocket', () => {
     const ws = await liveSrv().connectWs();
     await tick(20);
 
-    await liveSrv().ds.localServer.setState(TestState.Obj, { a: 1 });
+    await liveSrv().ds.primitives.live.setState(TestState.Obj, { a: 1 });
     const patchPromise = receiveFrame(ws);
-    await liveSrv().ds.localServer.setState(TestState.Obj, { a: 2 });
+    await liveSrv().ds.primitives.live.setState(TestState.Obj, { a: 2 });
 
     const resp = await patchPromise;
     expect(resp.opcode).toBe(Opcode.STATE_PATCH);
@@ -213,20 +213,20 @@ describe('DatasoleServer — state management via live WebSocket', () => {
 
   it('setState via sync channel with immediate flush', async () => {
     srv = await createLiveTestServer<TestContract>();
-    const channel = liveSrv().ds.localServer.createSyncChannel({
+    const channel = liveSrv().ds.primitives.live.createSyncChannel({
       key: TestState.Synced,
       direction: 'server-to-client',
       mode: 'json-patch',
       flush: { flushStrategy: 'immediate' },
     });
-    expect(liveSrv().ds.localServer.getSyncChannel(TestState.Synced)).toBe(channel);
+    expect(liveSrv().ds.primitives.live.getSyncChannel(TestState.Synced)).toBe(channel);
 
     const ws = await liveSrv().connectWs();
     await tick(20);
 
-    await liveSrv().ds.localServer.setState(TestState.Synced, { a: 1 });
+    await liveSrv().ds.primitives.live.setState(TestState.Synced, { a: 1 });
     const patchPromise = receiveFrame(ws);
-    await liveSrv().ds.localServer.setState(TestState.Synced, { a: 2 });
+    await liveSrv().ds.primitives.live.setState(TestState.Synced, { a: 2 });
     const resp = await patchPromise;
     expect(resp.opcode).toBe(Opcode.STATE_PATCH);
 
@@ -426,14 +426,14 @@ describe('DatasoleServer — connection tracking', () => {
 describe('DatasoleServer — data channels', () => {
   it('createDataChannel and getDataChannel', async () => {
     srv = await createLiveTestServer<TestContract>();
-    const ch = liveSrv().ds.localServer.createDataChannel({
+    const ch = liveSrv().ds.primitives.live.createDataChannel({
       key: 'live',
       pattern: 'server-live-state',
       granularity: 'immediate',
       initialValue: 0,
     });
     expect(ch).toBeDefined();
-    expect(liveSrv().ds.localServer.getDataChannel('live')).toBe(ch);
+    expect(liveSrv().ds.primitives.live.getDataChannel('live')).toBe(ch);
   });
 });
 
@@ -474,7 +474,7 @@ describe('DatasoleServer — close', () => {
     srv = await createLiveTestServer<TestContract>();
     const instance = liveSrv();
     instance.ds.primitives.crdt.register('c', new PNCounter('s'));
-    instance.ds.localServer.createSyncChannel({
+    instance.ds.primitives.live.createSyncChannel({
       key: 'sc',
       direction: 'server-to-client',
       mode: 'json-patch',
@@ -489,7 +489,7 @@ describe('DatasoleServer — close', () => {
 
     expect(instance.ds.transport.getConnectionCount()).toBe(0);
     expect(instance.ds.primitives.crdt.getState('c')).toBeUndefined();
-    expect(instance.ds.localServer.getSyncChannel('sc')).toBeUndefined();
+    expect(instance.ds.primitives.live.getSyncChannel('sc')).toBeUndefined();
     ws.close();
 
     await new Promise<void>((resolve, reject) => {
@@ -528,10 +528,10 @@ describe('DatasoleServer — multiple clients', () => {
     }
     await tick(20);
 
-    await liveSrv().ds.localServer.setState(TestState.Shared, { v: 1 });
+    await liveSrv().ds.primitives.live.setState(TestState.Shared, { v: 1 });
 
     const promises = clients.map((ws) => receiveFrame(ws));
-    await liveSrv().ds.localServer.setState(TestState.Shared, { v: 2 });
+    await liveSrv().ds.primitives.live.setState(TestState.Shared, { v: 2 });
     const frames = await Promise.all(promises);
 
     for (const f of frames) {

@@ -37,11 +37,11 @@ import { Event, RpcMethod, StateKey, SyncChannelKey } from './shared/contract';
 
 // Server — all on the same DatasoleServer<AppContract> instance
 ds.rpc.register(RpcMethod.AddTask, handler);
-ds.localServer.broadcast(Event.Notification, data);
+ds.primitives.fanout.broadcast(Event.Notification, data);
 ds.primitives.events.on(Event.Typing, handler);
-await ds.localServer.setState(StateKey.Board, board);
+await ds.primitives.live.setState(StateKey.Board, board);
 ds.primitives.crdt.registerByType('votes', new PNCounter('server'));
-ds.localServer.createSyncChannel({
+ds.primitives.live.createSyncChannel({
   key: SyncChannelKey.Cursors,
   direction: 'server-to-client',
   mode: 'json-patch',
@@ -79,7 +79,7 @@ import { RpcMethod, StateKey } from './shared/contract';
 ds.rpc.register(RpcMethod.ToggleDone, async ({ id }) => {
   const todo = todos.find((t) => t.id === id);
   if (todo) todo.done = !todo.done;
-  await ds.localServer.setState(StateKey.Todos, todos);
+  await ds.primitives.live.setState(StateKey.Todos, todos);
 });
 ```
 
@@ -102,7 +102,7 @@ import { Event } from './shared/contract';
 
 // Server
 ds.primitives.events.on(Event.ChatSend, ({ data }) => {
-  ds.localServer.broadcast(Event.ChatMessage, { user: data.user, text: data.text });
+  ds.primitives.fanout.broadcast(Event.ChatMessage, { user: data.user, text: data.text });
 });
 ```
 
@@ -127,7 +127,7 @@ import { RpcMethod, StateKey } from './shared/contract';
 ds.primitives.crdt.registerByType('votes:task-1', new PNCounter('server'));
 ds.rpc.register(RpcMethod.MoveTask, async ({ id, column }) => {
   board[id].column = column;
-  await ds.localServer.setState(StateKey.Board, board);
+  await ds.primitives.live.setState(StateKey.Board, board);
 });
 
 const storeA = client.registerCrdt('clientA');
@@ -149,7 +149,7 @@ Clients stream analytics events. The server aggregates them into a dashboard sta
 // Server
 import { Event, StateKey, SyncChannelKey } from './shared/contract';
 
-ds.localServer.createSyncChannel({
+ds.primitives.live.createSyncChannel({
   key: SyncChannelKey.Analytics,
   direction: 'server-to-client',
   mode: 'json-patch',
@@ -157,7 +157,7 @@ ds.localServer.createSyncChannel({
 });
 ds.primitives.events.on(Event.PageView, async () => {
   stats.pageviews++;
-  await ds.localServer.setState(StateKey.Analytics, stats);
+  await ds.primitives.live.setState(StateKey.Analytics, stats);
 });
 ```
 

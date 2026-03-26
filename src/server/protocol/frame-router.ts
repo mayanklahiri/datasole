@@ -1,6 +1,5 @@
 /**
- * Opcode-based frame dispatch inside the executor context.
- * Decompresses, decodes, and routes frames to registered handlers.
+ * Opcode-based frame dispatch: decompresses, decodes, and routes frames to registered handlers.
  */
 import { decompress, isCompressed } from '../../shared/codec';
 import { decodeFrame, type Opcode } from '../../shared/protocol';

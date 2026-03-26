@@ -117,7 +117,7 @@ export class DatasoleService implements OnModuleDestroy {
     this.ds.rpc.register('randomNumber', async ({ min, max }) => {
       /* ... */
     });
-    await this.ds.localServer.setState('chat:messages', this.chatHistory);
+    await this.ds.primitives.live.setState('chat:messages', this.chatHistory);
   }
 
   onModuleDestroy(): void {

@@ -36,12 +36,12 @@ ds.primitives.events.on(Event.ChatSend, (payload) => {
   chatHistory.push(msg);
   if (chatHistory.length > 50) chatHistory.shift();
   void (async () => {
-    await ds.localServer.setState(StateKey.ChatMessages, [...chatHistory]);
-    ds.localServer.broadcast(Event.ChatMessage, msg);
+    await ds.primitives.live.setState(StateKey.ChatMessages, [...chatHistory]);
+    ds.primitives.fanout.broadcast(Event.ChatMessage, msg);
   })();
 });
 
-await ds.localServer.setState(StateKey.ChatMessages, [...chatHistory]);
+await ds.primitives.live.setState(StateKey.ChatMessages, [...chatHistory]);
 
 // ─── RPC ───────────────────────────────────────────────────────────
 ds.rpc.register(RpcMethod.RandomNumber, async ({ min, max }) => {
@@ -52,7 +52,7 @@ ds.rpc.register(RpcMethod.RandomNumber, async ({ min, max }) => {
 setInterval(() => {
   const snap = ds.metrics.snapshot();
   const now = new Date();
-  ds.localServer.broadcast(Event.SystemMetrics, {
+  ds.primitives.fanout.broadcast(Event.SystemMetrics, {
     uptime: snap.uptime,
     connections: snap.connections,
     messagesIn: snap.messagesIn,

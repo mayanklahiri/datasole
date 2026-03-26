@@ -2,9 +2,9 @@
  * Async executor: processes frames on the Node.js event loop with no isolation.
  * Default executor model for single-process servers.
  */
+import { FrameRouter } from '../protocol/frame-router';
 import type { Connection } from '../transport/connection';
 
-import { FrameRouter } from './frame-router';
 import type { ConnectionExecutor, ConnectionMeta, ExecutorSend } from './types';
 
 export class AsyncExecutor implements ConnectionExecutor {
@@ -27,7 +27,6 @@ export class AsyncExecutor implements ConnectionExecutor {
     void this.router.dispatch(entry.conn, compressedFrame).catch(() => {});
   }
 
-  /** Attach the actual Connection object so frames can be dispatched. */
   setConnection(connectionId: string, conn: Connection): void {
     const entry = this.connections.get(connectionId);
     if (entry) {

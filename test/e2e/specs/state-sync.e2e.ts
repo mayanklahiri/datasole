@@ -24,7 +24,7 @@ test.describe('State Sync', () => {
 
     await page.evaluate((k) => window.__subscribeState(k), TestState.Counter);
 
-    await harness.getDatasoleServer().localServer.setState(TestState.Counter, { value: 42 });
+    await harness.getDatasoleServer().primitives.live.setState(TestState.Counter, { value: 42 });
 
     await page.waitForFunction(() => window.__stateUpdates.length > 0, null, {
       timeout: 5000,

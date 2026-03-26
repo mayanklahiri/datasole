@@ -50,7 +50,7 @@ test.describe('Task Board', () => {
 
     await page.evaluate((k) => window.__subscribeState(k), TestState.E2ETaskboard);
 
-    await harness.getDatasoleServer().localServer.setState(TestState.E2ETaskboard, {
+    await harness.getDatasoleServer().primitives.live.setState(TestState.E2ETaskboard, {
       columns: ['todo', 'in-progress', 'done'],
       tasks: [{ id: 'task-1', title: 'E2E task', column: 'todo' }],
     });

@@ -143,7 +143,7 @@ const user = await ds.rpc('getUser', { id: 42 });
 ```typescript
 // server
 setInterval(() => {
-  ds.localServer.broadcast('price', { AAPL: 187.42, GOOG: 141.8 });
+  ds.primitives.fanout.broadcast('price', { AAPL: 187.42, GOOG: 141.8 });
 }, 1000);
 
 // client
@@ -158,7 +158,7 @@ The most common pattern. The server mutates state, datasole diffs it, and all cl
 // server
 ds.rpc.register('addTodo', async ({ text }) => {
   todos.push({ id: Date.now(), text, done: false });
-  await ds.localServer.setState('todos', todos);
+  await ds.primitives.live.setState('todos', todos);
   return { ok: true };
 });
 ```
@@ -215,13 +215,13 @@ counter.increment(1);
 ### Sync channels — control when diffs flush
 
 ```typescript
-ds.localServer.createSyncChannel({
+ds.primitives.live.createSyncChannel({
   key: 'cursor-positions',
   flush: 'debounced',
   debounceMs: 50,
 });
 
-ds.localServer.createSyncChannel({
+ds.primitives.live.createSyncChannel({
   key: 'trade-executions',
   flush: 'immediate',
 });

@@ -341,7 +341,7 @@ describe('DatasoleClient — connect to live server', () => {
     await client.connect();
     await tick(20);
 
-    srv.ds.localServer.broadcast(TestEvent.ServerNotify, { msg: 'broadcast-test' });
+    srv.ds.primitives.fanout.broadcast(TestEvent.ServerNotify, { msg: 'broadcast-test' });
     await tick(100);
 
     expect(received.length).toBe(1);
@@ -356,8 +356,8 @@ describe('DatasoleClient — connect to live server', () => {
     await client.connect();
     await tick(20);
 
-    await srv.ds.localServer.setState(TestState.Dashboard, { visitors: 0 });
-    await srv.ds.localServer.setState(TestState.Dashboard, { visitors: 42 });
+    await srv.ds.primitives.live.setState(TestState.Dashboard, { visitors: 0 });
+    await srv.ds.primitives.live.setState(TestState.Dashboard, { visitors: 42 });
     await tick(100);
 
     expect(states.length).toBeGreaterThanOrEqual(1);

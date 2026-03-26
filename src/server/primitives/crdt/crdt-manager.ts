@@ -48,8 +48,8 @@ export class CrdtManager implements RealtimePrimitive {
   }
 
   /** Apply an incoming CRDT operation and persist/broadcast merged state. */
-  apply(_connectionId: string, op: CrdtOperation): { key: string; state: CrdtState } | null {
-    const key = op.key ?? _connectionId;
+  apply(connectionId: string, op: CrdtOperation): { key: string; state: CrdtState } | null {
+    const key = op.key ?? connectionId;
     let crdt = this.registry.get(key);
     if (!crdt) {
       if (this.registry.size >= this.maxKeys) return null;

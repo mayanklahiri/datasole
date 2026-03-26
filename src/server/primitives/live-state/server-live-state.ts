@@ -1,32 +1,30 @@
 /**
- * Server→client orchestration: broadcast, typed state, sync/data channels.
+ * Typed state persistence, optional {@link SyncChannel} batching, and STATE_PATCH fan-out to clients.
+ * Data-flow channels compose RPC, events, state, and CRDT via {@link ChannelManager}.
  */
-import type { DatasoleContract } from '../../shared/contract';
-import { Opcode } from '../../shared/protocol';
-import type { StatePatch } from '../../shared/types';
-import type { DataChannel, LiveStateConfig } from '../../shared/types/data-flow';
-import type { StateBackend } from '../backends/types';
-import type { CrdtManager } from '../primitives/crdt/crdt-manager';
-import type { ChannelManagerDeps } from '../primitives/data-flow/channel-manager';
-import { ChannelManager } from '../primitives/data-flow/channel-manager';
-import type { EventBus } from '../primitives/events/event-bus';
-import type { StateManager } from '../primitives/state/state-manager';
-import { SyncChannel } from '../primitives/sync/sync-channel';
-import type { SyncChannelConfig } from '../primitives/sync/types';
-import type { DatasoleServer } from '../server';
+import type { DatasoleContract } from '../../../shared/contract';
+import type { StatePatch } from '../../../shared/types';
+import type { DataChannel, LiveStateConfig } from '../../../shared/types/data-flow';
+import type { StateBackend } from '../../backends/types';
+import type { BroadcastSink } from '../../protocol/broadcast-sink';
+import type { CrdtManager } from '../crdt/crdt-manager';
+import type { ChannelManagerDeps } from '../data-flow/channel-manager';
+import { ChannelManager } from '../data-flow/channel-manager';
+import type { EventBus } from '../events/event-bus';
+import type { StateManager } from '../state/state-manager';
+import { SyncChannel } from '../sync/sync-channel';
+import type { SyncChannelConfig } from '../sync/types';
 
-export class DatasoleLocalServerFacade<T extends DatasoleContract> {
+export class ServerLiveState<T extends DatasoleContract> {
   private readonly syncChannels = new Map<string, SyncChannel>();
   private readonly channelManager: ChannelManager;
 
   constructor(
-    readonly server: DatasoleServer<T>,
     private readonly backend: StateBackend,
     private readonly state: StateManager<T>,
     private readonly events: EventBus<T>,
     private readonly crdt: CrdtManager,
-    private readonly maxEventNameLength: number,
-    private readonly broadcastFrame: (opcode: Opcode, data: unknown) => void,
+    private readonly broadcastSink: BroadcastSink,
   ) {
     const channelDeps: ChannelManagerDeps = {
       createSyncChannel: (config) => {
@@ -56,7 +54,7 @@ export class DatasoleLocalServerFacade<T extends DatasoleContract> {
   createSyncChannel<V = unknown>(config: SyncChannelConfig<V>): SyncChannel<V> {
     const channel = new SyncChannel(config, this.backend);
     channel.onFlush((patches) => {
-      this.broadcastFrame(Opcode.STATE_PATCH, { key: config.key, patches });
+      this.broadcastSink.broadcastStatePatch(config.key, patches);
     });
     this.syncChannels.set(config.key, channel as SyncChannel);
     return channel;
@@ -83,16 +81,10 @@ export class DatasoleLocalServerFacade<T extends DatasoleContract> {
       if (channel) {
         channel.enqueue(patches);
       } else {
-        this.broadcastFrame(Opcode.STATE_PATCH, { key, patches });
+        this.broadcastSink.broadcastStatePatch(key, patches);
       }
     }
     return patches;
-  }
-
-  /** Broadcast a typed server event to local handlers and all clients. */
-  broadcast<K extends keyof T['events'] & string>(event: K, data: T['events'][K]): void {
-    this.events.emit(event, data as never);
-    this.broadcastFrame(Opcode.EVENT_S2C, { event, data, timestamp: Date.now() });
   }
 
   /** @internal */

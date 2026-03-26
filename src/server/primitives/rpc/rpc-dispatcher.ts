@@ -3,7 +3,7 @@
  */
 import type { DatasoleContract } from '../../../shared/contract';
 import type { RpcRequest, RpcResponse } from '../../../shared/types';
-import type { ConnectionContext } from '../../transport/connection-context';
+import type { ConnectionContext } from '../../contracts';
 import type { RealtimePrimitive } from '../types';
 
 export interface RpcContext {
@@ -43,7 +43,7 @@ export class RpcDispatcher<T extends DatasoleContract> implements RealtimePrimit
     try {
       const result = await handler(request.params, ctx);
       return { correlationId: request.correlationId, result };
-    } catch (err) {
+    } catch (err: unknown) {
       return {
         correlationId: request.correlationId,
         error: { code: -32000, message: err instanceof Error ? err.message : 'Internal error' },

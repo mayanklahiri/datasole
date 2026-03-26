@@ -241,7 +241,7 @@ ds.transport.attach(http);
 http.listen(3000);
 
 setInterval(() => {
-  ds.localServer.broadcast(Event.Price, {
+  ds.primitives.fanout.broadcast(Event.Price, {
     symbol: 'TSLA',
     price: 250 + Math.random() * 10,
     timestamp: Date.now(),
@@ -346,7 +346,7 @@ let visitors = 0;
 
 setInterval(async () => {
   visitors += Math.floor(Math.random() * 5);
-  await ds.localServer.setState(StateKey.Dashboard, {
+  await ds.primitives.live.setState(StateKey.Dashboard, {
     visitors,
     activeNow: Math.floor(Math.random() * 100),
     serverUptime: process.uptime(),
@@ -504,8 +504,8 @@ ds.primitives.events.on(Event.ChatSend, ({ data }) => {
   };
   chatHistory.push(msg);
   if (chatHistory.length > 50) chatHistory.shift();
-  void ds.localServer.setState(StateKey.ChatMessages, [...chatHistory]);
-  ds.localServer.broadcast(Event.ChatMessage, msg);
+  void ds.primitives.live.setState(StateKey.ChatMessages, [...chatHistory]);
+  ds.primitives.fanout.broadcast(Event.ChatMessage, msg);
 });
 
 http.listen(3000);
@@ -644,7 +644,7 @@ const counter = new PNCounter('server');
 
 ds.primitives.events.on(Event.CrdtOp, ({ data: op }) => {
   counter.apply(op);
-  ds.localServer.broadcast(Event.CrdtState, counter.state());
+  ds.primitives.fanout.broadcast(Event.CrdtState, counter.state());
 });
 
 ds.rpc.register(RpcMethod.CrdtGetState, async () => counter.state());
@@ -752,21 +752,21 @@ const http = createServer();
 ds.transport.attach(http);
 http.listen(3000);
 
-const alerts = ds.localServer.createSyncChannel({
+const alerts = ds.primitives.live.createSyncChannel({
   key: SyncChannelKey.Alerts,
   direction: 'server-to-client',
   mode: 'json-patch',
   flush: { flushStrategy: 'immediate' },
 });
 
-const metrics = ds.localServer.createSyncChannel({
+const metrics = ds.primitives.live.createSyncChannel({
   key: SyncChannelKey.Metrics,
   direction: 'server-to-client',
   mode: 'json-patch',
   flush: { flushStrategy: 'batched', batchIntervalMs: 200 },
 });
 
-const search = ds.localServer.createSyncChannel({
+const search = ds.primitives.live.createSyncChannel({
   key: SyncChannelKey.SearchResults,
   direction: 'server-to-client',
   mode: 'json-patch',
@@ -1140,7 +1140,7 @@ const board: Board = {
 };
 
 async function syncBoard() {
-  await ds.localServer.setState(StateKey.Board, board);
+  await ds.primitives.live.setState(StateKey.Board, board);
 }
 void syncBoard();
 
@@ -1162,16 +1162,16 @@ const onlineCounter = new PNCounter('server');
 
 ds.primitives.events.on(Event.UserJoin, () => {
   onlineCounter.increment();
-  ds.localServer.broadcast(Event.Presence, onlineCounter.state());
+  ds.primitives.fanout.broadcast(Event.Presence, onlineCounter.state());
 });
 
 ds.primitives.events.on(Event.UserLeave, () => {
   onlineCounter.decrement();
-  ds.localServer.broadcast(Event.Presence, onlineCounter.state());
+  ds.primitives.fanout.broadcast(Event.Presence, onlineCounter.state());
 });
 
 ds.primitives.events.on(Event.ChatSend, ({ data }) => {
-  ds.localServer.broadcast(Event.ChatMessage, { text: data.text, timestamp: Date.now() });
+  ds.primitives.fanout.broadcast(Event.ChatMessage, { text: data.text, timestamp: Date.now() });
 });
 
 http.listen(3000, () => console.log('Task board on :3000'));

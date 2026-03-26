@@ -1,16 +1,11 @@
 /**
- * Pure byte pipe: manages WebSocket connections, raw send/broadcast.
- * Pre-executor gate: rate limit check then dispatch compressed frame to executor.
+ * Pure byte pipe: manages WebSocket connections, raw send/broadcast, and static asset serving.
+ * Frame processing (rate limiting, protocol dispatch) is handled by the {@link TransportLifecycle}
+ * callbacks provided to {@link attach}.
  */
 import type { IncomingMessage, Server as HttpServer, ServerResponse } from 'http';
 
-import { compress, decompress, deserialize, isCompressed, serialize } from '../../shared/codec';
-import { COMPRESSION_THRESHOLD } from '../../shared/constants';
-import { decodeFrame, encodeFrame, Opcode } from '../../shared/protocol';
-import type { ConnectionExecutor } from '../executor/types';
 import type { MetricsCollector } from '../metrics';
-import type { RateLimiter, RateLimitConfig, RateLimitRule } from '../primitives/rate-limit/types';
-import { DEFAULT_RATE_LIMIT_RULE } from '../primitives/rate-limit/types';
 
 import { Connection } from './connection';
 import { StaticAssetServer } from './static-assets';
@@ -52,19 +47,22 @@ export interface TransportOptions {
   authHandler?: AuthHandler;
 }
 
+/** Callbacks invoked by the transport for connection lifecycle and frame delivery. */
+export interface TransportLifecycle {
+  onFrame(connectionId: string, raw: Uint8Array): Promise<void>;
+  onConnect(connectionId: string, conn: Connection): void;
+  onDisconnect(connectionId: string): void;
+}
+
 export class ServerTransport {
   private readonly connections = new Map<string, Connection>();
   private wsServer: WsServer | null = null;
   private server: HttpServer | null = null;
   private staticRequestHandler: ((req: IncomingMessage, res: ServerResponse) => void) | null = null;
 
-  constructor(
-    private readonly metrics: MetricsCollector,
-    private readonly rateLimiter: RateLimiter,
-    private readonly rateLimitConfig: RateLimitConfig,
-  ) {}
+  constructor(private readonly metrics: MetricsCollector) {}
 
-  attach(server: HttpServer, opts: TransportOptions, executor: ConnectionExecutor): void {
+  attach(server: HttpServer, opts: TransportOptions, lifecycle: TransportLifecycle): void {
     this.server = server;
     const maxConnections = opts.maxConnections ?? 10_000;
     const staticAssets = new StaticAssetServer(opts.path);
@@ -108,27 +106,16 @@ export class ServerTransport {
       this.connections.set(info.id, conn);
       this.metrics.increment('connections');
 
-      executor.addConnection(info.id, {
-        remoteAddress: info.remoteAddress,
-        auth,
-      });
-
-      // For AsyncExecutor, attach the Connection object
-      if ('setConnection' in executor) {
-        (executor as { setConnection: (id: string, conn: Connection) => void }).setConnection(
-          info.id,
-          conn,
-        );
-      }
+      lifecycle.onConnect(info.id, conn);
 
       conn.onMessage((data) => {
-        void this.handleIncoming(conn, data, executor);
+        void lifecycle.onFrame(info.id, data).catch(() => {});
       });
 
       conn.onClose(() => {
         this.connections.delete(info.id);
         this.metrics.decrement('connections');
-        executor.removeConnection(info.id);
+        lifecycle.onDisconnect(info.id);
       });
     });
 
@@ -139,94 +126,26 @@ export class ServerTransport {
     );
   }
 
-  private async handleIncoming(
-    conn: Connection,
-    raw: Uint8Array,
-    executor: ConnectionExecutor,
-  ): Promise<void> {
-    try {
-      this.metrics.increment('messagesIn');
-
-      const rule = this.getRateLimitRule(raw);
-      const key = this.getRateLimitKey(conn.info.id, raw);
-      const result = await this.rateLimiter.consume(key, rule);
-      if (!result.allowed) {
-        let correlationId = 0;
-        try {
-          const data = isCompressed(raw) ? decompress(raw) : raw;
-          const frame = decodeFrame(data);
-          correlationId = frame.correlationId;
-        } catch {
-          // Can't decode — use default correlationId
-        }
-        const payload = serialize({
-          message: 'Rate limit exceeded',
-          retryAfter: result.retryAfter,
-        });
-        let frameData = encodeFrame({ opcode: Opcode.ERROR, correlationId, payload });
-        if (frameData.length > COMPRESSION_THRESHOLD) {
-          frameData = compress(frameData);
-        }
-        void conn.send(frameData).catch(() => {});
-        this.metrics.increment('messagesOut');
-        return;
-      }
-
-      executor.dispatch(conn.info.id, raw);
-    } catch {
-      // Malformed or rate limited — ignore
-    }
-  }
-
-  private getRateLimitKey(connectionId: string, raw: Uint8Array): string {
-    if (this.rateLimitConfig.keyExtractor) {
-      let method: string | undefined;
-      try {
-        const data = isCompressed(raw) ? decompress(raw) : raw;
-        const frame = decodeFrame(data);
-        if (frame.opcode === Opcode.RPC_REQ) {
-          const req = deserialize<{ method?: string }>(frame.payload);
-          method = req.method;
-        }
-      } catch {
-        // Ignore decode errors for rate limit key
-      }
-      return this.rateLimitConfig.keyExtractor(connectionId, method);
-    }
-    return `${connectionId}:frame`;
-  }
-
-  private getRateLimitRule(raw: Uint8Array): RateLimitRule {
-    if (this.rateLimitConfig.rules) {
-      try {
-        const data = isCompressed(raw) ? decompress(raw) : raw;
-        const frame = decodeFrame(data);
-        if (frame.opcode === Opcode.RPC_REQ) {
-          const req = deserialize<{ method?: string }>(frame.payload);
-          if (req.method && this.rateLimitConfig.rules[req.method]) {
-            return this.rateLimitConfig.rules[req.method]!;
-          }
-        }
-      } catch {
-        // Ignore decode errors
-      }
-    }
-    return this.rateLimitConfig.defaultRule ?? DEFAULT_RATE_LIMIT_RULE;
-  }
-
   sendRaw(connectionId: string, data: Uint8Array): void {
     const conn = this.connections.get(connectionId);
     if (conn) {
       void conn.send(data).catch(() => {});
       this.metrics.increment('messagesOut');
+      this.metrics.increment('bytesOut', data.byteLength);
     }
   }
 
   broadcastRaw(data: Uint8Array): void {
+    const count = this.connections.size;
     for (const conn of this.connections.values()) {
       void conn.send(data).catch(() => {});
     }
     this.metrics.increment('messagesOut');
+    this.metrics.increment('bytesOut', data.byteLength * count);
+  }
+
+  getConnection(connectionId: string): Connection | undefined {
+    return this.connections.get(connectionId);
   }
 
   getConnections(): ReadonlyMap<string, Connection> {

@@ -2,21 +2,9 @@
  * Per-connection bag for authenticated identity, addressing metadata, and arbitrary key/value context.
  */
 import type { AuthContext } from '../../shared/types';
+import type { ConnectionContext } from '../contracts';
 
-export interface ConnectionContext {
-  readonly connectionId: string;
-  readonly userId: string | null;
-  readonly auth: AuthContext | null;
-  readonly connectedAt: number;
-  readonly remoteAddress: string;
-
-  metadata: Record<string, unknown>;
-  tags: Set<string>;
-
-  get<T = unknown>(key: string): T | undefined;
-  set(key: string, value: unknown): void;
-  delete(key: string): boolean;
-}
+export type { ConnectionContext };
 
 export class DefaultConnectionContext implements ConnectionContext {
   readonly connectionId: string;

@@ -182,10 +182,10 @@ flowchart TB
                 SM["ds.primitives.state — StateManager"]
                 CRDT["ds.primitives.crdt — CrdtManager"]
                 Sess["ds.primitives.sessions — SessionManager"]
-                Sync["SyncChannel (via ds.localServer.createSyncChannel)"]
+                Sync["SyncChannel (via ds.primitives.live.createSyncChannel)"]
                 Auth["AuthHandler (configured via DatasoleServerOptions)"]
                 RLim["ds.primitives.rateLimiter — DefaultRateLimiter"]
-                DF["ChannelManager (internal via ds.localServer.createDataChannel)"]
+                DF["ChannelManager (internal via ds.primitives.live.createDataChannel)"]
                 Met["ds.metrics"]
             end
             Transport --> Executor --> Primitives

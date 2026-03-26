@@ -19,6 +19,9 @@
 
 import { availableParallelism } from 'os';
 
+import type { FrameRouter } from '../protocol/frame-router';
+import type { Connection } from '../transport/connection';
+
 /**
  * Available executor concurrency models.
  *
@@ -43,7 +46,9 @@ export interface ExecutorSend {
 /** Lifecycle interface for connection executors. */
 export interface ConnectionExecutor {
   readonly model: ExecutorModel;
+  readonly router: FrameRouter;
   init(send: ExecutorSend): void;
+  setConnection(connectionId: string, conn: Connection): void;
   addConnection(connectionId: string, meta: ConnectionMeta): void;
   dispatch(connectionId: string, compressedFrame: Uint8Array): void;
   removeConnection(connectionId: string): void;

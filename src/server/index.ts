@@ -1,7 +1,8 @@
 export { DatasoleServer } from './server';
 export type { DatasoleServerOptions, DatasolePrimitives } from './server';
-export { DatasoleServerTransportFacade, DatasoleLocalServerFacade } from './datasole';
-export type { DatasoleTransportAttachOptions } from './datasole';
+export { DatasoleServerTransportFacade } from './facades';
+export type { DatasoleTransportAttachOptions } from './facades';
+export { ServerLiveState, ServerEventFanout } from './primitives';
 
 // Contract
 export type {
@@ -13,8 +14,13 @@ export type {
 } from '../shared/contract';
 
 // Adapters
-export { ExpressAdapter, NativeHttpAdapter, DatasoleNestAdapter } from './adapters';
-export type { ServerAdapter } from './adapters';
+export {
+  BaseUpgradeAdapter,
+  ExpressAdapter,
+  NativeHttpAdapter,
+  DatasoleNestAdapter,
+} from './adapters';
+export type { ServerAdapter, UpgradeHandler } from './adapters';
 
 // Backends
 export { MemoryBackend, RedisBackend, PostgresBackend, createBackend } from './backends';
@@ -29,9 +35,9 @@ export type {
 // Executor
 export {
   AsyncExecutor,
+  DelegatingExecutor,
   ThreadExecutor,
   PoolExecutor,
-  FrameRouter,
   createExecutor,
   DEFAULT_EXECUTOR_OPTIONS,
 } from './executor';
@@ -41,9 +47,19 @@ export type {
   ExecutorSend,
   ConnectionExecutor,
   ExecutorOptions,
-  DecodedFrame,
-  FrameHandlerFn,
 } from './executor';
+
+// Protocol
+export type { BroadcastSink } from './protocol';
+export { ProtocolBroadcastSink, FrameRouter } from './protocol';
+export { registerProtocolHandlers } from './protocol';
+export type { ProtocolAdapterDeps, DecodedFrame, FrameHandlerFn } from './protocol';
+
+// Pipeline
+export { FramePipeline } from './pipeline';
+export type { FrameInterceptor, FrameInterceptorContext } from './pipeline';
+export { createRateLimitInterceptor, createMetricsInterceptor } from './pipeline';
+export type { RateLimitInterceptorDeps } from './pipeline';
 
 // Primitives
 export type { RealtimePrimitive } from './primitives';
@@ -61,8 +77,8 @@ export type {
   SyncMode,
   SyncChannelConfig,
 } from './primitives';
-export { createAuthHandler, createDefaultAuthHandler } from './primitives';
-export type { AuthHandlerInterface, AuthHandlerFn, AuthHandlerConfig } from './primitives';
+export { createDefaultAuthHandler } from './primitives';
+export type { AuthHandlerFn, AuthHandlerConfig } from './primitives';
 export { DefaultRateLimiter, DEFAULT_RATE_LIMIT_RULE } from './primitives';
 export type { RateLimiter, RateLimitResult, RateLimitRule, RateLimitConfig } from './primitives';
 export { ChannelManager } from './primitives';
@@ -86,4 +102,5 @@ export type {
   AuthHandler,
   ConnectionContext,
   TransportOptions,
+  TransportLifecycle,
 } from './transport';

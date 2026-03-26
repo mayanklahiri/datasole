@@ -8,11 +8,11 @@ This demo proves that datasole works without any build tooling or UI framework �
 
 Three panels demonstrate datasole's core data-flow patterns:
 
-| Panel          | Pattern                       | API Used                                                             |
-| -------------- | ----------------------------- | -------------------------------------------------------------------- |
-| Server Metrics | Server → client broadcast     | `ds.localServer.broadcast(...)` + `ds.on('system-metrics', handler)` |
-| Chat Room      | Client ↔ server state sync    | `ds.subscribeState()` + `ds.emit()`                                  |
-| RPC Random     | Client → server request/reply | `ds.rpc('randomNumber', { min, max })`                               |
+| Panel          | Pattern                       | API Used                                                                   |
+| -------------- | ----------------------------- | -------------------------------------------------------------------------- |
+| Server Metrics | Server → client broadcast     | `ds.primitives.fanout.broadcast(...)` + `ds.on('system-metrics', handler)` |
+| Chat Room      | Client ↔ server state sync    | `ds.subscribeState()` + `ds.emit()`                                        |
+| RPC Random     | Client → server request/reply | `ds.rpc('randomNumber', { min, max })`                                     |
 
 All communication runs over a single WebSocket via a Web Worker (off the main thread).
 
@@ -71,7 +71,7 @@ ds.primitives.events.on('chat:send', (payload) => {
 ds.rpc.register('randomNumber', async ({ min, max }) => {
   /* ... */
 });
-await ds.localServer.setState('chat:messages', chatHistory);
+await ds.primitives.live.setState('chat:messages', chatHistory);
 
 // Attach to the raw Node.js HTTP server
 const httpServer = createServer(serveStatic);

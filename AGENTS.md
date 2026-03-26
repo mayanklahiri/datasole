@@ -5,13 +5,16 @@
 - `src/shared/` — Code shared between client and server (protocol, codec, diff, types, CRDTs, contract)
 - `src/client/` — Browser client library (Web Worker transport, state store, RPC, events, CRDT store)
 - `src/server/` — Node.js server library, decomposed into layers:
-  - `src/server/transport/` — Byte pipe: ServerTransport, WsServer, Connection
-  - `src/server/executor/` — Frame processing + isolation: AsyncExecutor, FrameRouter
-  - `src/server/backends/` — Distribution layer: StateBackend, MemoryBackend, RedisBackend, PostgresBackend, factory
-  - `src/server/primitives/` — All backend-powered services: RPC, Events, State, CRDT, Sessions, Sync, Auth, Rate-limit, Data-flow
-  - `src/server/datasole/` — `DatasoleServer` facades (`transport`, `localServer`) with `server` back-reference
-  - `src/server/adapters/` — HTTP server adapters (Express, NestJS, native)
-  - `src/server/metrics/` — Observability
+  - `src/server/contracts.ts` — Container-level shared interfaces (`ConnectionContext`, `AuthHandlerFn`) importable by any layer
+  - `src/server/transport/` — WebSocket byte pipe: `ServerTransport`, `WsServer`, `Connection`
+  - `src/server/protocol/` — Wire-protocol mapping: `FrameRouter`, `ProtocolBroadcastSink`, `registerProtocolHandlers`; maps opcodes to service calls
+  - `src/server/pipeline/` — Inbound frame interceptor chain: `FramePipeline`, metrics/rate-limit interceptors
+  - `src/server/executor/` — Frame processing + isolation: `AsyncExecutor`, `DelegatingExecutor`, `ThreadExecutor`, `PoolExecutor`
+  - `src/server/backends/` — Distribution layer: `StateBackend`, `MemoryBackend`, `RedisBackend`, `PostgresBackend`, factory
+  - `src/server/primitives/` — Backend-powered services: RPC, Events, State, CRDT, Sessions, Sync, Auth, Rate-limit, Data-flow; **`live-state/`** (`ServerLiveState`, `ServerEventFanout`) for state push + broadcast via `BroadcastSink`
+  - `src/server/facades/` — `DatasoleServerTransportFacade`: HTTP attach + lifecycle wiring on top of `ServerTransport`
+  - `src/server/adapters/` — Framework HTTP integration (`BaseUpgradeAdapter`, `ExpressAdapter`, `DatasoleNestAdapter`, …)
+  - `src/server/metrics/` — Observability: `MetricsCollector`, `PrometheusExporter`, `OpenTelemetryExporter`
 - `build/` — Rollup and TypeScript build configurations, metrics collection, gate summary, build artifact printer
 - `demos/` — Independent demo apps: `vanilla/`, `react-express/`, `vue-nestjs/` (each a self-contained sub-package)
 - `test/unit/` — Vitest unit tests

@@ -145,7 +145,7 @@ ds.primitives.events.on(Event.ChatMessage, (payload) => {
   console.log(payload.data.text);
 });
 
-await ds.localServer.setState(StateKey.Dashboard, { onlineUsers: 0, queueDepth: 0 });
+await ds.primitives.live.setState(StateKey.Dashboard, { onlineUsers: 0, queueDepth: 0 });
 ```
 
 ## 3) Set up the client

@@ -39,7 +39,7 @@ describe('contract type inference', () => {
       keyof TestContract['rpc'] & string
     >();
     expectTypeOf<
-      Parameters<DatasoleServer<TestContract>['localServer']['broadcast']>[0]
+      Parameters<DatasoleServer<TestContract>['primitives']['fanout']['broadcast']>[0]
     >().toEqualTypeOf<keyof TestContract['events'] & string>();
   });
 

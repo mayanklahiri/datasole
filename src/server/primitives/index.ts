@@ -19,11 +19,13 @@ export type {
   SyncChannelConfig,
 } from './sync';
 
-export { createAuthHandler, createDefaultAuthHandler } from './auth';
-export type { AuthHandlerInterface, AuthHandlerFn, AuthHandlerConfig } from './auth';
+export { createDefaultAuthHandler } from './auth';
+export type { AuthHandlerFn, AuthHandlerConfig } from './auth';
 
 export { DefaultRateLimiter, DEFAULT_RATE_LIMIT_RULE } from './rate-limit';
 export type { RateLimiter, RateLimitResult, RateLimitRule, RateLimitConfig } from './rate-limit';
 
 export { ChannelManager } from './data-flow';
 export type { ChannelManagerDeps } from './data-flow';
+
+export { ServerLiveState, ServerEventFanout } from './live-state';

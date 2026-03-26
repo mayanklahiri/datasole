@@ -522,10 +522,10 @@ The most powerful pattern: mutate a data structure on the server, and every conn
 ```typescript
 import { StateKey } from './shared/contract';
 
-await ds.localServer.setState(StateKey.Dashboard, { visitors: 0, active: 0 });
+await ds.primitives.live.setState(StateKey.Dashboard, { visitors: 0, active: 0 });
 
 setInterval(async () => {
-  await ds.localServer.setState(StateKey.Dashboard, {
+  await ds.primitives.live.setState(StateKey.Dashboard, {
     visitors: getVisitorCount(),
     active: getActiveCount(),
   });
@@ -545,7 +545,7 @@ ds.primitives.events.on(Event.ChatMessage, ({ data }) => {
   console.log('Received:', data.text);
 });
 
-ds.localServer.broadcast(Event.Notification, { title: 'Server restarting in 5 minutes' });
+ds.primitives.fanout.broadcast(Event.Notification, { title: 'Server restarting in 5 minutes' });
 
 ds.primitives.events.off(Event.ChatMessage, handler);
 ```
@@ -557,21 +557,21 @@ ds.primitives.events.off(Event.ChatMessage, handler);
 Fine-grained control over when state updates are flushed to clients.
 
 ```typescript
-const alerts = ds.localServer.createSyncChannel({
+const alerts = ds.primitives.live.createSyncChannel({
   key: 'alerts',
   direction: 'server-to-client',
   mode: 'json-patch',
   flush: { flushStrategy: 'immediate' },
 });
 
-const metrics = ds.localServer.createSyncChannel({
+const metrics = ds.primitives.live.createSyncChannel({
   key: 'metrics',
   direction: 'server-to-client',
   mode: 'json-patch',
   flush: { flushStrategy: 'batched', batchIntervalMs: 200, maxBatchSize: 50 },
 });
 
-const form = ds.localServer.createSyncChannel({
+const form = ds.primitives.live.createSyncChannel({
   key: 'form',
   direction: 'client-to-server',
   mode: 'json-patch',
@@ -691,15 +691,15 @@ server.listen(3000);
 
 ## API surface
 
-| Member                                                                      | Role                                                                      |
-| --------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `await ds.init()`                                                           | Connect `StateBackend` / optional `RateLimiter` before `transport.attach` |
-| `ds.transport.attach(httpServer, adapter?)`                                 | WebSocket upgrade + static client/worker assets                           |
-| `ds.transport.getConnectionCount()`                                         | Connected WebSocket clients                                               |
-| `ds.localServer.setState` / `getState` / `broadcast` / sync + data channels | Server→client orchestration                                               |
-| `ds.rpc`                                                                    | Typed RPC registry                                                        |
-| `ds.metrics`                                                                | In-process counters (`snapshot()`, etc.)                                  |
-| `ds.primitives.state` / `events` / `crdt` / `sessions` / `rateLimiter`      | Direct primitive access                                                   |
-| `ds.close()`                                                                | Graceful shutdown                                                         |
+| Member                                                                                           | Role                                                                      |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `await ds.init()`                                                                                | Connect `StateBackend` / optional `RateLimiter` before `transport.attach` |
+| `ds.transport.attach(httpServer, adapter?)`                                                      | WebSocket upgrade + static client/worker assets                           |
+| `ds.transport.getConnectionCount()`                                                              | Connected WebSocket clients                                               |
+| `ds.primitives.live` (setState, getState, sync/data channels) / `ds.primitives.fanout.broadcast` | Server→client orchestration                                               |
+| `ds.rpc`                                                                                         | Typed RPC registry                                                        |
+| `ds.metrics`                                                                                     | In-process counters (`snapshot()`, etc.)                                  |
+| `ds.primitives.state` / `events` / `crdt` / `sessions` / `rateLimiter`                           | Direct primitive access                                                   |
+| `ds.close()`                                                                                     | Graceful shutdown                                                         |
 
 Facades expose `readonly server: DatasoleServer<T>` for sibling access from nested code.
