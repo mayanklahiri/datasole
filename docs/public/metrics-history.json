@@ -541,14 +541,14 @@
     ]
   },
   {
-    "timestamp": "2026-03-26T05:13:43.580Z",
+    "timestamp": "2026-03-26T05:22:44.150Z",
     "system": {
       "platform": "linux",
-      "osRelease": "6.8.0-106-generic",
+      "osRelease": "6.14.0-1017-azure",
       "arch": "x64",
-      "cpuModel": "11th Gen Intel(R) Core(TM) i9-11900KF @ 3.50GHz",
-      "cpuCount": 16,
-      "totalMemoryBytes": 33514905600,
+      "cpuModel": "AMD EPYC 7763 64-Core Processor",
+      "cpuCount": 4,
+      "totalMemoryBytes": 16767234048,
       "nodeVersion": "24.14.0"
     },
     "coverage": {
@@ -567,9 +567,9 @@
       {
         "name": "rpc-echo",
         "opsPerSec": 33,
-        "p50Ms": 0.33,
-        "p95Ms": 0.83,
-        "p99Ms": 4.84,
+        "p50Ms": 0.85,
+        "p95Ms": 4.5,
+        "p99Ms": 7.24,
         "totalOps": 100,
         "console": {
           "consoleErrors": 0,
@@ -579,9 +579,9 @@
       {
         "name": "rpc-concurrent",
         "opsPerSec": 37,
-        "p50Ms": 0.24,
-        "p95Ms": 3001.34,
-        "p99Ms": 3001.34,
+        "p50Ms": 0.6,
+        "p95Ms": 3001.3,
+        "p99Ms": 3001.3,
         "totalOps": 110,
         "console": {
           "consoleErrors": 0,
@@ -590,11 +590,11 @@
       },
       {
         "name": "server-event-receive",
-        "opsPerSec": 934,
+        "opsPerSec": 706,
         "p50Ms": 0,
         "p95Ms": 0,
         "p99Ms": 0,
-        "totalOps": 2803,
+        "totalOps": 2117,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -602,11 +602,11 @@
       },
       {
         "name": "state-sync-receive",
-        "opsPerSec": 191,
+        "opsPerSec": 182,
         "p50Ms": 0,
         "p95Ms": 0,
         "p99Ms": 0,
-        "totalOps": 574,
+        "totalOps": 546,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -614,11 +614,11 @@
       },
       {
         "name": "client-event-emit",
-        "opsPerSec": 222719,
-        "p50Ms": 0,
-        "p95Ms": 0.01,
-        "p99Ms": 0.01,
-        "totalOps": 668158,
+        "opsPerSec": 68943,
+        "p50Ms": 0.01,
+        "p95Ms": 0.02,
+        "p99Ms": 0.05,
+        "totalOps": 206828,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -626,11 +626,11 @@
       },
       {
         "name": "crdt-increment",
-        "opsPerSec": 1350,
-        "p50Ms": 0.7,
-        "p95Ms": 1.41,
-        "p99Ms": 2.58,
-        "totalOps": 4051,
+        "opsPerSec": 943,
+        "p50Ms": 1.01,
+        "p95Ms": 1.73,
+        "p99Ms": 3.69,
+        "totalOps": 2828,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -638,11 +638,11 @@
       },
       {
         "name": "binary-frame-1kb",
-        "opsPerSec": 7029,
+        "opsPerSec": 2546,
         "p50Ms": 0,
         "p95Ms": 0,
         "p99Ms": 0,
-        "totalOps": 21086,
+        "totalOps": 7638,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -651,9 +651,9 @@
       {
         "name": "rpc-small-payload",
         "opsPerSec": 33,
-        "p50Ms": 0.31,
-        "p95Ms": 0.7,
-        "p99Ms": 4.81,
+        "p50Ms": 0.76,
+        "p95Ms": 3.77,
+        "p99Ms": 6.94,
         "totalOps": 100,
         "console": {
           "consoleErrors": 0,
@@ -663,10 +663,10 @@
       {
         "name": "rpc-large-json",
         "opsPerSec": 33,
-        "p50Ms": 17.51,
-        "p95Ms": 36.76,
-        "p99Ms": 37.85,
-        "totalOps": 100,
+        "p50Ms": 31.6,
+        "p95Ms": 55.34,
+        "p99Ms": 68.94,
+        "totalOps": 99,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -675,9 +675,9 @@
       {
         "name": "two-way-latency",
         "opsPerSec": 36,
-        "p50Ms": 4.1,
-        "p95Ms": 408.56,
-        "p99Ms": 409.27,
+        "p50Ms": 4.13,
+        "p95Ms": 410.96,
+        "p99Ms": 411.59,
         "totalOps": 107,
         "console": {
           "consoleErrors": 0,
@@ -687,9 +687,9 @@
       {
         "name": "mixed-workload",
         "opsPerSec": 34,
-        "p50Ms": 0.22,
-        "p95Ms": 0.48,
-        "p99Ms": 2.26,
+        "p50Ms": 0.68,
+        "p95Ms": 1.51,
+        "p99Ms": 5.29,
         "totalOps": 101,
         "console": {
           "consoleErrors": 0,
@@ -698,11 +698,11 @@
       },
       {
         "name": "main-thread-heavy-flood-worker",
-        "opsPerSec": 7083,
+        "opsPerSec": 2550,
         "p50Ms": 0,
         "p95Ms": 0,
         "p99Ms": 0,
-        "totalOps": 21248,
+        "totalOps": 7649,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -711,20 +711,20 @@
           "longTaskCount": 0,
           "longTaskTotalMs": 0,
           "longTaskMaxMs": 0,
-          "rafMedianMs": 16.66,
-          "rafP99Ms": 44.61,
-          "rafJankFrames": 0,
-          "rafDroppedFrames": 3,
-          "rafTotalFrames": 180
+          "rafMedianMs": 16.46,
+          "rafP99Ms": 38.53,
+          "rafJankFrames": 1,
+          "rafDroppedFrames": 2,
+          "rafTotalFrames": 178
         }
       },
       {
         "name": "main-thread-event-flood-worker",
-        "opsPerSec": 947,
+        "opsPerSec": 892,
         "p50Ms": 0,
         "p95Ms": 0,
         "p99Ms": 0,
-        "totalOps": 2841,
+        "totalOps": 2677,
         "console": {
           "consoleErrors": 0,
           "consoleWarnings": 0
@@ -734,7 +734,7 @@
           "longTaskTotalMs": 0,
           "longTaskMaxMs": 0,
           "rafMedianMs": 16.66,
-          "rafP99Ms": 17.5,
+          "rafP99Ms": 17.47,
           "rafJankFrames": 0,
           "rafDroppedFrames": 0,
           "rafTotalFrames": 181
@@ -743,75 +743,9 @@
       {
         "name": "main-thread-rpc-echo-worker",
         "opsPerSec": 33,
-        "p50Ms": 1.58,
-        "p95Ms": 18.83,
-        "p99Ms": 19.06,
-        "totalOps": 100,
-        "console": {
-          "consoleErrors": 0,
-          "consoleWarnings": 0
-        },
-        "mainThread": {
-          "longTaskCount": 0,
-          "longTaskTotalMs": 0,
-          "longTaskMaxMs": 0,
-          "rafMedianMs": 16.66,
-          "rafP99Ms": 17.69,
-          "rafJankFrames": 0,
-          "rafDroppedFrames": 0,
-          "rafTotalFrames": 1840
-        }
-      },
-      {
-        "name": "main-thread-heavy-flood-no-worker",
-        "opsPerSec": 4325,
-        "p50Ms": 0,
-        "p95Ms": 0,
-        "p99Ms": 0,
-        "totalOps": 12974,
-        "console": {
-          "consoleErrors": 0,
-          "consoleWarnings": 0
-        },
-        "mainThread": {
-          "longTaskCount": 0,
-          "longTaskTotalMs": 0,
-          "longTaskMaxMs": 0,
-          "rafMedianMs": 100.53,
-          "rafP99Ms": 103.31,
-          "rafJankFrames": 33,
-          "rafDroppedFrames": 33,
-          "rafTotalFrames": 34
-        }
-      },
-      {
-        "name": "main-thread-event-flood-no-worker",
-        "opsPerSec": 928,
-        "p50Ms": 0,
-        "p95Ms": 0,
-        "p99Ms": 0,
-        "totalOps": 2783,
-        "console": {
-          "consoleErrors": 0,
-          "consoleWarnings": 0
-        },
-        "mainThread": {
-          "longTaskCount": 0,
-          "longTaskTotalMs": 0,
-          "longTaskMaxMs": 0,
-          "rafMedianMs": 16.66,
-          "rafP99Ms": 17.48,
-          "rafJankFrames": 0,
-          "rafDroppedFrames": 0,
-          "rafTotalFrames": 181
-        }
-      },
-      {
-        "name": "main-thread-rpc-echo-no-worker",
-        "opsPerSec": 33,
-        "p50Ms": 1.67,
-        "p95Ms": 19.21,
-        "p99Ms": 19.82,
+        "p50Ms": 22.09,
+        "p95Ms": 35.05,
+        "p99Ms": 37.13,
         "totalOps": 100,
         "console": {
           "consoleErrors": 0,
@@ -822,10 +756,76 @@
           "longTaskTotalMs": 0,
           "longTaskMaxMs": 0,
           "rafMedianMs": 16.68,
-          "rafP99Ms": 17.97,
+          "rafP99Ms": 29.78,
+          "rafJankFrames": 0,
+          "rafDroppedFrames": 10,
+          "rafTotalFrames": 1873
+        }
+      },
+      {
+        "name": "main-thread-heavy-flood-no-worker",
+        "opsPerSec": 2153,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 6458,
+        "console": {
+          "consoleErrors": 0,
+          "consoleWarnings": 0
+        },
+        "mainThread": {
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "rafMedianMs": 101.1,
+          "rafP99Ms": 107.1,
+          "rafJankFrames": 40,
+          "rafDroppedFrames": 40,
+          "rafTotalFrames": 41
+        }
+      },
+      {
+        "name": "main-thread-event-flood-no-worker",
+        "opsPerSec": 904,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "totalOps": 2711,
+        "console": {
+          "consoleErrors": 0,
+          "consoleWarnings": 0
+        },
+        "mainThread": {
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "rafMedianMs": 16.65,
+          "rafP99Ms": 17.47,
           "rafJankFrames": 0,
           "rafDroppedFrames": 0,
-          "rafTotalFrames": 1842
+          "rafTotalFrames": 180
+        }
+      },
+      {
+        "name": "main-thread-rpc-echo-no-worker",
+        "opsPerSec": 33,
+        "p50Ms": 20.76,
+        "p95Ms": 34.13,
+        "p99Ms": 35.59,
+        "totalOps": 100,
+        "console": {
+          "consoleErrors": 0,
+          "consoleWarnings": 0
+        },
+        "mainThread": {
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "rafMedianMs": 16.68,
+          "rafP99Ms": 32.15,
+          "rafJankFrames": 0,
+          "rafDroppedFrames": 15,
+          "rafTotalFrames": 1874
         }
       }
     ]
